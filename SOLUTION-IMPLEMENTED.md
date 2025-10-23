@@ -208,14 +208,16 @@ git push
 ## Known Limitations
 
 ### 1. Initial Load Time
-- First visit takes 2-3 seconds
+- First visit takes 2-3 seconds (6-7 seconds on slow connections)
 - Acceptable tradeoff for complete data
 - Only happens once per 24 hours
 
-### 2. Storage Size
-- ~10-15MB in localStorage
-- Within browser limits (typically 5-10MB per origin)
-- Browser may evict if storage is full
+### 2. Storage Size ⚠️ FIXED: Now uses IndexedDB
+- **Original issue**: localStorage QuotaExceededError (5-10MB limit)
+- **Solution**: Migrated to IndexedDB (50MB+ capacity)
+- ~30-50MB stored (raw JSON)
+- Well within browser limits
+- IndexedDB handles large datasets efficiently
 
 ### 3. Stale Data
 - Cache valid for 24 hours
@@ -226,8 +228,8 @@ git push
 
 ### Short Term
 1. Show progress indicator during initial load
-2. Compress cache data (use LZ-string)
-3. IndexedDB instead of localStorage (better for large data)
+2. Compress cache data (use LZ-string) - optional, IndexedDB handles it well
+3. ✅ **DONE**: IndexedDB instead of localStorage (better for large data)
 
 ### Long Term
 1. Service Worker for offline support

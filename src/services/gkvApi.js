@@ -35,20 +35,88 @@ function splitDisplayValue(value) {
   return { code: normalizeString(code), name: normalizeString(rest.join(' - ')) };
 }
 
+// NEW: IndexedDB storage helper (larger quota than localStorage)
+const DB_NAME = 'gkv_hilfsmittel_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'products';
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function getCachedProducts() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get('all_products');
+      
+      request.onsuccess = () => {
+        const data = request.result;
+        if (data && data.timestamp) {
+          const age = Date.now() - data.timestamp;
+          if (age < CACHE_DURATION) {
+            resolve(data.products);
+          } else {
+            resolve(null); // Expired
+          }
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => resolve(null);
+    });
+  } catch (error) {
+    console.error('[GKV] IndexedDB error:', error);
+    return null;
+  }
+}
+
+async function setCachedProducts(products) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put({
+        products,
+        timestamp: Date.now()
+      }, 'all_products');
+      
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => {
+        console.error('[GKV] Failed to cache products:', request.error);
+        resolve(false);
+      };
+    });
+  } catch (error) {
+    console.error('[GKV] IndexedDB error:', error);
+    return false;
+  }
+}
+
 // NEW: Fetch all products and cache them
 async function fetchAllProducts() {
   if (!isBrowser) return [];
   
-  // Check cache first
-  const cached = localStorage.getItem(ALL_PRODUCTS_KEY);
-  const timestamp = localStorage.getItem(ALL_PRODUCTS_TIMESTAMP_KEY);
-  
-  if (cached && timestamp) {
-    const age = Date.now() - parseInt(timestamp, 10);
-    if (age < CACHE_DURATION) {
-      console.log('[GKV] Using cached products (' + JSON.parse(cached).length + ' products, age: ' + Math.round(age / 1000 / 60) + 'min)');
-      return JSON.parse(cached);
-    }
+  // Check IndexedDB cache first
+  const cached = await getCachedProducts();
+  if (cached) {
+    console.log(`[GKV] Using cached products (${cached.length} products)`);
+    return cached;
   }
   
   // Fetch from API
@@ -67,19 +135,20 @@ async function fetchAllProducts() {
     const endTime = Date.now();
     console.log(`[GKV] Fetched ${products.length} products in ${endTime - startTime}ms`);
     
-    // Cache the results
-    localStorage.setItem(ALL_PRODUCTS_KEY, JSON.stringify(products));
-    localStorage.setItem(ALL_PRODUCTS_TIMESTAMP_KEY, Date.now().toString());
+    // Cache the results in IndexedDB
+    await setCachedProducts(products);
+    console.log('[GKV] Products cached in IndexedDB');
     
     return products;
   } catch (error) {
     console.error('[GKV] Failed to fetch products:', error);
     logError(error, 'fetchAllProducts');
     
-    // Return cached data even if expired, better than nothing
-    if (cached) {
+    // Try to return any cached data as fallback
+    const fallback = await getCachedProducts();
+    if (fallback) {
       console.log('[GKV] Using expired cache as fallback');
-      return JSON.parse(cached);
+      return fallback;
     }
     
     return [];
