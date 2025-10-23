@@ -235,15 +235,28 @@ Results will be logged here and can be exported for documentation.
 
         const data = await response.json();
         const products = Array.isArray(data) ? data : (data.value || []);
+        
+        // Filter out placeholder entries
+        const realProducts = products.filter(p => {
+          const name = p.bezeichnung || p.name || '';
+          const isPlaceholder = name.toLowerCase().includes('nicht besetzt') || 
+                               name.toLowerCase().includes('not assigned') ||
+                               p.istHerausgenommen === true;
+          return !isPlaceholder;
+        });
+        
         const count = data.count || data.Count || data['@odata.count'] || products.length;
+        const realCount = realProducts.length;
 
         return {
           code: categoryCode,
-          success: products.length > 0,
+          success: realCount > 0,  // Only count real products
           count: count,
-          products: products.slice(0, 5).map(p => ({
+          realCount: realCount,
+          placeholderCount: products.length - realCount,
+          products: realProducts.slice(0, 5).map(p => ({
             code: p.produktartNummer || p.code || 'NO_CODE',
-            name: p.bezeichnung || p.name || 'NO_NAME',
+            name: (p.bezeichnung || p.name || 'NO_NAME').substring(0, 80),
             manufacturer: p.hersteller || p.herstellerName || 'NO_MFG'
           }))
         };
@@ -311,14 +324,18 @@ Results will be logged here and can be exported for documentation.
           allResults.push({ category: categoryName, ...result });
 
           if (result.success) {
-            log(`  ✅ ${result.count} products found`, 'success');
-            summary[categoryName].working.push({ code, count: result.count });
+            log(`  ✅ ${result.realCount} REAL products (${result.placeholderCount} placeholders filtered)`, 'success');
+            summary[categoryName].working.push({ code, count: result.realCount });
             
             if (result.products.length > 0) {
-              log(`  Sample: ${result.products[0].code} - ${result.products[0].name.substring(0, 50)}...`, 'info');
+              log(`  Sample: ${result.products[0].code} - ${result.products[0].name}`, 'info');
             }
           } else {
-            log(`  ❌ No products (${result.error || 'empty response'})`, 'error');
+            if (result.placeholderCount > 0) {
+              log(`  ⚠️ Only placeholders found (${result.placeholderCount} "Nicht besetzt" entries)`, 'warning');
+            } else {
+              log(`  ❌ No products (${result.error || 'empty response'})`, 'error');
+            }
             summary[categoryName].failed.push(code);
           }
 
@@ -437,15 +454,15 @@ Results will be logged here and can be exported for documentation.
         md += `- Success Rate: ${((working.length / tests.length) * 100).toFixed(1)}%\n\n`;
 
         if (working.length > 0) {
-          md += `| Code | Product Count | Sample Product |\n`;
-          md += `|------|---------------|----------------|\n`;
+          md += `| Code | Real Products | Placeholders | Sample Product |\n`;
+          md += `|------|---------------|--------------|----------------|\n`;
           working.forEach(t => {
             const sample = t.products[0] || {};
-            md += `| ${t.code} | ${t.count} | ${sample.name || 'N/A'} |\n`;
+            md += `| ${t.code} | ${t.realCount || t.count} | ${t.placeholderCount || 0} | ${sample.name || 'N/A'} |\n`;
           });
           md += `\n`;
         } else {
-          md += `⚠️ No working codes found for this category.\n\n`;
+          md += `⚠️ No working codes found for this category - only placeholders ("Nicht besetzt").\n\n`;
         }
       }
 
@@ -453,13 +470,17 @@ Results will be logged here and can be exported for documentation.
       results.forEach(r => {
         md += `### ${r.category} - ${r.code}\n`;
         md += `- Status: ${r.success ? '✅ Success' : '❌ Failed'}\n`;
-        md += `- Products: ${r.count}\n`;
+        md += `- Real Products: ${r.realCount || 0}\n`;
+        md += `- Placeholders: ${r.placeholderCount || 0}\n`;
+        md += `- Total Returned: ${r.count}\n`;
         if (r.error) md += `- Error: ${r.error}\n`;
         if (r.products && r.products.length > 0) {
-          md += `- Sample:\n`;
+          md += `- Sample Real Products:\n`;
           r.products.forEach(p => {
             md += `  - ${p.code}: ${p.name}\n`;
           });
+        } else if (r.placeholderCount > 0) {
+          md += `- ⚠️ Only "Nicht besetzt" placeholders found\n`;
         }
         md += `\n`;
       });

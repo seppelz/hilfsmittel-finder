@@ -4,7 +4,7 @@
 
 ### 1. Browser-Based API Test Tool
 
-**File**: `test-api.html`
+**File**: `public/test-api.html` (accessible in both dev and production)
 
 A comprehensive browser-based testing utility that:
 - Tests 7 categories (Hörgeräte, Gehhilfen, Sehhilfen, Badehilfen, Diabetes, Inkontinenz, Pflege)
