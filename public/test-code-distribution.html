@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>GKV Code Distribution Check</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: monospace; padding: 20px; background: #1e293b; color: #e2e8f0; }
+    button { background: #059669; color: white; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px 5px; font-weight: 600; }
+    pre { background: #0f172a; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 10px 0; white-space: pre-wrap; }
+    .highlight { color: #fbbf24; font-size: 18px; font-weight: bold; }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1 class="highlight">Check Code Distribution for Category 09 (Gehhilfen)</h1>
+  <button onclick="checkCodes()">🔍 Check What Codes Exist</button>
+  <div id="output"></div>
+
+  <script>
+    const PROXY = '/api/proxy';
+    
+    function log(html) {
+      document.getElementById('output').innerHTML += html + '\n';
+    }
+
+    async function checkCodes() {
+      document.getElementById('output').innerHTML = '';
+      
+      log('<p class="highlight">Fetching all products...</p>');
+      
+      try {
+        const response = await fetch(`${PROXY}?path=${encodeURIComponent('api/verzeichnis/Produkt')}`);
+        const data = await response.json();
+        const products = Array.isArray(data) ? data : (data.value || []);
+        
+        log(`<p class="success">✅ Got ${products.length} products</p>`);
+        
+        // Filter for category 09
+        const cat09 = products.filter(p => {
+          const code = p.zehnSteller || '';
+          return code.startsWith('09');
+        });
+        
+        log(`<p class="success">✅ Found ${cat09.length} products starting with "09"</p>`);
+        
+        if (cat09.length === 0) {
+          log('<p class="error">❌ NO PRODUCTS with codes starting with 09!</p>');
+          log('<p>Checking what 2-digit prefixes exist...</p>');
+          
+          const prefixes = {};
+          products.forEach(p => {
+            const code = p.zehnSteller || '';
+            if (code) {
+              const prefix = code.substring(0, 2);
+              prefixes[prefix] = (prefixes[prefix] || 0) + 1;
+            }
+          });
+          
+          log('<pre>2-digit prefixes found:\n' + 
+            Object.entries(prefixes)
+              .sort((a, b) => b[1] - a[1])
+              .map(([pre, count]) => `${pre}: ${count} products`)
+              .join('\n') + 
+            '</pre>');
+        } else {
+          // Show samples
+          log('<p class="highlight">📋 Sample products from 09.xx:</p>');
+          cat09.slice(0, 10).forEach(p => {
+            log(`<pre>${p.zehnSteller} - ${p.name || 'NO_NAME'} (Hersteller: ${p.herstellerName || 'NO_MFG'})</pre>`);
+          });
+          
+          // Show code distribution within 09
+          const subCodes = {};
+          cat09.forEach(p => {
+            const code = p.zehnSteller || '';
+            const sub = code.substring(0, 5); // e.g., "09.12"
+            subCodes[sub] = (subCodes[sub] || 0) + 1;
+          });
+          
+          log('<p class="highlight">📊 Distribution within 09.xx:</p>');
+          log('<pre>' + 
+            Object.entries(subCodes)
+              .sort((a, b) => b[1] - a[1])
+              .map(([code, count]) => `${code}: ${count} products`)
+              .join('\n') + 
+            '</pre>');
+        }
+        
+      } catch (error) {
+        log(`<p class="error">❌ Error: ${error.message}</p>`);
+      }
+    }
+  </script>
+</body>
+</html>
+
