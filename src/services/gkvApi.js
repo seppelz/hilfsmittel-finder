@@ -488,6 +488,33 @@ class GKVApiService {
     });
     
     console.log('[GKV] Filtered to', relevantProducts.length, 'relevant products');
+    
+    // DIAGNOSTIC: Check what codes actually exist in the database
+    if (relevantProducts.length === 0 && allowedCategories.length > 0) {
+      const prefix = allowedCategories[0].substring(0, 2); // e.g., "09" from "09.12"
+      const codesWithPrefix = allProducts.filter(p => {
+        const code = p.zehnSteller || '';
+        return code.startsWith(prefix);
+      });
+      console.log(`[GKV] DIAGNOSTIC: Found ${codesWithPrefix.length} products with prefix "${prefix}"`);
+      if (codesWithPrefix.length > 0) {
+        console.log('[GKV] Sample codes:', codesWithPrefix.slice(0, 5).map(p => p.zehnSteller));
+      } else {
+        // Check what prefixes DO exist
+        const prefixCounts = {};
+        allProducts.forEach(p => {
+          const code = p.zehnSteller || '';
+          if (code) {
+            const pre = code.substring(0, 2);
+            prefixCounts[pre] = (prefixCounts[pre] || 0) + 1;
+          }
+        });
+        const top10 = Object.entries(prefixCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10);
+        console.log('[GKV] Top 10 prefixes in database:', top10);
+      }
+    }
 
     // Normalize and sort products
     const normalizedProducts = relevantProducts
@@ -555,8 +582,10 @@ class GKVApiService {
       '05': 'Bandagen',
       
       // 07 - Blindenhilfsmittel & Sehhilfen
+      '07': 'Sehhilfen',
       '07.03': 'Sehhilfen',
-      '07.99': 'Hörhilfen',
+      '07.50': 'Sehhilfen - Lesehilfen',
+      '07.99': 'Sehhilfen - Sonstige',
       
       // 09 - Gehhilfen & Mobilitätshilfen
       '09.12': 'Gehhilfen',
@@ -615,9 +644,12 @@ class GKVApiService {
       // 24 - Prothesen
       '24.71': 'Beinprothesen',
       
-      // 25 - Sehhilfen
+      // 25 - Sehhilfen / Blindenhilfsmittel
+      '25': 'Sehhilfen',
+      '25.21': 'Lupen',
       '25.50': 'Lesehilfen',
-      '25.56': 'Lupen',
+      '25.56': 'Lupen - Verschiedene',
+      '25.99': 'Sehhilfen - Sonstige',
       
       // 26 - Sitzhilfen
       '26': 'Sitzhilfen',
