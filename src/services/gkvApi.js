@@ -1,4 +1,5 @@
 import { logError } from '../utils/analytics';
+import { decodeProduct } from '../utils/productDecoder';
 
 const isBrowser = typeof window !== 'undefined';
 const apiUrl = (path) => `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/${path}`)}`;
@@ -239,9 +240,6 @@ function filterByFeatures(products, criteria) {
   if (!criteria || Object.keys(criteria).length === 0) {
     return products;
   }
-
-  // Import productDecoder for feature extraction
-  const { decodeProduct } = require('../utils/productDecoder');
 
   // Score each product based on criteria match
   const scoredProducts = products.map(product => {
@@ -719,7 +717,8 @@ class GKVApiService {
       '10.02': 'Unterarmgehstützen',
       '10.03': 'Rollatoren',
       '10.04': 'Gehböcke',
-      '10.46': 'Einlagen',
+      '10.05': 'Gehgestelle',
+      '10.06': 'Gehwagen',
       
       // 11 - Hilfsmittel zur Kompressionstherapie
       '11': 'Kompressionstherapie',

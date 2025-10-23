@@ -29,14 +29,10 @@ export function ResultsDisplay({
   const [selectedCategory, setSelectedCategory] = useState(null);
   
   // Filter products by selected category
+  // NOTE: Currently disabled - needs server-side implementation
   const filteredProducts = useMemo(() => {
-    if (!selectedCategory) return products;
-    
-    return products.filter((product) => {
-      const code = product?.produktartNummer || product?.code || '';
-      return code.startsWith(selectedCategory);
-    });
-  }, [products, selectedCategory]);
+    return products; // Always show all products for now
+  }, [products]);
   
   // Get category context based on selected filter or first product
   const categoryContext = useMemo(() => {
@@ -113,8 +109,8 @@ export function ResultsDisplay({
         </div>
       </header>
       
-      {/* Category Filter */}
-      {categories && categories.length > 1 && (
+      {/* Category Filter - TEMPORARILY DISABLED until server-side implementation */}
+      {false && categories && categories.length > 1 && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Filter className="h-5 w-5 text-gray-600" />
