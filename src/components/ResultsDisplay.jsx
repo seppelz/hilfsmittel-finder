@@ -187,30 +187,16 @@ export function ResultsDisplay({
         <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
           <h3 className="text-2xl font-semibold text-text">Keine Hilfsmittel gefunden</h3>
           <p className="mt-2 text-gray-600">
-            Für Ihre Angaben konnten wir keine passenden Hilfsmittel finden. Überprüfen Sie Ihre Antworten oder lassen Sie sich persönlich beraten.
+            Für Ihre Angaben konnten wir keine passenden Hilfsmittel finden. Bitte überprüfen Sie Ihre Antworten.
           </p>
-          <div className="mt-6 flex flex-col items-center gap-3 md:flex-row md:justify-center">
+          <div className="mt-6">
             <button
               type="button"
               onClick={onBack}
-              className="rounded-xl bg-primary px-5 py-3 text-lg font-semibold text-white hover:bg-blue-700"
+              className="rounded-xl bg-primary px-6 py-3 text-lg font-semibold text-white hover:bg-blue-700"
             >
               Antworten anpassen
             </button>
-            <a
-              className="text-lg font-semibold text-primary hover:text-blue-700"
-              href="https://hilfsmittelverzeichnis.gkv-spitzenverband.de/home"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Offizielles Hilfsmittelverzeichnis
-            </a>
-            <a
-              className="text-lg font-semibold text-primary hover:text-blue-700"
-              href="mailto:beratung@aboelo.de?subject=Frage%20zum%20Hilfsmittel-Finder"
-            >
-              Support kontaktieren
-            </a>
           </div>
         </div>
       ) : (

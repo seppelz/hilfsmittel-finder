@@ -385,13 +385,26 @@ class GKVApiService {
     // CRITICAL FIX: Filter products to only show categories that were asked about
     // This prevents infusion tubes (03.29) from appearing in hearing searches (13.20)
     const allowedCategories = this.extractAllowedCategories(groups);
-    const relevantProducts = Array.from(productMap.values()).filter(product => {
+    
+    // Debug logging
+    if (import.meta.env.DEV) {
+      console.log('🔍 [gkvApi.searchProducts] Groups queried:', groups);
+      console.log('🔍 [gkvApi.searchProducts] Allowed categories:', allowedCategories);
+      console.log('🔍 [gkvApi.searchProducts] Total products before filter:', productMap.size);
+    }
+    
+    const allProducts = Array.from(productMap.values());
+    const relevantProducts = allProducts.filter(product => {
       const code = product.produktartNummer || product.code || '';
       if (!code) return false;
       
       // Check if product category matches any asked category
       return allowedCategories.some(category => code.startsWith(category));
     });
+    
+    if (import.meta.env.DEV) {
+      console.log('✅ [gkvApi.searchProducts] Products after filter:', relevantProducts.length);
+    }
 
     const sortedProducts = relevantProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
