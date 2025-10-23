@@ -5,7 +5,13 @@ function getQuestionsForCategory(category) {
   return questionFlow[category] ?? [];
 }
 
-function getInitialCategoryOrder() {
+function getInitialCategoryOrder(selectedCategory) {
+  // If specific category selected, only show that one
+  if (selectedCategory && selectedCategory !== 'comprehensive') {
+    return [selectedCategory];
+  }
+  
+  // Otherwise show all categories
   return ['mobility', 'bathroom', 'hearing', 'vision'];
 }
 
@@ -16,12 +22,15 @@ export function QuestionFlow({
   initialAnswers = {},
   onAnswersChange,
 }) {
+  // Extract selected category if it exists
+  const selectedCategory = initialAnswers._selectedCategory;
+  
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [answers, setAnswers] = useState(initialAnswers);
   const [showValidation, setShowValidation] = useState(false);
   const [screenReaderMessage, setScreenReaderMessage] = useState('');
 
-  const categories = getInitialCategoryOrder();
+  const categories = getInitialCategoryOrder(selectedCategory);
   const activeCategory = categories[categoryIndex];
   const questions = getQuestionsForCategory(activeCategory);
 

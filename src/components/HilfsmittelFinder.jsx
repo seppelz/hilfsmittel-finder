@@ -55,11 +55,18 @@ export function HilfsmittelFinder() {
     }
   }, [answers]);
 
-  const handleStart = (insurance, pflege) => {
+  const handleStart = (insurance, pflege, selectedCategory = null) => {
     setInsuranceType(insurance);
     setPflegegrad(pflege);
+    
+    // Store selected category for filtering questions
+    setAnswers(prev => ({
+      ...prev,
+      _selectedCategory: selectedCategory
+    }));
+    
     setStage('questions');
-    trackEvent('onboarding_started', { insurance, pflege });
+    trackEvent('onboarding_started', { insurance, pflege, category: selectedCategory });
   };
 
   const handleQuestionsComplete = (finalAnswers) => {

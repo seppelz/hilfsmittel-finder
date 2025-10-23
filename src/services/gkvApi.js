@@ -382,7 +382,18 @@ class GKVApiService {
       });
     }
 
-    const sortedProducts = Array.from(productMap.values()).sort((a, b) => {
+    // CRITICAL FIX: Filter products to only show categories that were asked about
+    // This prevents infusion tubes (03.29) from appearing in hearing searches (13.20)
+    const allowedCategories = this.extractAllowedCategories(groups);
+    const relevantProducts = Array.from(productMap.values()).filter(product => {
+      const code = product.produktartNummer || product.code || '';
+      if (!code) return false;
+      
+      // Check if product category matches any asked category
+      return allowedCategories.some(category => code.startsWith(category));
+    });
+
+    const sortedProducts = relevantProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
       const bCode = b.produktartNummer || b.code || b.bezeichnung || '';
       return aCode.localeCompare(bCode, 'de');
@@ -540,6 +551,27 @@ class GKVApiService {
     
     // Fallback to technical name
     return `Kategorie ${code}`;
+  }
+
+  extractAllowedCategories(groups) {
+    // Convert product group codes to allowed category prefixes
+    // This ensures we only show products from categories that were actually asked about
+    const categories = new Set();
+    
+    groups.forEach(group => {
+      // Extract category code (first 5 chars: "09.12", "13.20", etc.)
+      if (group) {
+        // For codes like "09.12.02", extract "09.12"
+        const parts = group.split('.');
+        if (parts.length >= 2) {
+          categories.add(`${parts[0]}.${parts[1]}`);
+        }
+        // Also add the full group for exact matches
+        categories.add(group);
+      }
+    });
+    
+    return Array.from(categories);
   }
 
   mapCriteriaToGroups(criteria = {}) {
