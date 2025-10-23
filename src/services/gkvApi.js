@@ -1,9 +1,11 @@
 import { logError } from '../utils/analytics';
 
 const isBrowser = typeof window !== 'undefined';
+const apiUrl = (path) => `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/${path}`)}`
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/proxy';
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-const API_VERSION_ENDPOINT = `${API_BASE}/Version`;
+const API_VERSION_ENDPOINT = apiUrl('Version')
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
 
