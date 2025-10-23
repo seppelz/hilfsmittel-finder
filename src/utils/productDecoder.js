@@ -30,6 +30,47 @@ export const MOBILITY_AID_TYPES = {
   'Walker': { de: 'Gehwagen', icon: '🚶', features: ['Stabil', 'Mit Rädern'] }
 };
 
+export const BATHROOM_AID_TYPES = {
+  'Duschhocker': { de: 'Sitz für die Dusche', icon: '🚿', features: ['Rutschfest', 'Höhenverstellbar'] },
+  'Duschstuhl': { de: 'Stuhl für die Dusche', icon: '🚿', features: ['Mit Rückenlehne', 'Stabil'] },
+  'Badewannenlift': { de: 'Hebt Sie in die Badewanne', icon: '🛁', features: ['Elektrisch', 'Sicher'] },
+  'Wannenlifter': { de: 'Einstiegshilfe Badewanne', icon: '🛁', features: ['Erleichtert Ein-/Ausstieg'] },
+  'Haltegriff': { de: 'Griff zum Festhalten', icon: '🔧', features: ['Wandmontage', 'Stabil'] },
+  'Toilettensitzerhöhung': { de: 'Erhöht die Toilette', icon: '🚽', features: ['Erleichtert Aufstehen'] },
+  'Toilettenaufsatz': { de: 'Aufsatz für Toilette', icon: '🚽', features: ['Mit/ohne Armlehnen'] }
+};
+
+export const VISION_AID_TYPES = {
+  'Lupe': { de: 'Vergrößerungsglas', icon: '🔍', features: ['Tragbar', 'Mit Licht'] },
+  'Handleupe': { de: 'Lupe mit Griff', icon: '🔍', features: ['Mobil', 'Einfach zu halten'] },
+  'Standlupe': { de: 'Lupe zum Hinstellen', icon: '🔍', features: ['Freihändig', 'Stabil'] },
+  'Lesegerät': { de: 'Elektronische Lesehilfe', icon: '📺', features: ['Bildschirm', 'Variable Vergrößerung'] },
+  'Bildschirmlesegerät': { de: 'Liest Text auf Bildschirm vor', icon: '📺', features: ['Elektronisch', 'Hohe Vergrößerung'] },
+  'Lupenbrille': { de: 'Brille mit Vergrößerung', icon: '👓', features: ['Freihändig', 'Dauerhaft tragbar'] }
+};
+
+export const INCONTINENCE_TYPES = {
+  'Pants': { de: 'Inkontinenz-Unterhose', icon: '🩲', features: ['Wie normale Unterwäsche', 'Einfach anzuziehen'] },
+  'Einlagen': { de: 'Saugeinlagen', icon: '🩹', features: ['Diskret', 'Verschiedene Stärken'] },
+  'Vorlagen': { de: 'Saugvorlagen', icon: '🩹', features: ['Für starke Inkontinenz', 'Hohe Saugkraft'] },
+  'Windeln': { de: 'Inkontinenz-Windeln', icon: '🩲', features: ['Für schwere Inkontinenz', 'Rundum-Schutz'] }
+};
+
+export const COMPRESSION_TYPES = {
+  'Kompressionsstrumpf': { de: 'Stützstrumpf', icon: '🧦', features: ['Fördert Durchblutung', 'Verschiedene Klassen'] },
+  'Kompressionsstrümpfe': { de: 'Stützstrümpfe', icon: '🧦', features: ['Gegen Venenleiden', 'Medizinisch wirksam'] }
+};
+
+export const BED_TYPES = {
+  'Pflegebett': { de: 'Bett für Pflegebedürftige', icon: '🛏️', features: ['Höhenverstellbar', 'Elektrisch'] },
+  'Krankenbett': { de: 'Medizinisches Bett', icon: '🛏️', features: ['Mit Aufrichtfunktion', 'Für Pflege'] }
+};
+
+export const MEASUREMENT_DEVICE_TYPES = {
+  'Blutdruckmessgerät': { de: 'Misst Blutdruck', icon: '🩺', features: ['Digital', 'Einfache Bedienung'] },
+  'Blutzuckermessgerät': { de: 'Misst Blutzucker', icon: '💉', features: ['Für Diabetiker', 'Schnell und präzise'] }
+};
+
 /**
  * Decode product name for hearing aids
  * @param {string} productName - Technical product name
@@ -102,6 +143,178 @@ function decodeMobilityAid(productName, productCode) {
 }
 
 /**
+ * Decode product name for bathroom aids
+ * @param {string} productName - Technical product name
+ * @param {string} productCode - Product code
+ * @returns {object} Decoded information
+ */
+function decodeBathroomAid(productName, productCode) {
+  const upperName = productName.toUpperCase();
+  const groupCode = productCode ? productCode.substring(0, 5) : '';
+  
+  let deviceType = null;
+  let category = 'Badehilfe';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(BATHROOM_AID_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  // Specific category from code
+  if (groupCode === '04.41') {
+    category = 'Toilettensitzerhöhung';
+    if (!deviceType) {
+      deviceType = { key: 'Toilettensitzerhöhung', ...BATHROOM_AID_TYPES.Toilettensitzerhöhung };
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
+ * Decode product name for vision aids
+ * @param {string} productName - Technical product name
+ * @returns {object} Decoded information
+ */
+function decodeVisionAid(productName) {
+  const upperName = productName.toUpperCase();
+  
+  let deviceType = null;
+  const category = 'Sehhilfe';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(VISION_AID_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
+ * Decode product name for incontinence products
+ * @param {string} productName - Technical product name
+ * @returns {object} Decoded information
+ */
+function decodeIncontinenceProduct(productName) {
+  const upperName = productName.toUpperCase();
+  
+  let deviceType = null;
+  const category = 'Inkontinenzartikel';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(INCONTINENCE_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
+ * Decode product name for compression therapy
+ * @param {string} productName - Technical product name
+ * @returns {object} Decoded information
+ */
+function decodeCompressionTherapy(productName) {
+  const upperName = productName.toUpperCase();
+  
+  let deviceType = null;
+  const category = 'Kompressionstherapie';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(COMPRESSION_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
+ * Decode product name for care beds
+ * @param {string} productName - Technical product name
+ * @returns {object} Decoded information
+ */
+function decodeCareBed(productName) {
+  const upperName = productName.toUpperCase();
+  
+  let deviceType = null;
+  const category = 'Pflegebett';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(BED_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
+ * Decode product name for measurement devices
+ * @param {string} productName - Technical product name
+ * @returns {object} Decoded information
+ */
+function decodeMeasurementDevice(productName) {
+  const upperName = productName.toUpperCase();
+  
+  let deviceType = null;
+  const category = 'Messgerät';
+  
+  // Detect from product name keywords
+  for (const [key, value] of Object.entries(MEASUREMENT_DEVICE_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
+    }
+  }
+  
+  return {
+    deviceType,
+    features: deviceType?.features || [],
+    brandModel: extractBrandModel(productName),
+    category
+  };
+}
+
+/**
  * Extract brand and model from product name
  * @param {string} productName - Full product name
  * @returns {object} Brand and model
@@ -148,6 +361,36 @@ export function decodeProduct(product, categoryHint = null) {
   // Mobility aids: 09.12.x, 09.24.x, 09.40.x
   if (groupPrefix.startsWith('09.') || categoryHint === 'mobility') {
     return decodeMobilityAid(productName, productCode);
+  }
+  
+  // Bathroom aids: 04.40.x, 04.41.x
+  if (groupPrefix.startsWith('04.4') || categoryHint === 'bathroom') {
+    return decodeBathroomAid(productName, productCode);
+  }
+  
+  // Vision aids: 25.50.x, 25.56.x
+  if (groupPrefix.startsWith('25.5') || categoryHint === 'vision') {
+    return decodeVisionAid(productName);
+  }
+  
+  // Incontinence products: 51.40.x
+  if (groupPrefix.startsWith('51.4') || categoryHint === 'incontinence') {
+    return decodeIncontinenceProduct(productName);
+  }
+  
+  // Compression therapy: 11.31.x
+  if (groupPrefix.startsWith('11.3') || categoryHint === 'compression') {
+    return decodeCompressionTherapy(productName);
+  }
+  
+  // Care beds: 18.50.x
+  if (groupPrefix.startsWith('18.5') || categoryHint === 'bed') {
+    return decodeCareBed(productName);
+  }
+  
+  // Measurement devices: 22.50.x, 22.51.x
+  if (groupPrefix.startsWith('22.5') || categoryHint === 'measurement') {
+    return decodeMeasurementDevice(productName);
   }
   
   // Default: basic extraction
