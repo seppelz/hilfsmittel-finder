@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { trackEvent } from '../utils/analytics';
 import { ProductList } from './ProductList';
+import { getCategoryContext } from '../data/productContexts';
 
 const getProductId = (product) =>
   product?.id ??
@@ -22,6 +23,11 @@ export function ResultsDisplay({
   pagination,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
+  
+  // Get category context from first product
+  const firstProduct = products[0];
+  const productCode = firstProduct?.produktartNummer || firstProduct?.code;
+  const categoryContext = productCode ? getCategoryContext(productCode) : null;
 
   useEffect(() => {
     setSelected(selectedProducts);
@@ -79,6 +85,32 @@ export function ResultsDisplay({
           </div>
         </div>
       </header>
+      
+      {categoryContext && (
+        <div className="rounded-3xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <span className="text-4xl">{categoryContext.icon}</span>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-text">{categoryContext.name}</h3>
+              <p className="mt-2 text-base leading-relaxed text-gray-700">{categoryContext.explanation}</p>
+              
+              {categoryContext.selectionTips && categoryContext.selectionTips.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-semibold text-gray-800">💡 Auswahlhilfe:</p>
+                  <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                    {categoryContext.selectionTips.map((tip, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-blue-600">•</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
         <strong>Wichtiger Hinweis:</strong> Diese Informationen ersetzen keine ärztliche Beratung. Die endgültige Entscheidung über die Kostenübernahme trifft Ihre Krankenkasse.
