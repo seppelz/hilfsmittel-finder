@@ -367,7 +367,9 @@ class GKVApiService {
       return { products: [], total: 0, page, pageSize, totalPages: 1 };
     }
 
-    const perGroupTake = Math.min(Math.max(page * pageSize * groups.length, pageSize), 500);
+    // Fixed: Fetch ALL products from all groups (up to 500 per group)
+    // Then paginate the combined results
+    const perGroupTake = Math.min(500, pageSize * 10); // Enough for multiple pages
     const productMap = new Map();
 
     for (const groupId of groups) {
@@ -393,13 +395,47 @@ class GKVApiService {
     const end = start + pageSize;
     const products = sortedProducts.slice(start, end);
 
+    // Extract unique categories from products for filtering
+    const categories = new Map();
+    sortedProducts.forEach((product) => {
+      const code = product.produktartNummer || product.code || '';
+      const categoryCode = code.split('.').slice(0, 2).join('.');  // e.g., "13.20" from "13.20.12.2189"
+      
+      if (categoryCode && !categories.has(categoryCode)) {
+        const categoryName = this.getCategoryName(categoryCode);
+        categories.set(categoryCode, {
+          code: categoryCode,
+          name: categoryName,
+          count: sortedProducts.filter(p => {
+            const pCode = p.produktartNummer || p.code || '';
+            return pCode.startsWith(categoryCode);
+          }).length
+        });
+      }
+    });
+
     return {
       products,
       total: totalUnique,
       page: safePage,
       pageSize,
       totalPages,
+      categories: Array.from(categories.values()),
     };
+  }
+
+  getCategoryName(code) {
+    const categoryMap = {
+      '13.20': 'Hörgeräte',
+      '09.12': 'Gehhilfen',
+      '04.40': 'Badehilfen',
+      '07.03': 'Sehhilfen',
+      '15.25': 'Inkontinenzhilfen',
+      '17.18': 'Kompressionstherapie',
+      '18.99': 'Pflegebetten',
+      '21.33': 'Messgeräte',
+    };
+    return categoryMap[code] || `Kategorie ${code}`;
   }
 
   mapCriteriaToGroups(criteria = {}) {

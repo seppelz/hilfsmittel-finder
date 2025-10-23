@@ -166,6 +166,7 @@ export function HilfsmittelFinder() {
             onPageChange: handlePageChange,
           }}
           userAnswers={answers}
+          categories={searchResults.categories || []}
         />
       )}
 
