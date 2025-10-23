@@ -22,6 +22,28 @@ function createEmptyCache() {
   };
 }
 
+function indexGroupTree(nodes, map) {
+  if (!Array.isArray(nodes)) {
+    return map;
+  }
+
+  nodes.forEach((node) => {
+    if (!node || typeof node !== 'object') return;
+
+    const code = normalizeString(node.xSteller);
+    const id = normalizeString(node.id);
+    if (code && id) {
+      map[code] = id;
+    }
+
+    if (Array.isArray(node.children) && node.children.length) {
+      indexGroupTree(node.children, map);
+    }
+  });
+
+  return map;
+}
+
 function normalizeString(value) {
   if (value === undefined || value === null) return null;
   const stringValue = String(value).trim();
@@ -212,15 +234,10 @@ class GKVApiService {
     }
 
     try {
-      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/1'));
+      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/4'));
+      this.cache.groupIdByCode = indexGroupTree(data, {});
+
       this.cache.productGroups = data;
-      this.cache.groupIdByCode = Array.isArray(data)
-        ? data.reduce((map, node) => {
-            if (!node?.xSteller) return map;
-            map[node.xSteller] = node.id;
-            return map;
-          }, {})
-        : {};
       this.saveToCache();
       return data;
     } catch (error) {
@@ -246,9 +263,10 @@ class GKVApiService {
     }
 
     try {
-      const response = await this.fetchWithRetry(
-        apiUrl(`Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`),
-      );
+      const endpoint = groupKey
+        ? `Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`
+        : `Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`;
+      const response = await this.fetchWithRetry(apiUrl(endpoint));
       const items = Array.isArray(response) ? response : response.value ?? [];
       const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
       const total = Array.isArray(response)
