@@ -8,8 +8,19 @@ const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 const API_VERSION_ENDPOINT = null;
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
+const CACHE_SCHEMA_VERSION = '2025-10-23-products';
 
 const PLACEHOLDER_NAMES = new Set(['nicht besetzt']);
+
+function createEmptyCache() {
+  return {
+    productGroups: null,
+    productsByGroup: {},
+    groupIdByCode: {},
+    lastUpdate: null,
+    apiVersion: null,
+  };
+}
 
 function normalizeString(value) {
   if (value === undefined || value === null) return null;
@@ -76,6 +87,15 @@ function normalizeProduct(product) {
     normalizedProduct.hersteller = manufacturer;
   }
 
+  const descriptionCandidates = [
+    normalizeString(product.erleuterungstext),
+    normalizeString(Array.isArray(product.typenAusfuehrungen) ? product.typenAusfuehrungen.join('\n') : null),
+  ].filter(Boolean);
+
+  if (descriptionCandidates.length) {
+    normalizedProduct.beschreibung = descriptionCandidates[0];
+  }
+
   return normalizedProduct;
 }
 
@@ -95,15 +115,15 @@ const ERROR_MESSAGES = {
 
 class GKVApiService {
   constructor() {
-    this.cache = {
-      productGroups: null,
-      productsByGroup: {},
-      lastUpdate: null,
-      apiVersion: null,
-    };
+    this.cache = createEmptyCache();
     this.versionPromise = null;
 
     if (isBrowser) {
+      const storedSchema = localStorage.getItem(STORAGE_VERSION_KEY);
+      if (storedSchema !== CACHE_SCHEMA_VERSION) {
+        this.resetCache(CACHE_SCHEMA_VERSION);
+        this.saveToCache();
+      }
       this.loadFromCache();
     }
   }
@@ -124,6 +144,7 @@ class GKVApiService {
           this.cache = {
             productGroups: data.productGroups ?? null,
             productsByGroup: data.productsByGroup ?? {},
+            groupIdByCode: data.groupIdByCode ?? {},
             lastUpdate: data.lastUpdate ?? null,
             apiVersion: data.apiVersion ?? null,
           };
@@ -151,10 +172,10 @@ class GKVApiService {
   }
 
   resetCache(newVersion = null) {
-    this.cache.productGroups = null;
-    this.cache.productsByGroup = {};
-    this.cache.lastUpdate = null;
-    this.cache.apiVersion = newVersion;
+    this.cache = {
+      ...createEmptyCache(),
+      apiVersion: newVersion,
+    };
   }
 
   async ensureLatestVersion() {
@@ -193,6 +214,13 @@ class GKVApiService {
     try {
       const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/1'));
       this.cache.productGroups = data;
+      this.cache.groupIdByCode = Array.isArray(data)
+        ? data.reduce((map, node) => {
+            if (!node?.xSteller) return map;
+            map[node.xSteller] = node.id;
+            return map;
+          }, {})
+        : {};
       this.saveToCache();
       return data;
     } catch (error) {
@@ -208,6 +236,7 @@ class GKVApiService {
     await this.ensureLatestVersion();
 
     const safeLimit = Math.max(1, limit ?? 100);
+    const groupKey = await this.resolveGroupId(groupId);
     const cached = this.cache.productsByGroup[groupId];
     if (cached && cached.limit >= safeLimit && this.isCacheValid()) {
       return {
@@ -218,16 +247,19 @@ class GKVApiService {
 
     try {
       const response = await this.fetchWithRetry(
-        apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
+        apiUrl(`Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`),
       );
       const items = Array.isArray(response) ? response : response.value ?? [];
       const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
-      const total = normalizedItems.length;
+      const total = Array.isArray(response)
+        ? normalizedItems.length
+        : response.Count ?? response.count ?? response.total ?? normalizedItems.length;
 
       this.cache.productsByGroup[groupId] = {
         items: normalizedItems,
         total,
         limit: safeLimit,
+        schemaVersion: CACHE_SCHEMA_VERSION,
       };
       this.saveToCache();
 
@@ -274,7 +306,7 @@ class GKVApiService {
     const productMap = new Map();
 
     for (const groupId of groups) {
-      const { items, total: groupTotal } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
+      const { items } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
 
       items.forEach((product) => {
         const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
