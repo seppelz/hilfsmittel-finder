@@ -272,7 +272,11 @@ class GKVApiService {
 
     const safeLimit = Math.max(1, limit ?? 100);
     const cached = this.cache.productsByGroup[groupId];
+    
+    console.log(`🔍 [fetchProductsByGroup] Requesting group: ${groupId}, limit: ${safeLimit}, cached: ${!!cached}`);
+    
     if (cached && cached.limit >= safeLimit && this.isCacheValid()) {
+      console.log(`✅ [fetchProductsByGroup] Using cached data for ${groupId} (${cached.items.length} items)`);
       return {
         items: cached.items.slice(0, safeLimit),
         total: cached.total,
@@ -285,6 +289,7 @@ class GKVApiService {
     }
 
     const guid = this.cache.xStellerToGuid?.[groupId];
+    console.log(`🔍 [fetchProductsByGroup] GUID for ${groupId}: ${guid || 'NOT FOUND'}`);
 
     try {
       let response;
@@ -293,9 +298,10 @@ class GKVApiService {
       // Try GUID-based request first
       if (guid) {
         try {
-          response = await this.fetchWithRetry(
-            apiUrl(`Produkt?produktgruppe=${guid}&skip=0&take=${safeLimit}&$count=true`),
-          );
+          const url = apiUrl(`Produkt?produktgruppe=${guid}&skip=0&take=${safeLimit}&$count=true`);
+          console.log(`📡 [API] Fetching with GUID: ${url}`);
+          response = await this.fetchWithRetry(url);
+          console.log(`✅ [API] GUID fetch successful, got ${Array.isArray(response) ? response.length : response.value?.length || 0} products`);
         } catch (error) {
           console.warn(`[gkvApi] GUID-based fetch failed for ${groupId} (${guid}), trying xSteller fallback`);
           fetchError = error;
@@ -305,9 +311,10 @@ class GKVApiService {
       // Fallback to produktgruppennummer if GUID failed or not available
       if (!response) {
         try {
-          response = await this.fetchWithRetry(
-            apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
-          );
+          const url = apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`);
+          console.log(`📡 [API] Fetching with xSteller: ${url}`);
+          response = await this.fetchWithRetry(url);
+          console.log(`✅ [API] xSteller fetch successful, got ${Array.isArray(response) ? response.length : response.value?.length || 0} products`);
         } catch (error) {
           console.warn(`[gkvApi] xSteller-based fetch also failed for ${groupId}`);
           throw fetchError || error;
@@ -390,11 +397,21 @@ class GKVApiService {
 
     const allProducts = Array.from(productMap.values());
     
-    // Debug: Log first 5 product codes to see what we're actually getting
-    console.log('🔍 [gkvApi] Sample product codes from API:', allProducts.slice(0, 5).map(p => ({
+    // Debug: Log first 10 product codes with FULL details
+    console.log('🔍 [gkvApi] Sample products from API:', allProducts.slice(0, 10).map(p => ({
       code: p.produktartNummer || p.code || 'NO CODE',
-      name: p.bezeichnung || p.name || 'NO NAME'
+      name: (p.bezeichnung || p.name || 'NO NAME').substring(0, 50),
+      group: p._groupId
     })));
+    
+    // Count products by category code prefix
+    const categoryCounts = {};
+    allProducts.forEach(p => {
+      const code = p.produktartNummer || p.code || '';
+      const prefix = code.split('.').slice(0, 2).join('.'); // e.g., "13.20"
+      categoryCounts[prefix] = (categoryCounts[prefix] || 0) + 1;
+    });
+    console.log('📊 [gkvApi] Products by category:', categoryCounts);
     
     // TEMPORARY: Disable post-filter to diagnose the issue
     // The API should already be returning only products from the queried groups
