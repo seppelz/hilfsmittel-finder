@@ -273,10 +273,7 @@ class GKVApiService {
     const safeLimit = Math.max(1, limit ?? 100);
     const cached = this.cache.productsByGroup[groupId];
     
-    console.log(`🔍 [fetchProductsByGroup] Requesting group: ${groupId}, limit: ${safeLimit}, cached: ${!!cached}`);
-    
     if (cached && cached.limit >= safeLimit && this.isCacheValid()) {
-      console.log(`✅ [fetchProductsByGroup] Using cached data for ${groupId} (${cached.items.length} items)`);
       return {
         items: cached.items.slice(0, safeLimit),
         total: cached.total,
@@ -288,38 +285,11 @@ class GKVApiService {
       await this.fetchProductGroups();
     }
 
-    const guid = this.cache.xStellerToGuid?.[groupId];
-    console.log(`🔍 [fetchProductsByGroup] GUID for ${groupId}: ${guid || 'NOT FOUND'}`);
-
     try {
-      let response;
-      let fetchError = null;
-
-      // Try GUID-based request first
-      if (guid) {
-        try {
-          const url = apiUrl(`Produkt?produktgruppe=${guid}&skip=0&take=${safeLimit}&$count=true`);
-          console.log(`📡 [API] Fetching with GUID: ${url}`);
-          response = await this.fetchWithRetry(url);
-          console.log(`✅ [API] GUID fetch successful, got ${Array.isArray(response) ? response.length : response.value?.length || 0} products`);
-        } catch (error) {
-          console.warn(`[gkvApi] GUID-based fetch failed for ${groupId} (${guid}), trying xSteller fallback`);
-          fetchError = error;
-        }
-      }
-
-      // Fallback to produktgruppennummer if GUID failed or not available
-      if (!response) {
-        try {
-          const url = apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`);
-          console.log(`📡 [API] Fetching with xSteller: ${url}`);
-          response = await this.fetchWithRetry(url);
-          console.log(`✅ [API] xSteller fetch successful, got ${Array.isArray(response) ? response.length : response.value?.length || 0} products`);
-        } catch (error) {
-          console.warn(`[gkvApi] xSteller-based fetch also failed for ${groupId}`);
-          throw fetchError || error;
-        }
-      }
+      // CRITICAL FIX: GUID queries return wrong products (mixed categories)
+      // Force use of xSteller (produktgruppennummer) which returns correct results
+      const url = apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`);
+      const response = await this.fetchWithRetry(url);
 
       const items = Array.isArray(response) ? response : response.value ?? [];
       const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
@@ -370,10 +340,7 @@ class GKVApiService {
     const mappedGroups = this.mapCriteriaToGroups(criteria.filters ?? criteria);
     const groups = [...new Set([...(groupsSource ?? []), ...mappedGroups])];
 
-    console.log('🔍 [gkvApi.searchProducts] Searching for groups:', groups);
-
     if (groups.length === 0) {
-      console.warn('⚠️ [gkvApi.searchProducts] No groups to search!');
       return { products: [], total: 0, page, pageSize, totalPages: 1 };
     }
 
@@ -384,7 +351,6 @@ class GKVApiService {
 
     for (const groupId of groups) {
       const { items } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
-      console.log(`📦 [gkvApi] Fetched ${items.length} products from group ${groupId}`);
 
       items.forEach((product) => {
         const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
@@ -393,31 +359,18 @@ class GKVApiService {
       });
     }
 
-    console.log(`📦 [gkvApi] Total unique products fetched: ${productMap.size}`);
-
     const allProducts = Array.from(productMap.values());
     
-    // Debug: Log first 10 product codes with FULL details
-    console.log('🔍 [gkvApi] Sample products from API:', allProducts.slice(0, 10).map(p => ({
-      code: p.produktartNummer || p.code || 'NO CODE',
-      name: (p.bezeichnung || p.name || 'NO NAME').substring(0, 50),
-      group: p._groupId
-    })));
-    
-    // Count products by category code prefix
-    const categoryCounts = {};
-    allProducts.forEach(p => {
-      const code = p.produktartNummer || p.code || '';
-      const prefix = code.split('.').slice(0, 2).join('.'); // e.g., "13.20"
-      categoryCounts[prefix] = (categoryCounts[prefix] || 0) + 1;
+    // Post-filter: Only show products from the queried categories
+    // This is a safety check in case API returns mixed results
+    const allowedCategories = this.extractAllowedCategories(groups);
+    const relevantProducts = allProducts.filter(product => {
+      const code = product.produktartNummer || product.code || '';
+      if (!code) return false;
+      
+      // Check if product category matches any queried category
+      return allowedCategories.some(category => code.startsWith(category));
     });
-    console.log('📊 [gkvApi] Products by category:', categoryCounts);
-    
-    // TEMPORARY: Disable post-filter to diagnose the issue
-    // The API should already be returning only products from the queried groups
-    const relevantProducts = allProducts;
-    
-    console.log(`✅ [gkvApi] Using all ${relevantProducts.length} fetched products (post-filter disabled for debugging)`);
 
     const sortedProducts = relevantProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';

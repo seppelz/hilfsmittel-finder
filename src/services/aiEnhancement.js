@@ -14,9 +14,7 @@ const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days (descriptions don't 
  * @returns {boolean}
  */
 export function isAIAvailable() {
-  const available = Boolean(GEMINI_API_KEY);
-  console.log('🤖 [AI] Gemini API available:', available, 'Key:', GEMINI_API_KEY ? '✅ Set' : '❌ Missing');
-  return available;
+  return Boolean(GEMINI_API_KEY);
 }
 
 /**
