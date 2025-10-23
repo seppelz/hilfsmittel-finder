@@ -8,7 +8,7 @@ const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 const API_VERSION_ENDPOINT = null;
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
-const CACHE_SCHEMA_VERSION = '2025-10-23-products';
+const CACHE_SCHEMA_VERSION = '2025-10-23-guid-products';
 
 const PLACEHOLDER_NAMES = new Set(['nicht besetzt']);
 
@@ -107,6 +107,7 @@ class GKVApiService {
   constructor() {
     this.cache = {
       productGroups: null,
+      xStellerToGuid: null,
       productsByGroup: {},
       lastUpdate: null,
       apiVersion: null,
@@ -138,6 +139,7 @@ class GKVApiService {
         if (data) {
           this.cache = {
             productGroups: data.productGroups ?? null,
+            xStellerToGuid: data.xStellerToGuid ?? null,
             productsByGroup: data.productsByGroup ?? {},
             lastUpdate: data.lastUpdate ?? null,
             apiVersion: data.apiVersion ?? null,
@@ -167,9 +169,26 @@ class GKVApiService {
 
   resetCache(newVersion = null) {
     this.cache.productGroups = null;
+    this.cache.xStellerToGuid = null;
     this.cache.productsByGroup = {};
     this.cache.lastUpdate = null;
     this.cache.apiVersion = newVersion;
+  }
+
+  indexGroupTree(node, map = {}) {
+    if (!node) return map;
+
+    if (node.id && node.xSteller) {
+      map[node.xSteller] = node.id;
+    }
+
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        this.indexGroupTree(child, map);
+      }
+    }
+
+    return map;
   }
 
   async ensureLatestVersion() {
@@ -201,13 +220,25 @@ class GKVApiService {
   async fetchProductGroups() {
     await this.ensureLatestVersion();
 
-    if (this.cache.productGroups && this.isCacheValid()) {
+    if (this.cache.productGroups && this.cache.xStellerToGuid && this.isCacheValid()) {
       return this.cache.productGroups;
     }
 
     try {
-      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/1'));
+      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/4'));
+      
+      // Build xSteller -> GUID mapping from the tree
+      const mapping = {};
+      if (Array.isArray(data)) {
+        for (const rootNode of data) {
+          this.indexGroupTree(rootNode, mapping);
+        }
+      } else {
+        this.indexGroupTree(data, mapping);
+      }
+      
       this.cache.productGroups = data;
+      this.cache.xStellerToGuid = mapping;
       this.saveToCache();
       return data;
     } catch (error) {
@@ -231,10 +262,41 @@ class GKVApiService {
       };
     }
 
+    // Ensure tree is loaded to get GUID mappings
+    if (!this.cache.xStellerToGuid) {
+      await this.fetchProductGroups();
+    }
+
+    const guid = this.cache.xStellerToGuid?.[groupId];
+
     try {
-      const response = await this.fetchWithRetry(
-        apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
-      );
+      let response;
+      let fetchError = null;
+
+      // Try GUID-based request first
+      if (guid) {
+        try {
+          response = await this.fetchWithRetry(
+            apiUrl(`Produkt?produktgruppe=${guid}&skip=0&take=${safeLimit}&$count=true`),
+          );
+        } catch (error) {
+          console.warn(`[gkvApi] GUID-based fetch failed for ${groupId} (${guid}), trying xSteller fallback`);
+          fetchError = error;
+        }
+      }
+
+      // Fallback to produktgruppennummer if GUID failed or not available
+      if (!response) {
+        try {
+          response = await this.fetchWithRetry(
+            apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
+          );
+        } catch (error) {
+          console.warn(`[gkvApi] xSteller-based fetch also failed for ${groupId}`);
+          throw fetchError || error;
+        }
+      }
+
       const items = Array.isArray(response) ? response : response.value ?? [];
       const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
       const total = Array.isArray(response)

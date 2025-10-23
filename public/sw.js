@@ -1,6 +1,6 @@
-const CACHE_NAME = 'aboelo-hilfsmittel-static-v1';
-const API_CACHE_NAME = 'aboelo-hilfsmittel-api-v1';
-const API_BASE = 'https://hilfsmittel-api.gkv-spitzenverband.de';
+const CACHE_NAME = 'aboelo-hilfsmittel-static-v2';
+const API_CACHE_NAME = 'aboelo-hilfsmittel-api-v2';
+const API_PROXY_PATH = '/api/proxy';
 
 const STATIC_ASSETS = [
   '/',
@@ -12,6 +12,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -24,33 +25,41 @@ self.addEventListener('activate', (event) => {
       ),
     ),
   );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Handle API proxy requests with network-first strategy
+  if (url.pathname.startsWith(API_PROXY_PATH)) {
+    event.respondWith(apiNetworkFirst(request));
+    return;
+  }
+
+  // Handle same-origin requests with cache-first strategy
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(request).then((cached) => cached || fetch(request)),
     );
     return;
   }
-
-  if (url.origin.startsWith(API_BASE)) {
-    event.respondWith(apiNetworkFirst(request));
-  }
 });
 
 async function apiNetworkFirst(request) {
   try {
     const response = await fetch(request);
-    const cache = await caches.open(API_CACHE_NAME);
-    cache.put(request, response.clone());
+    // Only cache successful responses
+    if (response.ok) {
+      const cache = await caches.open(API_CACHE_NAME);
+      cache.put(request, response.clone());
+    }
     return response;
   } catch (error) {
     const cached = await caches.match(request);
     if (cached) {
+      console.log('[SW] Serving API response from cache (offline)');
       return cached;
     }
     throw error;
