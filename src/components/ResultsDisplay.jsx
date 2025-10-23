@@ -26,9 +26,10 @@ export function ResultsDisplay({
   categories = [],
   onCategoryFilterChange,
   selectedCategoryFilter = null,
+  onFeatureFilterChange,
+  selectedFeatureFilters = [],
 }) {
   const [selected, setSelected] = useState(selectedProducts);
-  const [selectedFeatures, setSelectedFeatures] = useState([]);
   
   // Get category context based on selected filter, user's category, or first product
   const categoryContext = useMemo(() => {
@@ -101,38 +102,13 @@ export function ResultsDisplay({
   }, [products, userAnswers, categories]);
 
   const handleFeatureToggle = (feature) => {
-    setSelectedFeatures(prev => 
-      prev.includes(feature) 
-        ? prev.filter(f => f !== feature)
-        : [...prev, feature]
-    );
-    trackEvent('feature_filter_applied', { feature });
-  };
-
-  // Filter products by selected features
-  const filteredProducts = useMemo(() => {
-    if (selectedFeatures.length === 0) return products;
+    const newFeatures = selectedFeatureFilters.includes(feature) 
+      ? selectedFeatureFilters.filter(f => f !== feature)
+      : [...selectedFeatureFilters, feature];
     
-    return products.filter(product => {
-      const name = (product.bezeichnung || product.name || '').toUpperCase();
-      
-      return selectedFeatures.every(feature => {
-        switch (feature) {
-          case 'HP': return name.includes(' HP') || name.includes('(HP');
-          case 'UP': return name.includes(' UP') || name.includes('(UP');
-          case 'SP': return name.includes(' SP') || name.includes('(SP');
-          case 'R': return name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
-                          name.includes('AKKU') || name.includes('WIEDERAUFLADBAR');
-          case 'IIC': return name.includes('IIC');
-          case 'CIC': return name.includes('CIC') && !name.includes('IIC');
-          case 'ITC': return name.includes('ITC');
-          case 'RIC': return name.includes('RITE') || name.includes('RIC');
-          case 'BTE': return name.includes('BTE') || name.includes('HDO');
-          default: return true;
-        }
-      });
-    });
-  }, [products, selectedFeatures]);
+    onFeatureFilterChange?.(newFeatures);
+    trackEvent('feature_filter_toggled', { feature, active: !selectedFeatureFilters.includes(feature) });
+  };
 
   const handleSelect = (product) => {
     setSelected((prev) => {
@@ -248,7 +224,7 @@ export function ResultsDisplay({
                 'BTE': 'BTE/HdO (Hinter dem Ohr)',
               };
               
-              const isSelected = selectedFeatures.includes(feature);
+              const isSelected = selectedFeatureFilters.includes(feature);
               
               return (
                 <button
@@ -265,9 +241,9 @@ export function ResultsDisplay({
               );
             })}
           </div>
-          {selectedFeatures.length > 0 && (
+          {selectedFeatureFilters.length > 0 && (
             <div className="mt-3 text-sm text-purple-700">
-              <span className="font-medium">{filteredProducts.length}</span> von <span className="font-medium">{products.length}</span> Produkten entsprechen den Kriterien
+              <span className="font-medium">{products.length}</span> von <span className="font-medium">{totalResults}</span> Produkten entsprechen den Kriterien
             </div>
           )}
         </div>
@@ -303,19 +279,19 @@ export function ResultsDisplay({
         <strong>Wichtiger Hinweis:</strong> Diese Informationen ersetzen keine ärztliche Beratung. Die endgültige Entscheidung über die Kostenübernahme trifft Ihre Krankenkasse.
       </div>
 
-      {(totalResults || filteredProducts.length) === 0 ? (
+      {(totalResults || products.length) === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
           <h3 className="text-2xl font-semibold text-text">Keine Hilfsmittel gefunden</h3>
           <p className="mt-2 text-gray-600">
-            {selectedFeatures.length > 0 
+            {selectedFeatureFilters.length > 0 
               ? 'Für Ihre gewählten Filter konnten wir keine passenden Hilfsmittel finden. Versuchen Sie, weniger Filter auszuwählen.'
               : 'Für Ihre Angaben konnten wir keine passenden Hilfsmittel finden. Bitte überprüfen Sie Ihre Antworten.'}
           </p>
           <div className="mt-6">
-            {selectedFeatures.length > 0 ? (
+            {selectedFeatureFilters.length > 0 ? (
               <button
                 type="button"
-                onClick={() => setSelectedFeatures([])}
+                onClick={() => onFeatureFilterChange?.([])}
                 className="rounded-xl bg-purple-600 px-6 py-3 text-lg font-semibold text-white hover:bg-purple-700"
               >
                 Filter zurücksetzen
@@ -333,10 +309,10 @@ export function ResultsDisplay({
         </div>
       ) : (
         <ProductList
-          products={filteredProducts}
+          products={products}
           selectedProducts={selected}
           onToggleProduct={handleSelect}
-          pagination={selectedCategoryFilter || selectedFeatures.length > 0 ? null : pagination}
+          pagination={selectedCategoryFilter || selectedFeatureFilters.length > 0 ? null : pagination}
           userContext={userAnswers}
         />
       )}

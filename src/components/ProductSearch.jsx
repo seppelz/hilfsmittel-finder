@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { gkvApi } from '../services/gkvApi';
 import { trackEvent, logError } from '../utils/analytics';
 
-export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 20, selectedCategoryFilter = null }) {
+export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 20, selectedCategoryFilter = null, selectedFeatureFilters = [] }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -16,7 +16,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
       setError(null);
 
       try {
-        const results = await gkvApi.searchProducts(criteria, { page, pageSize }, selectedCategoryFilter);
+        const results = await gkvApi.searchProducts(criteria, { page, pageSize }, selectedCategoryFilter, selectedFeatureFilters);
         if (!isMounted) return;
 
         onResultsFound?.(results);
@@ -25,6 +25,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
           page: results.page,
           pageSize,
           categoryFilter: selectedCategoryFilter,
+          featureFilters: selectedFeatureFilters,
         });
       } catch (err) {
         logError('product_search_failed', err, { criteria });
@@ -43,7 +44,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
     return () => {
       isMounted = false;
     };
-  }, [criteria, page, pageSize, onResultsFound, selectedCategoryFilter]);
+  }, [criteria, page, pageSize, onResultsFound, selectedCategoryFilter, selectedFeatureFilters]);
 
   if (loading) {
     return (

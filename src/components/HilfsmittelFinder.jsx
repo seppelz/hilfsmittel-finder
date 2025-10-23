@@ -26,6 +26,7 @@ export function HilfsmittelFinder() {
   });
   const [page, setPage] = useState(1);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
+  const [selectedFeatureFilters, setSelectedFeatureFilters] = useState([]);
 
   // Clear old cached answers if questionnaire version changed
   useEffect(() => {
@@ -137,6 +138,13 @@ export function HilfsmittelFinder() {
     trackEvent('category_filter_applied', { category: categoryCode });
   };
 
+  const handleFeatureFilterChange = (features) => {
+    setSelectedFeatureFilters(features);
+    setPage(1); // Reset to page 1
+    setStage('search'); // Trigger new search
+    trackEvent('feature_filter_applied', { features });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {stage === 'welcome' && (
@@ -169,6 +177,7 @@ export function HilfsmittelFinder() {
               page={page}
               pageSize={PAGE_SIZE}
               selectedCategoryFilter={selectedCategoryFilter}
+              selectedFeatureFilters={selectedFeatureFilters}
             />
           ) : (
             <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
@@ -209,6 +218,8 @@ export function HilfsmittelFinder() {
           categories={searchResults.categories || []}
           onCategoryFilterChange={handleCategoryFilterChange}
           selectedCategoryFilter={selectedCategoryFilter}
+          onFeatureFilterChange={handleFeatureFilterChange}
+          selectedFeatureFilters={selectedFeatureFilters}
         />
       )}
 

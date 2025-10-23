@@ -254,7 +254,7 @@ function filterByFeatures(products, criteria) {
         // Device type matching (high priority: +20 points)
         if (criteria.device_type) {
           const targetType = criteria.device_type.toLowerCase();
-          if (decoded.deviceType && decoded.deviceType.toLowerCase().includes(targetType)) {
+          if (decoded.deviceType && typeof decoded.deviceType === 'string' && decoded.deviceType.toLowerCase().includes(targetType)) {
             score += 20;
           }
           // Also check product name directly
@@ -564,7 +564,7 @@ class GKVApiService {
     };
   }
 
-  async searchProducts(criteria, options = {}, selectedCategoryFilter = null) {
+  async searchProducts(criteria, options = {}, selectedCategoryFilter = null, selectedFeatureFilters = []) {
     await this.ensureLatestVersion();
     if (!criteria) return { products: [], total: 0, page: 1, pageSize: 20, totalPages: 1 };
 
@@ -582,6 +582,9 @@ class GKVApiService {
     console.log('[GKV] Searching with groups:', groups);
     if (selectedCategoryFilter) {
       console.log('[GKV] Category filter requested:', selectedCategoryFilter);
+    }
+    if (selectedFeatureFilters && selectedFeatureFilters.length > 0) {
+      console.log('[GKV] Feature filters requested:', selectedFeatureFilters);
     }
     const allProducts = await fetchAllProducts();
     console.log('[GKV] Total products available:', allProducts.length);
@@ -652,6 +655,31 @@ class GKVApiService {
         return code.startsWith(selectedCategoryFilter);
       });
       console.log('[GKV] Category filter applied:', selectedCategoryFilter, '→', filteredProducts.length, 'products (from', beforeFilterCount, ')');
+    }
+    
+    // Apply feature filters BEFORE pagination (for hearing aids)
+    if (selectedFeatureFilters && selectedFeatureFilters.length > 0) {
+      const beforeFilterCount = filteredProducts.length;
+      filteredProducts = filteredProducts.filter(product => {
+        const name = (product.bezeichnung || product.name || '').toUpperCase();
+        
+        return selectedFeatureFilters.every(feature => {
+          switch (feature) {
+            case 'HP': return name.includes(' HP') || name.includes('(HP');
+            case 'UP': return name.includes(' UP') || name.includes('(UP');
+            case 'SP': return name.includes(' SP') || name.includes('(SP');
+            case 'R': return name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
+                            name.includes('AKKU') || name.includes('WIEDERAUFLADBAR');
+            case 'IIC': return name.includes('IIC');
+            case 'CIC': return name.includes('CIC') && !name.includes('IIC');
+            case 'ITC': return name.includes('ITC');
+            case 'RIC': return name.includes('RITE') || name.includes('RIC');
+            case 'BTE': return name.includes('BTE') || name.includes('HDO');
+            default: return true;
+          }
+        });
+      });
+      console.log('[GKV] Feature filters applied:', selectedFeatureFilters, '→', filteredProducts.length, 'products (from', beforeFilterCount, ')');
     }
     
     const sortedProducts = filteredProducts.sort((a, b) => {
