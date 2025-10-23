@@ -152,7 +152,7 @@ class GKVApiService {
     }
 
     try {
-      const data = await this.fetchWithRetry(`${API_BASE}/VerzeichnisTree/1`);
+      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/1'));
       this.cache.productGroups = data;
       this.saveToCache();
       return data;
@@ -173,7 +173,7 @@ class GKVApiService {
     }
 
     try {
-      const data = await this.fetchWithRetry(`${API_BASE}/Produkt?produktgruppe=${groupId}`);
+      const data = await this.fetchWithRetry(apiUrl(`Produkt?produktgruppe=${groupId}`));
       this.cache.productsByGroup[groupId] = data;
       this.saveToCache();
       return data;
