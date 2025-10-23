@@ -101,29 +101,116 @@ function buildPrompt(product, userContext, decodedInfo) {
     }
   }
   
-  const prompt = `Du bist ein freundlicher Berater für medizinische Hilfsmittel in Deutschland.
+  const prompt = `Du bist ein erfahrener Berater für medizinische Hilfsmittel. Erkläre dieses Produkt in einfacher, freundlicher Sprache für Senioren (65+).
 
-Erkläre dieses Produkt für Senioren (65+) in einfacher, warmer Sprache:
-
-Produktname: ${productName}
+PRODUKT:
+Name: ${productName}
 Kategorie: ${category}
 ${deviceType ? `Typ: ${deviceType}` : ''}
 Hersteller: ${manufacturer}
-${contextStr ? `Situation des Nutzers: ${contextStr}` : ''}
+${contextStr ? `\nNUTZER-SITUATION:\n${contextStr}` : ''}
 
-Erstelle eine kurze, verständliche Beschreibung (2-3 Sätze):
-1. Was ist das und wofür ist es?
-2. Wie hilft es im Alltag?
-3. ${contextStr ? 'Warum passt es zur Situation des Nutzers?' : 'Für wen ist es besonders geeignet?'}
+AUFGABE:
+Schreibe 2-3 kurze, klare Sätze, die erklären:
+• Was ist das konkret?
+• Wie hilft es im Alltag?
+${contextStr ? '• Warum passt es besonders gut zur Situation?' : '• Für wen ist es ideal?'}
 
-Wichtig:
-- Keine Fachbegriffe
-- Vergleiche mit Alltagsgegenständen
-- Warmer, geduldiger Ton
-- Maximal 3 Sätze
-- Direkte Ansprache ("Sie können...", "Ihnen hilft...")`;
+STIL:
+- Direkt starten (KEIN "Guten Tag" oder Begrüßung)
+- Einfache Sprache, keine Fachbegriffe
+- Alltagsvergleiche nutzen ("wie ein...", "ähnlich wie...")
+- Direkte Ansprache: "Sie können...", "Das hilft Ihnen..."
+- Positive, ermutigende Formulierung
+- Maximal 3 Sätze (ca. 40-60 Wörter)
+
+Beginne direkt mit der Erklärung des Produkts.`;
 
   return prompt;
+}
+
+/**
+ * Add contextual emojis to text for better readability
+ * Seniors benefit from visual cues
+ * @param {string} text - The text to enhance
+ * @returns {string} Text with emojis
+ */
+function addContextualEmojis(text) {
+  const emojiMap = {
+    // Features
+    'wiederaufladbar': '🔋',
+    'aufladen': '🔋',
+    'Batterien': '🔋',
+    'Bluetooth': '📱',
+    'Smartphone': '📱',
+    'Telefon': '📞',
+    'Handy': '📱',
+    
+    // Hearing aids
+    'Hörgerät': '👂',
+    'hören': '👂',
+    'Gehörgang': '👂',
+    'Ohr': '👂',
+    'Ton': '🔊',
+    'Lautstärke': '🔊',
+    'Geräusch': '🔊',
+    
+    // Mobility
+    'Gehstock': '🦯',
+    'Rollator': '🦽',
+    'gehen': '🚶',
+    'laufen': '🚶',
+    'Beine': '🦵',
+    'Gleichgewicht': '⚖️',
+    'Stabilität': '⚖️',
+    
+    // Comfort
+    'bequem': '😊',
+    'leicht': '🪶',
+    'einfach': '✨',
+    'sicher': '🛡️',
+    'Sicherheit': '🛡️',
+    
+    // Home/Daily
+    'Wohnung': '🏠',
+    'Zuhause': '🏠',
+    'draußen': '🌳',
+    'drinnen': '🏠',
+    'Bad': '🚿',
+    'Küche': '🍳',
+    
+    // Time
+    'Tag': '☀️',
+    'Nacht': '🌙',
+    'abends': '🌙',
+    
+    // Positive
+    'hilft': '💪',
+    'unterstützt': '🤝',
+    'perfekt': '⭐',
+    'ideal': '⭐',
+    'empfehlen': '👍',
+  };
+  
+  let enhancedText = text;
+  
+  // Add emoji before first occurrence of each keyword
+  Object.entries(emojiMap).forEach(([keyword, emoji]) => {
+    // Use word boundary to match whole words only
+    const regex = new RegExp(`\\b${keyword}`, 'gi');
+    let hasReplaced = false;
+    
+    enhancedText = enhancedText.replace(regex, (match) => {
+      // Only add emoji to first occurrence
+      if (!hasReplaced) {
+        hasReplaced = true;
+        return `${emoji} ${match}`;
+      }
+      return match;
+    });
+  });
+  
+  return enhancedText;
 }
 
 /**
@@ -154,11 +241,17 @@ async function callGeminiAPI(prompt) {
         }
       ],
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 200,
-        topP: 0.8,
+        temperature: 0.6,  // Slightly lower for more consistent, factual output
+        maxOutputTokens: 150,  // Shorter for more concise descriptions
+        topP: 0.85,
         topK: 40
-      }
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_ONLY_HIGH"
+        }
+      ]
     })
   });
   
@@ -176,7 +269,25 @@ async function callGeminiAPI(prompt) {
     throw new Error('No text generated from Gemini API');
   }
   
-  return generatedText.trim();
+  // Clean up the text: remove any greetings or unwanted phrases
+  let cleanedText = generatedText.trim();
+  
+  // Remove common German greetings at the start
+  const greetingsToRemove = [
+    /^Guten Tag[!,.]?\s*/i,
+    /^Hallo[!,.]?\s*/i,
+    /^Sehr geehrte[r]?\s+.*?,\s*/i,
+    /^Liebe[r]?\s+.*?,\s*/i,
+  ];
+  
+  greetingsToRemove.forEach(pattern => {
+    cleanedText = cleanedText.replace(pattern, '');
+  });
+  
+  // Add contextual emojis for better readability (seniors benefit from visual cues)
+  cleanedText = addContextualEmojis(cleanedText);
+  
+  return cleanedText.trim();
 }
 
 /**
@@ -248,7 +359,8 @@ export async function generateBatchDescriptions(products, userContext, decodedIn
       try {
         const description = await generateProductDescription(product, userContext, decodedInfo);
         return { productCode, description };
-      } catch (error) {
+      } catch (err) {
+        logError('batch_description_failed', err, { productCode });
         return { productCode, description: null };
       }
     });
@@ -278,8 +390,132 @@ export function clearAICache() {
     aiKeys.forEach(key => localStorage.removeItem(key));
     
     trackEvent('ai_cache_cleared', { count: aiKeys.length });
+    
+    return aiKeys.length;
   } catch (error) {
     logError('ai_cache_clear_error', error);
+    return 0;
+  }
+}
+
+/**
+ * Clear cached description for a specific product
+ * Useful for testing/debugging
+ */
+export function clearProductCache(productCode) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const cacheKey = `${CACHE_KEY_PREFIX}${productCode}`;
+    localStorage.removeItem(cacheKey);
+    return true;
+  } catch (error) {
+    logError('ai_cache_clear_product_error', error, { productCode });
+    return false;
+  }
+}
+
+/**
+ * Determine if a product is highly recommended for the user
+ * @param {object} product - Product object
+ * @param {object} userContext - User context from questionnaire
+ * @param {object} decodedInfo - Decoded product information
+ * @returns {boolean} True if highly recommended
+ */
+export function isHighlyRecommended(product, userContext, decodedInfo) {
+  if (!userContext || !decodedInfo) return false;
+  
+  let score = 0;
+  const features = decodedInfo.features || [];
+  const deviceType = decodedInfo.deviceType?.de || '';
+  
+  // Check hearing aid context
+  if (userContext.hearing_level) {
+    // Rechargeable is great for seniors
+    if (features.some(f => f.toLowerCase().includes('wiederaufladbar'))) {
+      score += 2;
+    }
+    
+    // Bluetooth good if they have smartphone
+    if (features.some(f => f.toLowerCase().includes('bluetooth'))) {
+      score += 1;
+    }
+    
+    // For severe hearing loss, prefer HP/SP
+    if (userContext.hearing_level === 'severe') {
+      if (deviceType.includes('High Power') || deviceType.includes('Super Power')) {
+        score += 2;
+      }
+    }
+    
+    // For mild/moderate, prefer discreet options
+    if (userContext.hearing_level === 'mild' || userContext.hearing_level === 'moderate') {
+      if (deviceType.includes('Unsichtbar') || deviceType.includes('Im Gehörgang')) {
+        score += 2;
+      }
+    }
+  }
+  
+  // Check mobility context
+  if (userContext.mobility_ability) {
+    // Lightweight is important
+    if (deviceType.toLowerCase().includes('leicht')) {
+      score += 2;
+    }
+    
+    // For very limited mobility, prefer stable options
+    if (userContext.mobility_ability === 'very_limited' || userContext.mobility_ability === 'no_walking') {
+      if (deviceType.toLowerCase().includes('stabil') || deviceType.toLowerCase().includes('vier')) {
+        score += 2;
+      }
+    }
+    
+    // For limited walking, prefer lightweight with wheels
+    if (userContext.mobility_ability === 'limited_walking') {
+      if (deviceType.toLowerCase().includes('rollator') || deviceType.toLowerCase().includes('räder')) {
+        score += 2;
+      }
+    }
+  }
+  
+  // High recommendation threshold
+  return score >= 3;
+}
+
+/**
+ * Get cache statistics
+ */
+export function getCacheStats() {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const keys = Object.keys(localStorage);
+    const aiKeys = keys.filter(key => key.startsWith(CACHE_KEY_PREFIX));
+    
+    const stats = {
+      total: aiKeys.length,
+      oldestTimestamp: null,
+      newestTimestamp: null,
+      totalSize: 0
+    };
+    
+    aiKeys.forEach(key => {
+      const data = JSON.parse(localStorage.getItem(key));
+      if (data.timestamp) {
+        if (!stats.oldestTimestamp || data.timestamp < stats.oldestTimestamp) {
+          stats.oldestTimestamp = data.timestamp;
+        }
+        if (!stats.newestTimestamp || data.timestamp > stats.newestTimestamp) {
+          stats.newestTimestamp = data.timestamp;
+        }
+      }
+      stats.totalSize += key.length + JSON.stringify(data).length;
+    });
+    
+    return stats;
+  } catch (error) {
+    logError('ai_cache_stats_error', error);
+    return null;
   }
 }
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Check, Info, Sparkles } from 'lucide-react';
+import { Check, Info, Sparkles, Award } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
 import { getCategoryIcon, getCategoryName } from '../data/productContexts';
-import { generateProductDescription, isAIAvailable } from '../services/aiEnhancement';
+import { generateProductDescription, isAIAvailable, isHighlyRecommended } from '../services/aiEnhancement';
 
 export function ProductCard({ product, selected = false, onSelect, userContext = null }) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
@@ -17,6 +17,9 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const typeExplanation = generateExplanation(decodedInfo);
   const categoryIcon = getCategoryIcon(code);
   const categoryName = getCategoryName(code);
+  
+  // Check if highly recommended for user
+  const isRecommended = isHighlyRecommended(product, userContext, decodedInfo);
   
   // Additional info that might be available
   const indikation = product?.indikation;
@@ -71,6 +74,14 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
       </div>
 
       <h3 className="text-xl font-bold text-text">{simplifiedName}</h3>
+      
+      {/* Besonders empfohlen Badge */}
+      {isRecommended && (
+        <div className="mt-3 inline-flex items-center gap-2 rounded-xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 px-4 py-2 shadow-sm">
+          <Award className="h-5 w-5 text-amber-600" />
+          <span className="text-sm font-bold text-amber-900">⭐ Besonders empfohlen für Ihre Situation</span>
+        </div>
+      )}
       
       {typeExplanation && (
         <div className="mt-2 flex items-center gap-2 text-sm">
