@@ -197,25 +197,19 @@ export function buildApiCriteria(answers) {
     }
   };
 
-  // Debug: Log all answers being processed
-  if (import.meta.env.DEV) {
-    console.log('🔍 [buildApiCriteria] Processing answers:', answers);
-  }
+  // Always log in production for debugging
+  console.log('🔍 [buildApiCriteria] Processing answers:', answers);
 
   for (const [questionId, answer] of Object.entries(answers)) {
     // Skip internal metadata fields (like _selectedCategory)
     if (questionId.startsWith('_')) {
-      if (import.meta.env.DEV) {
-        console.log('⏭️ [buildApiCriteria] Skipping internal field:', questionId);
-      }
+      console.log('⏭️ [buildApiCriteria] Skipping internal field:', questionId);
       continue;
     }
 
     const question = findQuestion(questionId);
     if (!question) {
-      if (import.meta.env.DEV) {
-        console.warn('⚠️ [buildApiCriteria] Question not found:', questionId);
-      }
+      console.warn('⚠️ [buildApiCriteria] Question not found:', questionId);
       continue;
     }
 
@@ -224,18 +218,14 @@ export function buildApiCriteria(answers) {
     for (const selectedValue of selection) {
       const option = question.options.find((opt) => opt.value === selectedValue);
       if (!option?.api_criteria) {
-        if (import.meta.env.DEV) {
-          console.warn('⚠️ [buildApiCriteria] No api_criteria for:', questionId, '=', selectedValue);
-        }
+        console.warn('⚠️ [buildApiCriteria] No api_criteria for:', questionId, '=', selectedValue);
         continue;
       }
 
       const { productGroup, ...rest } = option.api_criteria;
       if (productGroup) {
         productGroups.add(productGroup);
-        if (import.meta.env.DEV) {
-          console.log('✅ [buildApiCriteria] Added productGroup:', productGroup, 'from', questionId, '=', selectedValue);
-        }
+        console.log('✅ [buildApiCriteria] Added productGroup:', productGroup, 'from', questionId, '=', selectedValue);
       }
 
       for (const [key, value] of Object.entries(rest)) {
@@ -249,9 +239,7 @@ export function buildApiCriteria(answers) {
     filters,
   };
 
-  if (import.meta.env.DEV) {
-    console.log('✅ [buildApiCriteria] Final criteria:', result);
-  }
+  console.log('✅ [buildApiCriteria] Final criteria:', result);
 
   return result;
 }
