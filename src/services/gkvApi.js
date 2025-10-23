@@ -747,6 +747,7 @@ class GKVApiService {
       '10.04': 'Gehböcke',
       '10.05': 'Gehgestelle',
       '10.06': 'Gehwagen',
+      '10.46': 'Einlagen',
       
       // 11 - Hilfsmittel zur Kompressionstherapie
       '11': 'Kompressionstherapie',

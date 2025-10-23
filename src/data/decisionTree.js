@@ -305,6 +305,20 @@ export function buildApiCriteria(answers) {
     }
   }
 
+  // Fallback: If no productGroups were found from answers, use category default
+  if (productGroups.size === 0 && answers._selectedCategory) {
+    const categoryDefaults = {
+      hearing: '13',
+      mobility: '10',
+      bathroom: '04',
+      vision: '25',
+    };
+    const defaultGroup = categoryDefaults[answers._selectedCategory];
+    if (defaultGroup) {
+      productGroups.add(defaultGroup);
+    }
+  }
+
   return {
     productGroups: Array.from(productGroups),
     filters,
