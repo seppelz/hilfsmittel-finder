@@ -1,11 +1,11 @@
 import { logError } from '../utils/analytics';
 
 const isBrowser = typeof window !== 'undefined';
-const apiUrl = (path) => `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/${path}`)}`
+const apiUrl = (path) => `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/${path}`)}`;
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/proxy';
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
-const API_VERSION_ENDPOINT = apiUrl('Version')
+const API_VERSION_ENDPOINT = apiUrl('Version');
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
 
@@ -89,6 +89,7 @@ class GKVApiService {
 
   async ensureLatestVersion() {
     if (!isBrowser) return true;
+    if (!API_VERSION_ENDPOINT) return true;
     if (this.versionPromise) return this.versionPromise;
 
     this.versionPromise = (async () => {
@@ -98,8 +99,17 @@ class GKVApiService {
           this.cache.apiVersion = storedVersion;
         }
 
-        const response = await this.fetchWithRetry(API_VERSION_ENDPOINT, 2);
-        const remoteVersion = response?.version ?? response?.apiVersion ?? null;
+        const response = await fetch(API_VERSION_ENDPOINT);
+        if (response.status === 404) {
+          console.warn('Version endpoint not available, skipping cache invalidation.');
+          return true;
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const remoteVersion = payload?.version ?? payload?.apiVersion ?? null;
 
         if (!remoteVersion) {
           return true;
@@ -114,7 +124,7 @@ class GKVApiService {
         return true;
       } catch (error) {
         logError('gkv_api_version_check_failed', error);
-        return false;
+        return true;
       } finally {
         this.versionPromise = null;
       }
