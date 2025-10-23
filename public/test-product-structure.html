@@ -51,7 +51,8 @@
     <h1>🔬 GKV Product Structure Inspector</h1>
     <p style="color: #94a3b8; margin-bottom: 20px;">Fetch ONE product and inspect its ACTUAL structure</p>
     
-    <button onclick="inspectProducts()">🔍 Inspect Product Structure</button>
+    <button onclick="inspectViaTree()">🌳 Get Product via Tree (SAFE)</button>
+    <button onclick="inspectProducts()">🔍 Inspect via /Produkt (May freeze!)</button>
     <button onclick="testFiltering()">🧪 Test Filtering Methods</button>
     
     <div id="output"></div>
@@ -68,11 +69,123 @@
       document.getElementById('output').innerHTML = '';
     }
 
-    async function apiRequest(path) {
+    async function apiRequest(path, timeout = 10000) {
       const url = `${PROXY}?path=${encodeURIComponent(path)}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.json();
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('Request timeout - response too large');
+        }
+        throw error;
+      }
+    }
+
+    async function inspectViaTree() {
+      clear();
+      
+      log('<div class="section">');
+      log('<h2 class="highlight">🌳 SAFE METHOD: Query via Tree Structure</h2>');
+      
+      try {
+        // Step 1: Get tree
+        log('<p class="info">Step 1: Fetching tree to find a product GUID...</p>');
+        const tree = await apiRequest('api/verzeichnis/VerzeichnisTree/4');
+        const nodes = tree.value || tree.children || tree || [];
+        
+        log('<p class="success">✅ Got tree with ' + nodes.length + ' nodes</p>');
+        
+        // Find a hearing aid node (13.xx)
+        let targetNode = null;
+        for (const node of nodes) {
+          if (node.xSteller && node.xSteller.startsWith('13.20.12.')) {
+            targetNode = node;
+            break;
+          }
+        }
+        
+        if (!targetNode && nodes.length > 0) {
+          // Just use first node with dots in code
+          targetNode = nodes.find(n => n.xSteller && n.xSteller.includes('.'));
+        }
+        
+        if (!targetNode) {
+          log('<p class="error">❌ Could not find suitable node in tree</p>');
+          log('</div>');
+          return;
+        }
+        
+        log('<p class="success">✅ Found node: ' + targetNode.xSteller + '</p>');
+        log('<p class="info">Node GUID: ' + (targetNode.id || 'NO_ID') + '</p>');
+        
+        // Step 2: Try to get this specific item
+        const guid = targetNode.id;
+        if (!guid) {
+          log('<p class="error">❌ Node has no GUID</p>');
+          log('</div>');
+          return;
+        }
+        
+        // Determine node type by xSteller length
+        const code = targetNode.xSteller || '';
+        let endpoint = '';
+        
+        if (code.length <= 2) endpoint = 'Produktgruppe';
+        else if (code.length <= 5) endpoint = 'Produktgruppe'; // 4-digit
+        else if (code.length <= 8) endpoint = 'Untergruppe'; // 6-digit
+        else if (code.length <= 10) endpoint = 'Produktart'; // 7-digit
+        else endpoint = 'Produkt'; // 10-digit (actual product)
+        
+        log('<p class="info">Step 2: Querying /' + endpoint + '/' + guid + '</p>');
+        
+        const result = await apiRequest('api/verzeichnis/' + endpoint + '/' + guid);
+        
+        log('<p class="success">✅ Got response!</p>');
+        log('<h3 class="highlight">🔬 COMPLETE RESPONSE:</h3>');
+        log('<pre>' + JSON.stringify(result, null, 2) + '</pre>');
+        
+        // Analyze
+        log('<h3 class="warning">📋 Response Fields:</h3>');
+        Object.keys(result).forEach(field => {
+          const value = result[field];
+          const type = Array.isArray(value) ? 'Array[' + value.length + ']' : typeof value;
+          log('<p class="info"><strong>' + field + '</strong>: ' + type + '</p>');
+        });
+        
+        // Look for products array
+        const productFields = ['produkte', 'products', 'produktliste', 'items', 'value'];
+        let foundProducts = null;
+        
+        for (const field of productFields) {
+          if (result[field] && Array.isArray(result[field])) {
+            foundProducts = result[field];
+            log('<p class="success">🎉 FOUND PRODUCTS ARRAY: <strong>' + field + '</strong> (' + foundProducts.length + ' products)</p>');
+            break;
+          }
+        }
+        
+        if (foundProducts && foundProducts.length > 0) {
+          log('<h3 class="highlight">🔬 FIRST PRODUCT STRUCTURE:</h3>');
+          log('<pre>' + JSON.stringify(foundProducts[0], null, 2) + '</pre>');
+        } else {
+          log('<p class="warning">⚠️ No products array found in response</p>');
+        }
+        
+      } catch (error) {
+        log('<p class="error">❌ ERROR: ' + error.message + '</p>');
+      }
+      
+      log('</div>');
     }
 
     async function inspectProducts() {
@@ -80,10 +193,11 @@
       
       log('<div class="section">');
       log('<h2 class="highlight">📦 FETCHING PRODUCTS...</h2>');
-      log('<p class="info">Request: GET /api/verzeichnis/Produkt?$skip=0&$take=5</p>');
+      log('<p class="warning">⚠️ API may return ALL products - using timeout protection</p>');
+      log('<p class="info">Request: GET /api/verzeichnis/Produkt?$top=5</p>');
       
       try {
-        const data = await apiRequest('api/verzeichnis/Produkt?$skip=0&$take=5');
+        const data = await apiRequest('api/verzeichnis/Produkt?$top=5', 15000);
         
         log('<p class="success">✅ SUCCESS!</p>');
         
