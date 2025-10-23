@@ -665,16 +665,24 @@ class GKVApiService {
         
         return selectedFeatureFilters.every(feature => {
           switch (feature) {
+            // Power levels
+            case 'M': return name.includes(' M ') || name.includes('(M)') || name.includes(' M-');
             case 'HP': return name.includes(' HP') || name.includes('(HP');
             case 'UP': return name.includes(' UP') || name.includes('(UP');
             case 'SP': return name.includes(' SP') || name.includes('(SP');
-            case 'R': return name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
-                            name.includes('AKKU') || name.includes('WIEDERAUFLADBAR');
+            // Charging
+            case 'R': return name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
+                            name.includes('LITHIUM') || name.includes('AKKU') || name.includes('WIEDERAUFLADBAR');
+            // Device types
             case 'IIC': return name.includes('IIC');
             case 'CIC': return name.includes('CIC') && !name.includes('IIC');
             case 'ITC': return name.includes('ITC');
             case 'RIC': return name.includes('RITE') || name.includes('RIC');
-            case 'BTE': return name.includes('BTE') || name.includes('HDO');
+            case 'BTE': return name.includes('BTE') || name.includes('HDO') || name.includes('HdO');
+            // Connectivity
+            case 'BLUETOOTH': return name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT');
+            case 'T': return name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL');
+            case 'AI': return name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)');
             default: return true;
           }
         });

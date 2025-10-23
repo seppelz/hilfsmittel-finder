@@ -67,39 +67,98 @@ export function ResultsDisplay({
     trackEvent('category_filter_applied', { category: categoryCode });
   };
 
-  // Extract available features from products for Hörgeräte
+  // Extract available features from products for Hörgeräte with counts
   const availableFeatures = useMemo(() => {
     // Only show feature filters for hearing aids
     const isHearingAids = userAnswers?._selectedCategory === 'hearing' || 
                          categories.some(c => c.code.startsWith('13'));
     
-    if (!isHearingAids) return [];
+    if (!isHearingAids) return { power: [], charging: [], type: [], connectivity: [] };
     
-    const features = new Set();
-    products.forEach(product => {
+    // Count products for each feature (before any filtering)
+    const featureCounts = {};
+    
+    // We need to count from ALL products, not just current page
+    // So we'll use totalResults as a proxy - if we have filters active, show filtered count
+    const allProductsForCounting = products; // This will be all products after smart filtering
+    
+    allProductsForCounting.forEach(product => {
       const name = (product.bezeichnung || product.name || '').toUpperCase();
       
       // Power levels
-      if (name.includes(' HP') || name.includes('(HP')) features.add('HP');
-      if (name.includes(' UP') || name.includes('(UP')) features.add('UP');
-      if (name.includes(' SP') || name.includes('(SP')) features.add('SP');
+      if (name.includes(' M ') || name.includes('(M)') || name.includes(' M-')) {
+        featureCounts['M'] = (featureCounts['M'] || 0) + 1;
+      }
+      if (name.includes(' HP') || name.includes('(HP')) {
+        featureCounts['HP'] = (featureCounts['HP'] || 0) + 1;
+      }
+      if (name.includes(' UP') || name.includes('(UP')) {
+        featureCounts['UP'] = (featureCounts['UP'] || 0) + 1;
+      }
+      if (name.includes(' SP') || name.includes('(SP')) {
+        featureCounts['SP'] = (featureCounts['SP'] || 0) + 1;
+      }
       
       // Rechargeable
-      if (name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
-          name.includes('AKKU') || name.includes('WIEDERAUFLADBAR')) {
-        features.add('R');
+      if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
+          name.includes('LITHIUM') || name.includes('AKKU') || name.includes('WIEDERAUFLADBAR')) {
+        featureCounts['R'] = (featureCounts['R'] || 0) + 1;
       }
       
       // Device types
-      if (name.includes('IIC')) features.add('IIC');
-      if (name.includes('CIC') && !name.includes('IIC')) features.add('CIC');
-      if (name.includes('ITC')) features.add('ITC');
-      if (name.includes('RITE') || name.includes('RIC')) features.add('RIC');
-      if (name.includes('BTE') || name.includes('HDO')) features.add('BTE');
+      if (name.includes('IIC')) {
+        featureCounts['IIC'] = (featureCounts['IIC'] || 0) + 1;
+      }
+      if (name.includes('CIC') && !name.includes('IIC')) {
+        featureCounts['CIC'] = (featureCounts['CIC'] || 0) + 1;
+      }
+      if (name.includes('ITC')) {
+        featureCounts['ITC'] = (featureCounts['ITC'] || 0) + 1;
+      }
+      if (name.includes('RITE') || name.includes('RIC')) {
+        featureCounts['RIC'] = (featureCounts['RIC'] || 0) + 1;
+      }
+      if (name.includes('BTE') || name.includes('HDO') || name.includes('HdO')) {
+        featureCounts['BTE'] = (featureCounts['BTE'] || 0) + 1;
+      }
+      
+      // Connectivity
+      if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
+        featureCounts['BLUETOOTH'] = (featureCounts['BLUETOOTH'] || 0) + 1;
+      }
+      if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
+        featureCounts['T'] = (featureCounts['T'] || 0) + 1;
+      }
+      if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
+        featureCounts['AI'] = (featureCounts['AI'] || 0) + 1;
+      }
     });
     
-    return Array.from(features).sort();
-  }, [products, userAnswers, categories]);
+    // Group features by category
+    return {
+      power: [
+        { key: 'M', count: featureCounts['M'] || 0 },
+        { key: 'HP', count: featureCounts['HP'] || 0 },
+        { key: 'UP', count: featureCounts['UP'] || 0 },
+        { key: 'SP', count: featureCounts['SP'] || 0 },
+      ].filter(f => f.count > 0),
+      charging: [
+        { key: 'R', count: featureCounts['R'] || 0 },
+      ].filter(f => f.count > 0),
+      type: [
+        { key: 'IIC', count: featureCounts['IIC'] || 0 },
+        { key: 'CIC', count: featureCounts['CIC'] || 0 },
+        { key: 'ITC', count: featureCounts['ITC'] || 0 },
+        { key: 'RIC', count: featureCounts['RIC'] || 0 },
+        { key: 'BTE', count: featureCounts['BTE'] || 0 },
+      ].filter(f => f.count > 0),
+      connectivity: [
+        { key: 'BLUETOOTH', count: featureCounts['BLUETOOTH'] || 0 },
+        { key: 'T', count: featureCounts['T'] || 0 },
+        { key: 'AI', count: featureCounts['AI'] || 0 },
+      ].filter(f => f.count > 0),
+    };
+  }, [products, userAnswers, categories, totalResults]);
 
   const handleFeatureToggle = (feature) => {
     const newFeatures = selectedFeatureFilters.includes(feature) 
@@ -204,45 +263,161 @@ export function ResultsDisplay({
       )}
 
       {/* Feature Filter for Hearing Aids */}
-      {availableFeatures.length > 0 && (
+      {(availableFeatures.power.length > 0 || availableFeatures.charging.length > 0 || 
+        availableFeatures.type.length > 0 || availableFeatures.connectivity.length > 0) && (
         <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <Filter className="h-5 w-5 text-purple-600" />
-            <span className="font-semibold text-gray-900">Nach Eigenschaften filtern:</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Filter className="h-5 w-5 text-purple-600" />
+              <span className="font-semibold text-gray-900">Nach Eigenschaften filtern:</span>
+            </div>
+            {selectedFeatureFilters.length > 0 && (
+              <button
+                onClick={() => onFeatureFilterChange?.([])}
+                className="text-sm text-purple-600 hover:text-purple-800 font-medium underline"
+              >
+                Alle Filter zurücksetzen
+              </button>
+            )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {availableFeatures.map((feature) => {
-              const featureLabels = {
-                'HP': 'High Power (Starker Hörverlust)',
-                'UP': 'Ultra Power (Sehr starker Hörverlust)',
-                'SP': 'Super Power (Extrem starker Hörverlust)',
-                'R': 'Wiederaufladbar (R-Modell)',
-                'IIC': 'IIC (Unsichtbar im Ohr)',
-                'CIC': 'CIC (Komplett im Ohr)',
-                'ITC': 'ITC (Im-Ohr-Kanal)',
-                'RIC': 'RIC/RITE (Receiver-in-canal)',
-                'BTE': 'BTE/HdO (Hinter dem Ohr)',
-              };
-              
-              const isSelected = selectedFeatureFilters.includes(feature);
-              
-              return (
-                <button
-                  key={feature}
-                  onClick={() => handleFeatureToggle(feature)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    isSelected
-                      ? 'bg-purple-600 text-white shadow'
-                      : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
-                  }`}
-                >
-                  {featureLabels[feature] || feature}
-                </button>
-              );
-            })}
+          
+          <div className="space-y-4">
+            {/* Power Level */}
+            {availableFeatures.power.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Leistungsstufe</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.power.map(({ key, count }) => {
+                    const featureInfo = {
+                      'M': { label: 'M', tooltip: 'Mittlere Leistung - für leichten bis mittleren Hörverlust' },
+                      'HP': { label: 'HP', tooltip: 'High Power - für starken Hörverlust' },
+                      'UP': { label: 'UP', tooltip: 'Ultra Power - für sehr starken Hörverlust' },
+                      'SP': { label: 'SP', tooltip: 'Super Power - für extrem starken Hörverlust' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Charging */}
+            {availableFeatures.charging.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Stromversorgung</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.charging.map(({ key, count }) => {
+                    const featureInfo = {
+                      'R': { label: '🔋 Wiederaufladbar', tooltip: 'Kein Batteriewechsel nötig - einfach aufladen wie ein Handy' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Device Type */}
+            {availableFeatures.type.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Bauform</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.type.map(({ key, count }) => {
+                    const featureInfo = {
+                      'IIC': { label: 'IIC', tooltip: 'Invisible-In-Canal - komplett unsichtbar im Gehörgang' },
+                      'CIC': { label: 'CIC', tooltip: 'Completely-In-Canal - sehr diskret im Gehörgang' },
+                      'ITC': { label: 'ITC', tooltip: 'In-The-Canal - diskret im Gehörgang' },
+                      'RIC': { label: 'RIC', tooltip: 'Receiver-In-Canal - Lautsprecher im Gehörgang, sehr beliebt' },
+                      'BTE': { label: 'BTE/HdO', tooltip: 'Behind-The-Ear / Hinter dem Ohr - robuste Bauform' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Connectivity */}
+            {availableFeatures.connectivity.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Konnektivität</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.connectivity.map(({ key, count }) => {
+                    const featureInfo = {
+                      'BLUETOOTH': { label: '📱 Bluetooth', tooltip: 'Verbindung mit Smartphone, Tablet und TV' },
+                      'T': { label: '☎️ T-Spule', tooltip: 'Telefonspule - ideal für Telefonate und Induktionsschleifen' },
+                      'AI': { label: '🤖 AI', tooltip: 'Künstliche Intelligenz - lernt Ihre Hörpräferenzen' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+          
           {selectedFeatureFilters.length > 0 && (
-            <div className="mt-3 text-sm text-purple-700">
+            <div className="mt-4 pt-4 border-t border-purple-200 text-sm text-purple-700">
               <span className="font-medium">{products.length}</span> von <span className="font-medium">{totalResults}</span> Produkten entsprechen den Kriterien
             </div>
           )}
