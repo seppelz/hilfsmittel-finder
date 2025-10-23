@@ -262,6 +262,137 @@ export function ResultsDisplay({
         </div>
       )}
 
+      {/* Questionnaire Criteria Summary */}
+      {userAnswers && Object.keys(userAnswers).length > 1 && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span className="font-semibold text-gray-900">Ihre Angaben aus dem Fragebogen:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* Map questionnaire answers to readable criteria */}
+            {userAnswers.severity === 'moderate' && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Mittlerer Hörverlust
+              </span>
+            )}
+            {userAnswers.severity === 'severe' && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Starker Hörverlust
+              </span>
+            )}
+            {userAnswers.severity === 'profound' && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Sehr starker Hörverlust
+              </span>
+            )}
+            {userAnswers.hearing_aid && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Hörgerät benötigt
+              </span>
+            )}
+            {userAnswers.device_type && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Bauform: {userAnswers.device_type === 'ido' ? 'Im Ohr' : userAnswers.device_type === 'hdo' ? 'Hinter dem Ohr' : userAnswers.device_type}
+              </span>
+            )}
+            {userAnswers.rechargeable && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Wiederaufladbar bevorzugt
+              </span>
+            )}
+            {userAnswers.bluetooth && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Bluetooth gewünscht
+              </span>
+            )}
+            {userAnswers.noise_reduction && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Geräuschunterdrückung wichtig
+              </span>
+            )}
+            {userAnswers.phone_compatible && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Telefonieren wichtig
+              </span>
+            )}
+            {userAnswers.tv_compatible && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Fernsehen wichtig
+              </span>
+            )}
+            {/* Mobility criteria */}
+            {userAnswers.walker_needed && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Gehhilfe benötigt
+              </span>
+            )}
+            {userAnswers.mobility_support_type === 'rollator' && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Rollator bevorzugt
+              </span>
+            )}
+            {userAnswers.mobility_support_type === 'walker' && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Gehstock bevorzugt
+              </span>
+            )}
+            {userAnswers.stairs && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Treppen im Alltag
+              </span>
+            )}
+            {userAnswers.indoor && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Für drinnen
+              </span>
+            )}
+            {userAnswers.outdoor && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Für draußen
+              </span>
+            )}
+            {/* Bathroom criteria */}
+            {userAnswers.shower_chair && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Duschhocker benötigt
+              </span>
+            )}
+            {userAnswers.bath_lift && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Badewannenlift benötigt
+              </span>
+            )}
+            {userAnswers.toilet_seat && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Toilettensitzerhöhung benötigt
+              </span>
+            )}
+            {userAnswers.grab_bars && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Haltegriffe benötigt
+              </span>
+            )}
+            {/* Vision criteria */}
+            {userAnswers.magnifier && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Lupe benötigt
+              </span>
+            )}
+            {userAnswers.lighting && (
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ Mit Beleuchtung
+              </span>
+            )}
+          </div>
+          <p className="mt-3 text-xs text-blue-700">
+            💡 Diese Kriterien wurden bereits bei der Suche berücksichtigt. Nutzen Sie die Filter unten für weitere Verfeinerung.
+          </p>
+        </div>
+      )}
+
       {/* Feature Filter for Hearing Aids */}
       {(availableFeatures.power.length > 0 || availableFeatures.charging.length > 0 || 
         availableFeatures.type.length > 0 || availableFeatures.connectivity.length > 0) && (
