@@ -228,6 +228,110 @@ function normalizeProduct(product) {
   return normalizedProduct;
 }
 
+/**
+ * Filter products by features and score them based on match quality
+ * @param {Array} products - Array of products to filter
+ * @param {Object} criteria - Search criteria from questionnaire
+ * @returns {Array} Filtered and scored products (top 200)
+ */
+function filterByFeatures(products, criteria) {
+  // If no specific criteria, return all products
+  if (!criteria || Object.keys(criteria).length === 0) {
+    return products;
+  }
+
+  // Import productDecoder for feature extraction
+  const { decodeProduct } = require('../utils/productDecoder');
+
+  // Score each product based on criteria match
+  const scoredProducts = products.map(product => {
+    let score = 0;
+    const decoded = decodeProduct(product);
+    const productName = (product.bezeichnung || product.name || '').toLowerCase();
+    const productDesc = (product.beschreibung || '').toLowerCase();
+    const searchText = `${productName} ${productDesc}`;
+
+    // Device type matching (high priority: +20 points)
+    if (criteria.device_type) {
+      const targetType = criteria.device_type.toLowerCase();
+      if (decoded.deviceType && decoded.deviceType.toLowerCase().includes(targetType)) {
+        score += 20;
+      }
+      // Also check product name directly
+      if (targetType === 'hdo' && searchText.includes('hinter dem ohr')) score += 15;
+      if (targetType === 'ido' && (searchText.includes('im ohr') || searchText.includes('ido'))) score += 15;
+    }
+
+    // Feature matching (medium priority: +10 points each)
+    if (criteria.rechargeable) {
+      const hasFeature = decoded.features.some(f => f.name === 'Wiederaufladbar') ||
+                        searchText.includes('wiederaufladbar') ||
+                        searchText.includes('akku') ||
+                        searchText.includes('lithium');
+      if (hasFeature) score += 10;
+    }
+
+    if (criteria.bluetooth) {
+      const hasFeature = decoded.features.some(f => f.name === 'Bluetooth') ||
+                        searchText.includes('bluetooth') ||
+                        searchText.includes('wireless') ||
+                        searchText.includes('connect');
+      if (hasFeature) score += 10;
+    }
+
+    if (criteria.automatic) {
+      const hasFeature = searchText.includes('automatisch') ||
+                        searchText.includes('auto') ||
+                        searchText.includes('selbstanpassend');
+      if (hasFeature) score += 10;
+    }
+
+    // Situation-based features (medium priority: +10 points each)
+    if (criteria.noise_reduction) {
+      const hasFeature = searchText.includes('geräusch') ||
+                        searchText.includes('störschall') ||
+                        searchText.includes('noise') ||
+                        searchText.includes('richtwirkung');
+      if (hasFeature) score += 10;
+    }
+
+    if (criteria.phone_compatible) {
+      const hasFeature = searchText.includes('telefon') ||
+                        searchText.includes('phone') ||
+                        searchText.includes('telecoil');
+      if (hasFeature) score += 10;
+    }
+
+    if (criteria.tv_compatible) {
+      const hasFeature = searchText.includes('fernseh') ||
+                        searchText.includes('tv') ||
+                        searchText.includes('streaming');
+      if (hasFeature) score += 10;
+    }
+
+    // Severity-based scoring (low priority: +5 points for appropriate devices)
+    if (criteria.severity) {
+      if (criteria.severity === 'severe' && searchText.includes('power')) score += 5;
+      if (criteria.severity === 'mild' && (searchText.includes('basic') || searchText.includes('standard'))) score += 5;
+    }
+
+    // Bonus for products with more features overall
+    if (decoded.features.length >= 3) score += 5;
+
+    return { product, score };
+  });
+
+  // Sort by score (highest first) and return top 200
+  const topProducts = scoredProducts
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 200)
+    .map(item => item.product);
+
+  console.log('[GKV] Smart filtering: Reduced', products.length, 'products to top', topProducts.length, 'matches');
+  
+  return topProducts;
+}
+
 function safeParse(json) {
   try {
     return JSON.parse(json);
@@ -521,7 +625,14 @@ class GKVApiService {
       .map(product => normalizeProduct(product))
       .filter(Boolean);
     
-    const sortedProducts = normalizedProducts.sort((a, b) => {
+    // Apply smart filtering if we have many products (hearing aids with 27k+ products)
+    let filteredProducts = normalizedProducts;
+    if (normalizedProducts.length > 1000 && filters) {
+      console.log('[GKV] Applying smart filtering for', normalizedProducts.length, 'products');
+      filteredProducts = filterByFeatures(normalizedProducts, filters);
+    }
+    
+    const sortedProducts = filteredProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
       const bCode = b.produktartNummer || b.code || b.bezeichnung || '';
       return aCode.localeCompare(bCode, 'de');
@@ -566,57 +677,74 @@ class GKVApiService {
   }
 
   getCategoryName(code) {
-    // Comprehensive GKV Hilfsmittelverzeichnis category mapping
+    // Official GKV Hilfsmittelverzeichnis category mapping
+    // Source: https://md-bund.de/fileadmin/dokumente/Publikationen/GKV/Begutachtungsgrundlagen_GKV/BGL_Hilfsmittel_240111.pdf
     const categoryMap = {
       // 01 - Absauggeräte
       '01': 'Absauggeräte',
+      '01.01': 'Elektrische Absauggeräte',
+      '01.02': 'Manuelle Absauggeräte',
+      
+      // 02 - Adaptionshilfen
+      '02': 'Adaptionshilfen',
+      '02.01': 'Adapter und Verbindungselemente',
       
       // 03 - Applikationshilfen
+      '03': 'Applikationshilfen',
+      '03.01': 'Inhalationshilfen',
+      '03.02': 'Injektionshilfen',
       '03.29': 'Applikationshilfen',
       
-      // 04 - Badehilfen
+      // 04 - Bade- und Duschhilfen
+      '04': 'Bade- und Duschhilfen',
+      '04.01': 'Badewannenbretter',
+      '04.02': 'Duschhocker',
+      '04.03': 'Haltegriffe',
       '04.40': 'Badehilfen',
       '04.41': 'Toilettenhilfen',
       
       // 05 - Bandagen
       '05': 'Bandagen',
+      '05.01': 'Arm- und Beinbandagen',
+      '05.02': 'Rückenbandagen',
       
-      // 07 - Blindenhilfsmittel & Sehhilfen
-      '07': 'Sehhilfen',
-      '07.03': 'Sehhilfen',
-      '07.50': 'Sehhilfen - Lesehilfen',
-      '07.99': 'Sehhilfen - Sonstige',
+      // 09 - Elektrostimulationsgeräte (NOT Gehhilfen!)
+      '09': 'Elektrostimulationsgeräte',
+      '09.01': 'Therapeutische Geräte',
+      '09.02': 'Reizstromgeräte',
       
-      // 09 - Gehhilfen & Mobilitätshilfen
-      '09': 'Mobilitätshilfen',
-      '09.12': 'Gehhilfen',
-      '09.12.01': 'Gehstöcke',
-      '09.12.02': 'Unterarmgehstützen',
-      '09.12.03': 'Achselstützen',
-      '09.12.04': 'Gehrahmen',
-      '09.12.05': 'Gehwagen',
-      '09.12.06': 'Rollatoren',
-      '09.12.07': 'Gehhilfen - Zubehör',
-      '09.24': 'Rollstühle',
-      '09.40': 'Treppensteighilfen',
-      
-      // 10 - Einlagen
+      // 10 - Gehhilfen (CORRECT CATEGORY FOR WALKING AIDS!)
+      '10': 'Gehhilfen',
+      '10.01': 'Gehstöcke',
+      '10.02': 'Unterarmgehstützen',
+      '10.03': 'Rollatoren',
+      '10.04': 'Gehböcke',
       '10.46': 'Einlagen',
       
       // 11 - Hilfsmittel zur Kompressionstherapie
+      '11': 'Kompressionstherapie',
       '11.11': 'Kompressionsstrümpfe',
       '11.31': 'Kompressionsbinden',
       
       // 12 - Hilfsmittel bei Tracheostoma
+      '12': 'Tracheostoma-Hilfsmittel',
       '12.24': 'Tracheostoma-Hilfsmittel',
       
       // 13 - Hörhilfen
+      '13': 'Hörhilfen',
+      '13.01': 'Luftleitungshörgeräte',
+      '13.02': 'Knochenleitungshörgeräte',
+      '13.03': 'Hörgeräte-Zubehör',
       '13.20': 'Hörgeräte',
       
       // 14 - Inhalations- und Atemtherapiegeräte
       '14': 'Inhalationsgeräte',
       
       // 15 - Inkontinenzhilfen
+      '15': 'Inkontinenzhilfen',
+      '15.01': 'Aufsaugende Hilfsmittel',
+      '15.02': 'Ableitende Systeme',
+      '15.03': 'Beckenboden-Therapiegeräte',
       '15.25': 'Inkontinenzartikel',
       
       // 16 - Kommunikationshilfen
@@ -654,6 +782,9 @@ class GKVApiService {
       
       // 25 - Sehhilfen / Blindenhilfsmittel
       '25': 'Sehhilfen',
+      '25.01': 'Brillengläser',
+      '25.02': 'Kontaktlinsen',
+      '25.03': 'Vergrößernde Sehhilfen',
       '25.21': 'Lupen',
       '25.50': 'Lesehilfen',
       '25.56': 'Lupen - Verschiedene',
@@ -663,7 +794,13 @@ class GKVApiService {
       '26': 'Sitzhilfen',
       
       // 29 - Stomaartikel
+      '29': 'Stomaartikel',
       '29.26': 'Stomabeutel',
+      
+      // 30 - Diabetes-Hilfsmittel / Glukosemanagement
+      '30': 'Diabetes-Hilfsmittel',
+      '30.01': 'Blutzuckermessgeräte',
+      '30.02': 'Verbrauchsmaterialien',
       
       // 31 - Therapeutische Bewegungsgeräte
       '31.03': 'Bewegungsgeräte',
@@ -674,11 +811,25 @@ class GKVApiService {
       // 33 - Urinale
       '33.40': 'Urinflaschen',
       
-      // 50 - Hilfsmittel gegen Dekubitus
+      // 50 - Pflegehilfsmittel zur Erleichterung der Pflege
+      '50': 'Pflegehilfsmittel',
+      '50.01': 'Bettschutze',
+      '50.02': 'Pflegebetten',
       '50.45': 'Dekubitus-Hilfsmittel',
       
       // 51 - Inkontinenz
+      '51': 'Inkontinenzhilfen',
       '51.40': 'Inkontinenzvorlagen',
+      
+      // 52 - Pflegehilfsmittel zur selbständigeren Lebensführung
+      '52': 'Hilfsmittel für selbständige Lebensführung',
+      '52.01': 'Greifhilfen',
+      '52.02': 'Mobilitätshilfen',
+      
+      // 54 - Zum Verbrauch bestimmte Pflegehilfsmittel
+      '54': 'Verbrauchsmaterialien Pflege',
+      '54.01': 'Einmalhandschuhe',
+      '54.02': 'Desinfektionsmittel',
     };
     
     // Try exact match first
