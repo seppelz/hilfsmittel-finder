@@ -1,7 +1,8 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
+
 const API_BASE = 'https://hilfsmittel-api.gkv-spitzenverband.de';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const { path = '', ...query } = req.query;
   const search = new URLSearchParams(query).toString();
   const targetUrl = `${API_BASE}/${path}${search ? `?${search}` : ''}`;
@@ -17,7 +18,8 @@ module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(upstream.status).send(body);
   } catch (error) {
+    console.error('Proxy error', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.status(500).json({ error: 'Proxy request failed', detail: error.message });
   }
-};
+}
