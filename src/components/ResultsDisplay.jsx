@@ -28,19 +28,34 @@ export function ResultsDisplay({
   selectedCategoryFilter = null,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
   
-  // Get category context based on selected filter or first product
+  // Get category context based on selected filter, user's category, or first product
   const categoryContext = useMemo(() => {
     if (selectedCategoryFilter) {
       // If filter is active, get context for that specific category
       return getCategoryContext(selectedCategoryFilter);
     }
     
-    // Otherwise, get context from first product
+    // Try to get context from user's originally selected category
+    if (userAnswers?._selectedCategory) {
+      const categoryMap = {
+        hearing: '13',
+        mobility: '10',
+        bathroom: '04',
+        vision: '25',
+      };
+      const categoryCode = categoryMap[userAnswers._selectedCategory];
+      if (categoryCode) {
+        return getCategoryContext(categoryCode);
+      }
+    }
+    
+    // Fallback: get context from first product
     const firstProduct = products[0];
     const productCode = firstProduct?.produktartNummer || firstProduct?.code;
     return productCode ? getCategoryContext(productCode) : null;
-  }, [selectedCategoryFilter, products]);
+  }, [selectedCategoryFilter, products, userAnswers]);
 
   useEffect(() => {
     setSelected(selectedProducts);
@@ -50,6 +65,74 @@ export function ResultsDisplay({
     onCategoryFilterChange?.(categoryCode);
     trackEvent('category_filter_applied', { category: categoryCode });
   };
+
+  // Extract available features from products for Hörgeräte
+  const availableFeatures = useMemo(() => {
+    // Only show feature filters for hearing aids
+    const isHearingAids = userAnswers?._selectedCategory === 'hearing' || 
+                         categories.some(c => c.code.startsWith('13'));
+    
+    if (!isHearingAids) return [];
+    
+    const features = new Set();
+    products.forEach(product => {
+      const name = (product.bezeichnung || product.name || '').toUpperCase();
+      
+      // Power levels
+      if (name.includes(' HP') || name.includes('(HP')) features.add('HP');
+      if (name.includes(' UP') || name.includes('(UP')) features.add('UP');
+      if (name.includes(' SP') || name.includes('(SP')) features.add('SP');
+      
+      // Rechargeable
+      if (name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
+          name.includes('AKKU') || name.includes('WIEDERAUFLADBAR')) {
+        features.add('R');
+      }
+      
+      // Device types
+      if (name.includes('IIC')) features.add('IIC');
+      if (name.includes('CIC') && !name.includes('IIC')) features.add('CIC');
+      if (name.includes('ITC')) features.add('ITC');
+      if (name.includes('RITE') || name.includes('RIC')) features.add('RIC');
+      if (name.includes('BTE') || name.includes('HDO')) features.add('BTE');
+    });
+    
+    return Array.from(features).sort();
+  }, [products, userAnswers, categories]);
+
+  const handleFeatureToggle = (feature) => {
+    setSelectedFeatures(prev => 
+      prev.includes(feature) 
+        ? prev.filter(f => f !== feature)
+        : [...prev, feature]
+    );
+    trackEvent('feature_filter_applied', { feature });
+  };
+
+  // Filter products by selected features
+  const filteredProducts = useMemo(() => {
+    if (selectedFeatures.length === 0) return products;
+    
+    return products.filter(product => {
+      const name = (product.bezeichnung || product.name || '').toUpperCase();
+      
+      return selectedFeatures.every(feature => {
+        switch (feature) {
+          case 'HP': return name.includes(' HP') || name.includes('(HP');
+          case 'UP': return name.includes(' UP') || name.includes('(UP');
+          case 'SP': return name.includes(' SP') || name.includes('(SP');
+          case 'R': return name.includes(' R') || name.includes('-R') || name.includes('LITHIUM') || 
+                          name.includes('AKKU') || name.includes('WIEDERAUFLADBAR');
+          case 'IIC': return name.includes('IIC');
+          case 'CIC': return name.includes('CIC') && !name.includes('IIC');
+          case 'ITC': return name.includes('ITC');
+          case 'RIC': return name.includes('RITE') || name.includes('RIC');
+          case 'BTE': return name.includes('BTE') || name.includes('HDO');
+          default: return true;
+        }
+      });
+    });
+  }, [products, selectedFeatures]);
 
   const handleSelect = (product) => {
     setSelected((prev) => {
@@ -143,6 +226,52 @@ export function ResultsDisplay({
           )}
         </div>
       )}
+
+      {/* Feature Filter for Hearing Aids */}
+      {availableFeatures.length > 0 && (
+        <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <Filter className="h-5 w-5 text-purple-600" />
+            <span className="font-semibold text-gray-900">Nach Eigenschaften filtern:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableFeatures.map((feature) => {
+              const featureLabels = {
+                'HP': 'High Power (Starker Hörverlust)',
+                'UP': 'Ultra Power (Sehr starker Hörverlust)',
+                'SP': 'Super Power (Extrem starker Hörverlust)',
+                'R': 'Wiederaufladbar (R-Modell)',
+                'IIC': 'IIC (Unsichtbar im Ohr)',
+                'CIC': 'CIC (Komplett im Ohr)',
+                'ITC': 'ITC (Im-Ohr-Kanal)',
+                'RIC': 'RIC/RITE (Receiver-in-canal)',
+                'BTE': 'BTE/HdO (Hinter dem Ohr)',
+              };
+              
+              const isSelected = selectedFeatures.includes(feature);
+              
+              return (
+                <button
+                  key={feature}
+                  onClick={() => handleFeatureToggle(feature)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    isSelected
+                      ? 'bg-purple-600 text-white shadow'
+                      : 'bg-white text-gray-700 hover:bg-purple-100 border border-purple-200'
+                  }`}
+                >
+                  {featureLabels[feature] || feature}
+                </button>
+              );
+            })}
+          </div>
+          {selectedFeatures.length > 0 && (
+            <div className="mt-3 text-sm text-purple-700">
+              <span className="font-medium">{filteredProducts.length}</span> von <span className="font-medium">{products.length}</span> Produkten entsprechen den Kriterien
+            </div>
+          )}
+        </div>
+      )}
       
       {categoryContext && (
         <div className="rounded-3xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
@@ -174,28 +303,40 @@ export function ResultsDisplay({
         <strong>Wichtiger Hinweis:</strong> Diese Informationen ersetzen keine ärztliche Beratung. Die endgültige Entscheidung über die Kostenübernahme trifft Ihre Krankenkasse.
       </div>
 
-      {(totalResults || products.length) === 0 ? (
+      {(totalResults || filteredProducts.length) === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
           <h3 className="text-2xl font-semibold text-text">Keine Hilfsmittel gefunden</h3>
           <p className="mt-2 text-gray-600">
-            Für Ihre Angaben konnten wir keine passenden Hilfsmittel finden. Bitte überprüfen Sie Ihre Antworten.
+            {selectedFeatures.length > 0 
+              ? 'Für Ihre gewählten Filter konnten wir keine passenden Hilfsmittel finden. Versuchen Sie, weniger Filter auszuwählen.'
+              : 'Für Ihre Angaben konnten wir keine passenden Hilfsmittel finden. Bitte überprüfen Sie Ihre Antworten.'}
           </p>
           <div className="mt-6">
-            <button
-              type="button"
-              onClick={onBack}
-              className="rounded-xl bg-primary px-6 py-3 text-lg font-semibold text-white hover:bg-blue-700"
-            >
-              Antworten anpassen
-            </button>
+            {selectedFeatures.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelectedFeatures([])}
+                className="rounded-xl bg-purple-600 px-6 py-3 text-lg font-semibold text-white hover:bg-purple-700"
+              >
+                Filter zurücksetzen
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onBack}
+                className="rounded-xl bg-primary px-6 py-3 text-lg font-semibold text-white hover:bg-blue-700"
+              >
+                Antworten anpassen
+              </button>
+            )}
           </div>
         </div>
       ) : (
         <ProductList
-          products={products}
+          products={filteredProducts}
           selectedProducts={selected}
           onToggleProduct={handleSelect}
-          pagination={selectedCategoryFilter ? null : pagination}
+          pagination={selectedCategoryFilter || selectedFeatures.length > 0 ? null : pagination}
           userContext={userAnswers}
         />
       )}
