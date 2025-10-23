@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKV API Tester</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #2563eb; }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    button {
+      padding: 10px 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    button:hover { background: #1d4ed8; }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .results {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 6px;
+      max-height: 600px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    .info { color: #3b82f6; }
+    .highlight { color: #fbbf24; font-weight: bold; }
+    .category-result {
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .category-result h3 {
+      margin: 0 0 10px 0;
+      color: #1e293b;
+    }
+    .stat {
+      display: inline-block;
+      margin-right: 20px;
+      padding: 5px 10px;
+      background: #e0f2fe;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+    }
+    .progress {
+      margin: 10px 0;
+      padding: 8px;
+      background: #dbeafe;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔬 GKV API Category Tester</h1>
+  
+  <div class="container">
+    <h2>Test Categories</h2>
+    <div class="controls">
+      <button onclick="testAllCategories()">🚀 Test All Categories</button>
+      <button onclick="testSingleCategory('13.20')">Test Hörgeräte (13.20)</button>
+      <button onclick="testCategoryTree()">📋 Fetch Category Tree</button>
+      <button onclick="clearResults()">🗑️ Clear Results</button>
+      <button onclick="exportResults()">💾 Export Results</button>
+    </div>
+    <div id="progress" class="progress" style="display:none;"></div>
+  </div>
+
+  <div class="container">
+    <h2>Test Results</h2>
+    <div id="results" class="results">
+Ready to test. Click "Test All Categories" to begin systematic API testing.
+
+Testing will check:
+- 7 main categories (Hörgeräte, Gehhilfen, Sehhilfen, Badehilfen, Diabetes, Inkontinenz, Pflege)
+- Multiple code variations per category
+- Product counts and sample data
+- Response formats
+
+Results will be logged here and can be exported for documentation.
+    </div>
+  </div>
+
+  <div class="container" id="summaryContainer" style="display:none;">
+    <h2>📊 Test Summary</h2>
+    <div id="summary"></div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/proxy';
+    let allResults = [];
+
+    // Comprehensive category test matrix
+    const TEST_CATEGORIES = {
+      'Hörgeräte': [
+        '13.20',      // Known working
+        '13.20.12',   // Specific devices
+        '13',         // Base category
+        '13.99',      // Other hearing
+      ],
+      'Gehhilfen': [
+        '09.12',      // Walking aids
+        '09.12.02',   // Rollators
+        '09.12.01',   // Walking sticks
+        '09.12.03',   // Walking frames
+        '09.24',      // Wheelchairs
+        '09.24.01',   // Manual wheelchairs
+        '09',         // Base mobility
+        '10.46',      // Einlagen (insoles)
+      ],
+      'Sehhilfen': [
+        '07',         // Base vision
+        '07.99',      // Other vision aids
+        '07.11',      // Reading aids
+        '25.50',      // Magnifiers
+        '25.56',      // Lighting aids
+        '25',         // Other visual aids
+      ],
+      'Badehilfen': [
+        '04.40',      // Bath aids
+        '04.40.01',   // Grab bars
+        '04.40.04',   // Shower chairs
+        '04.41',      // Toilet aids
+        '04',         // Base bathroom
+      ],
+      'Diabetes': [
+        '21.33',      // Insulin pumps
+        '21.34',      // Blood glucose meters
+        '21',         // Medical devices base
+        '22.50',      // Diabetes supplies
+      ],
+      'Inkontinenz': [
+        '15.25',      // Incontinence products
+        '15.25.01',   // Pads
+        '15.25.02',   // Pants
+        '15',         // Base absorption
+      ],
+      'Pflege': [
+        '18.50',      // Care beds
+        '18.51',      // Bed accessories
+        '19.40',      // Positioning aids
+        '18',         // Base care
+      ]
+    };
+
+    function log(message, type = 'info') {
+      const results = document.getElementById('results');
+      const colors = {
+        success: 'success',
+        error: 'error',
+        warning: 'warning',
+        info: 'info',
+        highlight: 'highlight'
+      };
+      const className = colors[type] || 'info';
+      const timestamp = new Date().toLocaleTimeString();
+      results.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+      results.scrollTop = results.scrollHeight;
+    }
+
+    function updateProgress(current, total, category) {
+      const progress = document.getElementById('progress');
+      progress.style.display = 'block';
+      progress.innerHTML = `Testing: ${category} | Progress: ${current}/${total}`;
+    }
+
+    function hideProgress() {
+      document.getElementById('progress').style.display = 'none';
+    }
+
+    async function testCategory(categoryCode) {
+      const url = `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/Produkt?produktgruppennummer=${categoryCode}&skip=0&take=20&$count=true`)}`;
+      
+      try {
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          return {
+            code: categoryCode,
+            success: false,
+            error: `HTTP ${response.status}`,
+            count: 0,
+            products: []
+          };
+        }
+
+        const data = await response.json();
+        const products = Array.isArray(data) ? data : (data.value || []);
+        const count = data.count || data.Count || data['@odata.count'] || products.length;
+
+        return {
+          code: categoryCode,
+          success: products.length > 0,
+          count: count,
+          products: products.slice(0, 5).map(p => ({
+            code: p.produktartNummer || p.code || 'NO_CODE',
+            name: p.bezeichnung || p.name || 'NO_NAME',
+            manufacturer: p.hersteller || p.herstellerName || 'NO_MFG'
+          }))
+        };
+
+      } catch (error) {
+        return {
+          code: categoryCode,
+          success: false,
+          error: error.message,
+          count: 0,
+          products: []
+        };
+      }
+    }
+
+    async function testSingleCategory(code) {
+      log(`\n${'='.repeat(60)}`, 'highlight');
+      log(`Testing category: ${code}`, 'highlight');
+      log(`${'='.repeat(60)}`, 'highlight');
+
+      const result = await testCategory(code);
+      
+      if (result.success) {
+        log(`✅ SUCCESS - ${result.count} products found`, 'success');
+        log(`Sample products:`, 'info');
+        result.products.forEach(p => {
+          log(`  • ${p.code} - ${p.name.substring(0, 60)}`, 'info');
+        });
+      } else {
+        log(`❌ FAILED - ${result.error || 'No products'}`, 'error');
+      }
+    }
+
+    async function testAllCategories() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('🚀 STARTING COMPREHENSIVE API TEST', 'highlight');
+      log('='.repeat(80), 'highlight');
+      log('Testing all 7 categories with multiple code variations\n', 'info');
+
+      allResults = [];
+      const summary = {};
+
+      let totalTests = 0;
+      Object.values(TEST_CATEGORIES).forEach(codes => totalTests += codes.length);
+      let currentTest = 0;
+
+      for (const [categoryName, codes] of Object.entries(TEST_CATEGORIES)) {
+        log(`\n${'─'.repeat(60)}`, 'highlight');
+        log(`📂 CATEGORY: ${categoryName}`, 'highlight');
+        log(`${'─'.repeat(60)}`, 'highlight');
+
+        summary[categoryName] = {
+          tested: codes.length,
+          working: [],
+          failed: []
+        };
+
+        for (const code of codes) {
+          currentTest++;
+          updateProgress(currentTest, totalTests, `${categoryName} (${code})`);
+          
+          log(`\n  Testing: ${code}...`, 'info');
+          const result = await testCategory(code);
+          
+          allResults.push({ category: categoryName, ...result });
+
+          if (result.success) {
+            log(`  ✅ ${result.count} products found`, 'success');
+            summary[categoryName].working.push({ code, count: result.count });
+            
+            if (result.products.length > 0) {
+              log(`  Sample: ${result.products[0].code} - ${result.products[0].name.substring(0, 50)}...`, 'info');
+            }
+          } else {
+            log(`  ❌ No products (${result.error || 'empty response'})`, 'error');
+            summary[categoryName].failed.push(code);
+          }
+
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+
+      hideProgress();
+      displaySummary(summary);
+      log('\n' + '='.repeat(80), 'highlight');
+      log('✅ ALL TESTS COMPLETED', 'highlight');
+      log('='.repeat(80) + '\n', 'highlight');
+    }
+
+    function displaySummary(summary) {
+      const container = document.getElementById('summaryContainer');
+      const summaryDiv = document.getElementById('summary');
+      container.style.display = 'block';
+
+      let html = '<table><thead><tr><th>Category</th><th>Tested</th><th>Working</th><th>Best Codes</th></tr></thead><tbody>';
+
+      for (const [category, data] of Object.entries(summary)) {
+        const working = data.working.sort((a, b) => b.count - a.count);
+        const bestCodes = working.slice(0, 3).map(w => `${w.code} (${w.count})`).join(', ') || 'None found';
+        
+        const status = working.length > 0 ? '✅' : '❌';
+        html += `<tr>
+          <td>${status} ${category}</td>
+          <td>${data.tested}</td>
+          <td>${working.length}</td>
+          <td><strong>${bestCodes}</strong></td>
+        </tr>`;
+      }
+
+      html += '</tbody></table>';
+      summaryDiv.innerHTML = html;
+
+      // Scroll to summary
+      container.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function testCategoryTree() {
+      log('\n' + '='.repeat(60), 'highlight');
+      log('📋 Fetching Category Tree', 'highlight');
+      log('='.repeat(60) + '\n', 'highlight');
+
+      const url = `${API_BASE}?path=${encodeURIComponent('api/verzeichnis/VerzeichnisTree/4')}`;
+      
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        log('✅ Category tree fetched successfully', 'success');
+        log(`Total root nodes: ${data.length || 'unknown'}`, 'info');
+        
+        if (Array.isArray(data)) {
+          log('\nTop-level categories:', 'highlight');
+          data.slice(0, 20).forEach(node => {
+            const code = node.xSteller || node.code || 'NO_CODE';
+            const name = node.bezeichnung || node.name || 'NO_NAME';
+            log(`  ${code}: ${name}`, 'info');
+          });
+        }
+        
+        log('\n💾 Full tree stored in browser console (check console.log)', 'warning');
+        console.log('GKV Category Tree:', data);
+        
+      } catch (error) {
+        log(`❌ Failed to fetch tree: ${error.message}`, 'error');
+      }
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = 'Results cleared. Ready for new test.\n';
+      document.getElementById('summaryContainer').style.display = 'none';
+      allResults = [];
+    }
+
+    function exportResults() {
+      if (allResults.length === 0) {
+        alert('No results to export. Run tests first.');
+        return;
+      }
+
+      const markdown = generateMarkdownReport(allResults);
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gkv-api-test-results-${new Date().toISOString().split('T')[0]}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      log('\n✅ Results exported to markdown file', 'success');
+    }
+
+    function generateMarkdownReport(results) {
+      const timestamp = new Date().toLocaleString();
+      let md = `# GKV API Test Results\n\n`;
+      md += `**Date**: ${timestamp}\n`;
+      md += `**Total Tests**: ${results.length}\n\n`;
+      md += `## Summary by Category\n\n`;
+
+      const byCategory = {};
+      results.forEach(r => {
+        if (!byCategory[r.category]) byCategory[r.category] = [];
+        byCategory[r.category].push(r);
+      });
+
+      for (const [category, tests] of Object.entries(byCategory)) {
+        const working = tests.filter(t => t.success);
+        md += `### ${category}\n\n`;
+        md += `- Tests: ${tests.length}\n`;
+        md += `- Working: ${working.length}\n`;
+        md += `- Success Rate: ${((working.length / tests.length) * 100).toFixed(1)}%\n\n`;
+
+        if (working.length > 0) {
+          md += `| Code | Product Count | Sample Product |\n`;
+          md += `|------|---------------|----------------|\n`;
+          working.forEach(t => {
+            const sample = t.products[0] || {};
+            md += `| ${t.code} | ${t.count} | ${sample.name || 'N/A'} |\n`;
+          });
+          md += `\n`;
+        } else {
+          md += `⚠️ No working codes found for this category.\n\n`;
+        }
+      }
+
+      md += `## Detailed Results\n\n`;
+      results.forEach(r => {
+        md += `### ${r.category} - ${r.code}\n`;
+        md += `- Status: ${r.success ? '✅ Success' : '❌ Failed'}\n`;
+        md += `- Products: ${r.count}\n`;
+        if (r.error) md += `- Error: ${r.error}\n`;
+        if (r.products && r.products.length > 0) {
+          md += `- Sample:\n`;
+          r.products.forEach(p => {
+            md += `  - ${p.code}: ${p.name}\n`;
+          });
+        }
+        md += `\n`;
+      });
+
+      return md;
+    }
+
+    // Auto-run basic check on load
+    window.addEventListener('load', () => {
+      log('GKV API Tester Ready', 'success');
+      log('Proxy endpoint: ' + API_BASE, 'info');
+      log('\nClick "Test All Categories" to begin systematic testing.', 'highlight');
+    });
+  </script>
+</body>
+</html>
+
