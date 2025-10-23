@@ -257,7 +257,8 @@ Results will be logged here and can be exported for documentation.
           products: realProducts.slice(0, 5).map(p => ({
             code: p.produktartNummer || p.code || 'NO_CODE',
             name: (p.bezeichnung || p.name || 'NO_NAME').substring(0, 80),
-            manufacturer: p.hersteller || p.herstellerName || 'NO_MFG'
+            manufacturer: p.hersteller || p.herstellerName || 'NO_MFG',
+            category: p.produktGruppeCode || p.kategorie || 'NO_CATEGORY'
           }))
         };
 
@@ -325,10 +326,13 @@ Results will be logged here and can be exported for documentation.
 
           if (result.success) {
             log(`  ✅ ${result.realCount} REAL products (${result.placeholderCount} placeholders filtered)`, 'success');
-            summary[categoryName].working.push({ code, count: result.realCount });
+            summary[categoryName].working.push({ code, count: result.realCount, products: result.products });
             
             if (result.products.length > 0) {
-              log(`  Sample: ${result.products[0].code} - ${result.products[0].name}`, 'info');
+              log(`  📦 Samples:`, 'info');
+              result.products.slice(0, 3).forEach(p => {
+                log(`     • [${p.category}] ${p.name}`, 'info');
+              });
             }
           } else {
             if (result.placeholderCount > 0) {
@@ -343,6 +347,28 @@ Results will be logged here and can be exported for documentation.
           await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
+
+      // Check for duplicate products across categories (API ignoring filters)
+      log('\n🔍 Analyzing API behavior...', 'warning');
+      const productsByCategory = {};
+      allResults.forEach(r => {
+        if (r.products && r.products.length > 0) {
+          const key = r.products.map(p => p.name).sort().join('|');
+          if (!productsByCategory[key]) {
+            productsByCategory[key] = [];
+          }
+          productsByCategory[key].push(`${r.category} (${r.code})`);
+        }
+      });
+
+      // Find if multiple categories return identical products
+      Object.entries(productsByCategory).forEach(([productSet, categories]) => {
+        if (categories.length > 3) {
+          log(`\n⚠️ CRITICAL: Same products returned for ${categories.length} different codes!`, 'error');
+          log(`   → This means the API is IGNORING the produktgruppennummer filter.`, 'error');
+          log(`   → Categories affected: ${categories.slice(0, 5).join(', ')}...`, 'error');
+        }
+      });
 
       hideProgress();
       displaySummary(summary);
