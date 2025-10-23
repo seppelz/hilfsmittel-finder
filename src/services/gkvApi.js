@@ -4,11 +4,13 @@ const isBrowser = typeof window !== 'undefined';
 const apiUrl = (path) => `${API_BASE}?path=${encodeURIComponent(`api/verzeichnis/${path}`)}`;
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/proxy';
-const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours for product list
 const API_VERSION_ENDPOINT = null;
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
-const CACHE_SCHEMA_VERSION = '2025-10-23-guid-products';
+const CACHE_SCHEMA_VERSION = '2025-10-23-all-products-v2'; // NEW: Fetch all products approach
+const ALL_PRODUCTS_KEY = 'gkv_all_products';
+const ALL_PRODUCTS_TIMESTAMP_KEY = 'gkv_all_products_timestamp';
 
 const PLACEHOLDER_NAMES = new Set(['nicht besetzt']);
 
@@ -31,6 +33,57 @@ function splitDisplayValue(value) {
     return { code: null, name: normalized };
   }
   return { code: normalizeString(code), name: normalizeString(rest.join(' - ')) };
+}
+
+// NEW: Fetch all products and cache them
+async function fetchAllProducts() {
+  if (!isBrowser) return [];
+  
+  // Check cache first
+  const cached = localStorage.getItem(ALL_PRODUCTS_KEY);
+  const timestamp = localStorage.getItem(ALL_PRODUCTS_TIMESTAMP_KEY);
+  
+  if (cached && timestamp) {
+    const age = Date.now() - parseInt(timestamp, 10);
+    if (age < CACHE_DURATION) {
+      console.log('[GKV] Using cached products (' + JSON.parse(cached).length + ' products, age: ' + Math.round(age / 1000 / 60) + 'min)');
+      return JSON.parse(cached);
+    }
+  }
+  
+  // Fetch from API
+  console.log('[GKV] Fetching all products from API...');
+  const startTime = Date.now();
+  
+  try {
+    const response = await fetch(apiUrl('Produkt'));
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const products = Array.isArray(data) ? data : (data.value || []);
+    
+    const endTime = Date.now();
+    console.log(`[GKV] Fetched ${products.length} products in ${endTime - startTime}ms`);
+    
+    // Cache the results
+    localStorage.setItem(ALL_PRODUCTS_KEY, JSON.stringify(products));
+    localStorage.setItem(ALL_PRODUCTS_TIMESTAMP_KEY, Date.now().toString());
+    
+    return products;
+  } catch (error) {
+    console.error('[GKV] Failed to fetch products:', error);
+    logError(error, 'fetchAllProducts');
+    
+    // Return cached data even if expired, better than nothing
+    if (cached) {
+      console.log('[GKV] Using expired cache as fallback');
+      return JSON.parse(cached);
+    }
+    
+    return [];
+  }
 }
 
 function normalizeProduct(product) {
@@ -344,35 +397,35 @@ class GKVApiService {
       return { products: [], total: 0, page, pageSize, totalPages: 1 };
     }
 
-    // Fixed: Fetch ALL products from all groups (up to 500 per group)
-    // Then paginate the combined results
-    const perGroupTake = Math.min(500, pageSize * 10); // Enough for multiple pages
-    const productMap = new Map();
-
-    for (const groupId of groups) {
-      const { items } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
-
-      items.forEach((product) => {
-        const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
-        if (!productId || productMap.has(productId)) return;
-        productMap.set(productId, { ...product, _groupId: groupId });
-      });
-    }
-
-    const allProducts = Array.from(productMap.values());
+    // NEW APPROACH: Fetch ALL products from API and filter client-side
+    console.log('[GKV] Searching with groups:', groups);
+    const allProducts = await fetchAllProducts();
+    console.log('[GKV] Total products available:', allProducts.length);
     
-    // Post-filter: Only show products from the queried categories
-    // This is a safety check in case API returns mixed results
+    // Determine which category prefixes to filter for
     const allowedCategories = this.extractAllowedCategories(groups);
+    console.log('[GKV] Allowed category prefixes:', allowedCategories);
+    
+    // Filter products by category
     const relevantProducts = allProducts.filter(product => {
-      const code = product.produktartNummer || product.code || '';
+      // Skip placeholders (already filtered in normalize, but double-check)
+      if (product.istHerausgenommen) return false;
+      
+      const code = product.zehnSteller || '';
       if (!code) return false;
       
       // Check if product category matches any queried category
       return allowedCategories.some(category => code.startsWith(category));
     });
+    
+    console.log('[GKV] Filtered to', relevantProducts.length, 'relevant products');
 
-    const sortedProducts = relevantProducts.sort((a, b) => {
+    // Normalize and sort products
+    const normalizedProducts = relevantProducts
+      .map(product => normalizeProduct(product))
+      .filter(Boolean);
+    
+    const sortedProducts = normalizedProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
       const bCode = b.produktartNummer || b.code || b.bezeichnung || '';
       return aCode.localeCompare(bCode, 'de');
@@ -403,6 +456,8 @@ class GKVApiService {
         });
       }
     });
+
+    console.log('[GKV] Returning', products.length, 'products for page', safePage);
 
     return {
       products,
