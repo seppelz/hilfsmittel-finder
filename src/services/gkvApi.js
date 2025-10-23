@@ -262,27 +262,37 @@ class GKVApiService {
       };
     }
 
-    try {
-      const endpoint = groupKey
-        ? `Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`
-        : `Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`;
-      const response = await this.fetchWithRetry(apiUrl(endpoint));
-      const items = Array.isArray(response) ? response : response.value ?? [];
-      const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
-      const total = Array.isArray(response)
-        ? normalizedItems.length
-        : response.Count ?? response.count ?? response.total ?? normalizedItems.length;
+    const endpointVariants = [];
+    if (groupKey) {
+      endpointVariants.push({
+        type: 'produktgruppe',
+        url: `Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`,
+      });
+    }
+    endpointVariants.push({
+      type: 'produktgruppennummer',
+      url: `Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`,
+    });
 
-      this.cache.productsByGroup[groupId] = {
-        items: normalizedItems,
-        total,
-        limit: safeLimit,
-        schemaVersion: CACHE_SCHEMA_VERSION,
-      };
-      this.saveToCache();
+    let response = null;
+    let lastError = null;
 
-      return { items: normalizedItems, total };
-    } catch (error) {
+    for (const variant of endpointVariants) {
+      try {
+        response = await this.fetchWithRetry(apiUrl(variant.url));
+        break;
+      } catch (error) {
+        lastError = error;
+        console.warn('[gkvApi] Produktabruf fehlgeschlagen, versuche Fallback', {
+          variant: variant.type,
+          groupId,
+          groupKey,
+          message: error?.message,
+        });
+      }
+    }
+
+    if (!response) {
       if (cached) {
         console.warn('Using cached products due to API error');
         return {
@@ -290,8 +300,24 @@ class GKVApiService {
           total: cached.total,
         };
       }
-      throw error;
+      throw lastError ?? new Error(ERROR_MESSAGES.api_down);
     }
+
+    const items = Array.isArray(response) ? response : response.value ?? [];
+    const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
+    const total = Array.isArray(response)
+      ? normalizedItems.length
+      : response.Count ?? response.count ?? response.total ?? normalizedItems.length;
+
+    this.cache.productsByGroup[groupId] = {
+      items: normalizedItems,
+      total,
+      limit: safeLimit,
+      schemaVersion: CACHE_SCHEMA_VERSION,
+    };
+    this.saveToCache();
+
+    return { items: normalizedItems, total };
   }
 
   async fetchProductsPaginated(groupId, page = 1, pageSize = 20) {
