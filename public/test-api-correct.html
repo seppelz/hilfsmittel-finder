@@ -280,9 +280,55 @@
         }
       }
 
+      // Strategy A: Test fetching ALL products and filtering
+      log('\n🔄 STRATEGY A: Fetch ALL products + client-side filter...', 'highlight');
+      log('   According to docs, /Produkt returns ~30MB of ALL products', 'info');
+      log('   Request: GET /Produkt?$skip=0&$take=100&$count=true', 'info');
+      
+      const allProductsResult = await apiRequest('api/verzeichnis/Produkt?$skip=0&$take=100&$count=true');
+      
+      if (allProductsResult.success) {
+        const allProds = Array.isArray(allProductsResult.data) ? allProductsResult.data : (allProductsResult.data.value || []);
+        const totalCount = allProductsResult.data['@odata.count'] || allProductsResult.data.count || '?';
+        
+        log(`   ✅ SUCCESS: Got ${allProds.length} products (total: ${totalCount})`, 'success');
+        
+        // Filter by zehn_steller prefix
+        const hearingAidsFiltered = allProds.filter(p => {
+          const code = p.zehn_steller || p.produktartNummer || '';
+          return code.startsWith('13.20') || code.startsWith('13.');
+        });
+        
+        log(`   🔍 Filtered for Hörgeräte (13.xx): ${hearingAidsFiltered.length} products`, hearingAidsFiltered.length > 0 ? 'success' : 'warning');
+        
+        if (hearingAidsFiltered.length > 0) {
+          log(`\n   📝 Sample filtered products:`, 'success');
+          hearingAidsFiltered.slice(0, 3).forEach(p => {
+            log(`      • ${p.zehn_steller || p.produktartNummer || 'NO_CODE'} - ${(p.name || p.bezeichnung || 'NO_NAME').substring(0, 60)}`, 'info');
+          });
+        }
+        
+        // Analyze product code distribution
+        const codeDistribution = {};
+        allProds.forEach(p => {
+          const code = p.zehn_steller || p.produktartNummer || 'NO_CODE';
+          if (code !== 'NO_CODE') {
+            const prefix = code.substring(0, 2);
+            codeDistribution[prefix] = (codeDistribution[prefix] || 0) + 1;
+          }
+        });
+        
+        log(`\n   📊 Product distribution by 2-digit prefix:`, 'info');
+        Object.entries(codeDistribution).sort((a, b) => b[1] - a[1]).slice(0, 10).forEach(([prefix, count]) => {
+          log(`      ${prefix}: ${count} products`, 'info');
+        });
+      } else {
+        log(`   ❌ FAILED: ${allProductsResult.error}`, 'error');
+      }
+
       // Summary
       log('\n════════════════════════════════════════════════════════════════════════════════', 'highlight');
-      log('📊 SUMMARY & NEXT STEPS', 'highlight');
+      log('📊 SUMMARY & RECOMMENDED SOLUTION', 'highlight');
       log('════════════════════════════════════════════════════════════════════════════════', 'highlight');
       log('\n✅ Tree navigation: WORKS', 'success');
       log('✅ Finding nodes by xSteller: WORKS', 'success');
@@ -293,16 +339,36 @@
         
         if (products.length > 0) {
           log('✅ Hierarchical endpoints return products: YES!', 'success');
-          log('\n🎉 SOLUTION FOUND!', 'success');
-          log('   Update app to use: /Produktgruppe/{guid} or /Untergruppe/{guid}', 'success');
-          log('   Instead of: /Produkt?produktgruppennummer=...', 'success');
+          log('\n🎉 SOLUTION: Use hierarchical endpoints!', 'success');
+          log('   Implementation: Tree → GUID → /Produktgruppe/{guid}', 'success');
         } else {
-          log('⚠️ Hierarchical endpoints return metadata, but no products array', 'warning');
+          log('⚠️ Hierarchical endpoints: Only metadata (no products array)', 'warning');
           log('   Response contains: ' + Object.keys(pg).join(', '), 'info');
-          log('\n🔍 NEXT: Check if we need to traverse deeper or use different approach', 'warning');
         }
       } else {
         log('❌ Hierarchical endpoints not accessible', 'error');
+      }
+      
+      if (allProductsResult.success) {
+        const allProds = Array.isArray(allProductsResult.data) ? allProductsResult.data : (allProductsResult.data.value || []);
+        const hearingFiltered = allProds.filter(p => {
+          const code = p.zehn_steller || p.produktartNummer || '';
+          return code.startsWith('13.');
+        });
+        
+        if (hearingFiltered.length > 0) {
+          log('\n✅ STRATEGY A (Fetch ALL + Filter): WORKS!', 'success');
+          log(`   Found ${hearingFiltered.length} Hörgeräte by filtering ALL products`, 'success');
+          log('\n🎯 RECOMMENDED SOLUTION:', 'highlight');
+          log('   1. Fetch /Produkt once (cache for 24h)', 'success');
+          log('   2. Filter client-side by zehn_steller prefix', 'success');
+          log('   3. Paginate filtered results', 'success');
+          log('\n   Why this works:', 'info');
+          log('   • Simple implementation', 'info');
+          log('   • No tree navigation needed', 'info');
+          log('   • Works for ALL categories', 'info');
+          log('   • 30MB is manageable with caching', 'info');
+        }
       }
     }
 
