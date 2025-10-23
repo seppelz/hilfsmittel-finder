@@ -263,15 +263,57 @@ export function ResultsDisplay({
       )}
 
       {/* Questionnaire Criteria Summary */}
-      {userAnswers && Object.keys(userAnswers).length > 1 && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            <span className="font-semibold text-gray-900">Ihre Angaben aus dem Fragebogen:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
+      {userAnswers && Object.keys(userAnswers).length > 1 && (() => {
+        // Debug: Log what's in userAnswers
+        console.log('[ResultsDisplay] userAnswers:', userAnswers);
+        
+        // Collect all displayed criteria
+        const displayedCriteria = [];
+        
+        // Hearing criteria
+        if (userAnswers.severity === 'moderate') displayedCriteria.push('Mittlerer Hörverlust');
+        if (userAnswers.severity === 'severe') displayedCriteria.push('Starker Hörverlust');
+        if (userAnswers.severity === 'profound') displayedCriteria.push('Sehr starker Hörverlust');
+        if (userAnswers.hearing_aid) displayedCriteria.push('Hörgerät benötigt');
+        if (userAnswers.device_type) displayedCriteria.push(`Bauform: ${userAnswers.device_type === 'ido' ? 'Im Ohr' : userAnswers.device_type === 'hdo' ? 'Hinter dem Ohr' : userAnswers.device_type}`);
+        if (userAnswers.rechargeable) displayedCriteria.push('Wiederaufladbar bevorzugt');
+        if (userAnswers.bluetooth) displayedCriteria.push('Bluetooth gewünscht');
+        if (userAnswers.noise_reduction) displayedCriteria.push('Geräuschunterdrückung wichtig');
+        if (userAnswers.phone_compatible) displayedCriteria.push('Telefonieren wichtig');
+        if (userAnswers.tv_compatible) displayedCriteria.push('Fernsehen wichtig');
+        
+        // Mobility criteria
+        if (userAnswers.walker_needed) displayedCriteria.push('Gehhilfe benötigt');
+        if (userAnswers.mobility_support_type === 'rollator') displayedCriteria.push('Rollator bevorzugt');
+        if (userAnswers.mobility_support_type === 'walker') displayedCriteria.push('Gehstock bevorzugt');
+        if (userAnswers.stairs) displayedCriteria.push('Treppen im Alltag');
+        if (userAnswers.indoor) displayedCriteria.push('Für drinnen');
+        if (userAnswers.outdoor) displayedCriteria.push('Für draußen');
+        
+        // Bathroom criteria
+        if (userAnswers.shower_chair) displayedCriteria.push('Duschhocker benötigt');
+        if (userAnswers.bath_lift) displayedCriteria.push('Badewannenlift benötigt');
+        if (userAnswers.toilet_seat) displayedCriteria.push('Toilettensitzerhöhung benötigt');
+        if (userAnswers.grab_bars) displayedCriteria.push('Haltegriffe benötigt');
+        
+        // Vision criteria
+        if (userAnswers.magnifier) displayedCriteria.push('Lupe benötigt');
+        if (userAnswers.lighting) displayedCriteria.push('Mit Beleuchtung');
+        
+        console.log('[ResultsDisplay] Displayed criteria:', displayedCriteria);
+        
+        // Only show section if we have criteria to display
+        if (displayedCriteria.length === 0) return null;
+        
+        return (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              <span className="font-semibold text-gray-900">Ihre Angaben aus dem Fragebogen:</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
             {/* Map questionnaire answers to readable criteria */}
             {userAnswers.severity === 'moderate' && (
               <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
@@ -386,12 +428,13 @@ export function ResultsDisplay({
                 ✓ Mit Beleuchtung
               </span>
             )}
+            </div>
+            <p className="mt-3 text-xs text-blue-700">
+              💡 Diese Kriterien wurden bereits bei der Suche berücksichtigt. Nutzen Sie die Filter unten für weitere Verfeinerung.
+            </p>
           </div>
-          <p className="mt-3 text-xs text-blue-700">
-            💡 Diese Kriterien wurden bereits bei der Suche berücksichtigt. Nutzen Sie die Filter unten für weitere Verfeinerung.
-          </p>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Feature Filter for Hearing Aids */}
       {(availableFeatures.power.length > 0 || availableFeatures.charging.length > 0 || 
