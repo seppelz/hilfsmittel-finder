@@ -363,7 +363,10 @@ class GKVApiService {
     const mappedGroups = this.mapCriteriaToGroups(criteria.filters ?? criteria);
     const groups = [...new Set([...(groupsSource ?? []), ...mappedGroups])];
 
+    console.log('🔍 [gkvApi.searchProducts] Searching for groups:', groups);
+
     if (groups.length === 0) {
+      console.warn('⚠️ [gkvApi.searchProducts] No groups to search!');
       return { products: [], total: 0, page, pageSize, totalPages: 1 };
     }
 
@@ -374,6 +377,7 @@ class GKVApiService {
 
     for (const groupId of groups) {
       const { items } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
+      console.log(`📦 [gkvApi] Fetched ${items.length} products from group ${groupId}`);
 
       items.forEach((product) => {
         const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
@@ -382,9 +386,13 @@ class GKVApiService {
       });
     }
 
+    console.log(`📦 [gkvApi] Total unique products fetched: ${productMap.size}`);
+
     // CRITICAL FIX: Filter products to only show categories that were asked about
     // This prevents infusion tubes (03.29) from appearing in hearing searches (13.20)
     const allowedCategories = this.extractAllowedCategories(groups);
+    console.log(`🔍 [gkvApi] Allowed categories for filtering:`, allowedCategories);
+    
     const allProducts = Array.from(productMap.values());
     const relevantProducts = allProducts.filter(product => {
       const code = product.produktartNummer || product.code || '';
@@ -393,6 +401,8 @@ class GKVApiService {
       // Check if product category matches any asked category
       return allowedCategories.some(category => code.startsWith(category));
     });
+    
+    console.log(`✅ [gkvApi] Products after category filter: ${relevantProducts.length} (from ${allProducts.length})`);
 
     const sortedProducts = relevantProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';

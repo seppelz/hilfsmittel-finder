@@ -116,17 +116,17 @@ export const questionFlow = {
         {
           text: 'Ich kann kleine Schrift nicht mehr lesen (Zeitung, Medikamente)',
           value: 'reading',
-          api_criteria: { productGroup: '25.50', magnifier: true },
+          api_criteria: { productGroup: '07', magnifier: true },
         },
         {
           text: 'Ich brauche mehr Licht zum Lesen',
           value: 'lighting',
-          api_criteria: { productGroup: '25.56', lighting: true },
+          api_criteria: { productGroup: '07.99', lighting: true },
         },
         {
           text: 'Ich sehe verschwommen',
           value: 'blurry',
-          api_criteria: { productGroup: '25', vision_aids: true },
+          api_criteria: { productGroup: '07', vision_aids: true },
         },
       ],
     },
