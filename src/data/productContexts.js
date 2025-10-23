@@ -205,6 +205,149 @@ export const PRODUCT_CATEGORIES = {
       'Pants oder Vorlagen: Pants sind wie Unterwäsche',
       'Hautfreundlich: Achten Sie auf atmungsaktive Materialien'
     ]
+  },
+  
+  '03.29': {
+    code: '03.29',
+    name: 'Applikationshilfen',
+    icon: '💊',
+    description: 'Hilfsmittel zur Medikamenteneinnahme',
+    explanation: 'Applikationshilfen helfen Ihnen, Medikamente einfacher und sicherer einzunehmen. Dazu gehören Tablettenteiler, Tropfhilfen und Dosiergeräte.',
+    selectionTips: [
+      'Für Tabletten: Teiler mit Fach für Aufbewahrung',
+      'Für Augentropfen: Applikationshilfen erleichtern das Treffen',
+      'Tablettendose: Mit Wocheneinteilung für bessere Übersicht'
+    ]
+  },
+  
+  '10.46': {
+    code: '10.46',
+    name: 'Einlagen',
+    icon: '👟',
+    description: 'Orthopädische Schuheinlagen',
+    explanation: 'Einlagen unterstützen Ihren Fuß und korrigieren Fehlstellungen. Sie werden individuell an Ihren Fuß angepasst und helfen bei Schmerzen beim Gehen.',
+    selectionTips: [
+      'Individuell anpassen lassen',
+      'Für verschiedene Schuhe: Mehrere Paare anfertigen',
+      'Regelmäßig erneuern (alle 6-12 Monate)'
+    ]
+  },
+  
+  '11.11': {
+    code: '11.11',
+    name: 'Kompressionsstrümpfe',
+    icon: '🧦',
+    description: 'Strümpfe zur Verbesserung der Durchblutung',
+    explanation: 'Kompressionsstrümpfe üben Druck auf die Beine aus und fördern so den Rückfluss des Blutes zum Herzen. Sie helfen bei Krampfadern, Venenschwäche und geschwollenen Beinen.',
+    selectionTips: [
+      'Morgens anziehen (vor dem Aufstehen)',
+      'Anziehhilfe nutzen für leichteres Anziehen',
+      'Kompressionsklasse nach ärztlicher Verordnung'
+    ]
+  },
+  
+  '17.06': {
+    code: '17.06',
+    name: 'Krankenfahrzeuge',
+    icon: '🦼',
+    description: 'Elektromobile und Krankenfahrstühle',
+    explanation: 'Krankenfahrzeuge sind motorisierte Hilfsmittel, die Ihnen Mobilität auch bei längeren Strecken ermöglichen. Ideal für Einkäufe oder Spaziergänge.',
+    selectionTips: [
+      'Für draußen: Wetterfestes Modell wählen',
+      'Reichweite: Mindestens 10 km für Einkäufe',
+      'Kofferraum: Zerlegbar für Auto-Transport'
+    ]
+  },
+  
+  '18.50': {
+    code: '18.50',
+    name: 'Pflegebetten',
+    icon: '🛏️',
+    description: 'Verstellbare Betten für die Pflege',
+    explanation: 'Pflegebetten lassen sich elektrisch in der Höhe und Position verstellen. Das erleichtert das Aufstehen und die Pflege erheblich.',
+    selectionTips: [
+      'Elektrisch verstellbar: Für Komfort und Pflege',
+      'Seitengitter: Für Sicherheit nachts',
+      'Pflegematratze: Gegen Wundliegen'
+    ]
+  },
+  
+  '19.40': {
+    code: '19.40',
+    name: 'Lagerungshilfen',
+    icon: '🛋️',
+    description: 'Kissen und Polster für richtige Lagerung',
+    explanation: 'Lagerungshilfen unterstützen eine gesunde Körperhaltung im Bett oder Sessel. Sie beugen Druckstellen und Schmerzen vor.',
+    selectionTips: [
+      'Für Rücken: Lagerungskissen in Keilform',
+      'Für Beine: Hochlagerungskissen',
+      'Material: Atmungsaktiv und waschbar'
+    ]
+  },
+  
+  '21.28': {
+    code: '21.28',
+    name: 'Blutdruckmessgeräte',
+    icon: '🩺',
+    description: 'Geräte zur Blutdruckkontrolle',
+    explanation: 'Blutdruckmessgeräte helfen Ihnen, Ihren Blutdruck regelmäßig zu Hause zu kontrollieren. Wichtig bei Bluthochdruck oder Herz-Kreislauf-Erkrankungen.',
+    selectionTips: [
+      'Oberarm-Gerät: Genauer als Handgelenk',
+      'Großes Display: Für bessere Lesbarkeit',
+      'Speicherfunktion: Um Werte zu verfolgen'
+    ]
+  },
+  
+  '23.04': {
+    code: '23.04',
+    name: 'Armschienen',
+    icon: '🦾',
+    description: 'Schienen zur Stabilisierung des Arms',
+    explanation: 'Armschienen stabilisieren und entlasten Ihren Arm nach Verletzungen oder bei Erkrankungen. Sie unterstützen die Heilung und lindern Schmerzen.',
+    selectionTips: [
+      'Individuell angepasst vom Sanitätshaus',
+      'Tag und Nacht tragen nach ärztlicher Anweisung',
+      'Hautpflege: Darunter regelmäßig eincremen'
+    ]
+  },
+  
+  '23.12': {
+    code: '23.12',
+    name: 'Beinschienen',
+    icon: '🦵',
+    description: 'Schienen zur Stabilisierung des Beins',
+    explanation: 'Beinschienen stützen Ihr Bein und korrigieren Fehlstellungen. Sie helfen beim Gehen und verhindern weitere Schäden.',
+    selectionTips: [
+      'Beim Orthopädietechniker anpassen lassen',
+      'Mit bequemen Schuhen kombinieren',
+      'Regelmäßig auf Druckstellen kontrollieren'
+    ]
+  },
+  
+  '29.26': {
+    code: '29.26',
+    name: 'Stomabeutel',
+    icon: '🎒',
+    description: 'Versorgungssysteme nach Stoma-Operation',
+    explanation: 'Stomabeutel sammeln Ausscheidungen bei künstlichem Darmausgang. Es gibt verschiedene Systeme - einteilig oder zweiteilig, mit oder ohne Filter.',
+    selectionTips: [
+      'Individuelle Beratung durch Stomatherapeuten',
+      'Hautfreundliche Klebefläche wählen',
+      'Filter: Verhindert unangenehme Gerüche'
+    ]
+  },
+  
+  '50.45': {
+    code: '50.45',
+    name: 'Dekubitus-Hilfsmittel',
+    icon: '🛡️',
+    description: 'Hilfsmittel gegen Wundliegen',
+    explanation: 'Dekubitus-Hilfsmittel wie Spezialmatratzen und Lagerungskissen verteilen den Druck gleichmäßig und beugen so Druckgeschwüren (Wundliegen) vor.',
+    selectionTips: [
+      'Wechseldruckmatratze: Für Hochrisiko-Patienten',
+      'Weichlagerung: Für leichte bis mittlere Gefährdung',
+      'Regelmäßig umlagern bleibt wichtig'
+    ]
   }
 };
 

@@ -38,10 +38,18 @@ export function ResultsDisplay({
     });
   }, [products, selectedCategory]);
   
-  // Get category context from first filtered product
-  const firstProduct = filteredProducts[0] || products[0];
-  const productCode = firstProduct?.produktartNummer || firstProduct?.code;
-  const categoryContext = productCode ? getCategoryContext(productCode) : null;
+  // Get category context based on selected filter or first product
+  const categoryContext = useMemo(() => {
+    if (selectedCategory) {
+      // If filter is active, get context for that specific category
+      return getCategoryContext(selectedCategory);
+    }
+    
+    // Otherwise, get context from first product
+    const firstProduct = filteredProducts[0] || products[0];
+    const productCode = firstProduct?.produktartNummer || firstProduct?.code;
+    return productCode ? getCategoryContext(productCode) : null;
+  }, [selectedCategory, filteredProducts, products]);
 
   useEffect(() => {
     setSelected(selectedProducts);

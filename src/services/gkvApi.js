@@ -425,17 +425,121 @@ class GKVApiService {
   }
 
   getCategoryName(code) {
+    // Comprehensive GKV Hilfsmittelverzeichnis category mapping
     const categoryMap = {
-      '13.20': 'Hörgeräte',
-      '09.12': 'Gehhilfen',
+      // 01 - Absauggeräte
+      '01': 'Absauggeräte',
+      
+      // 03 - Applikationshilfen
+      '03.29': 'Applikationshilfen',
+      
+      // 04 - Badehilfen
       '04.40': 'Badehilfen',
+      '04.41': 'Toilettenhilfen',
+      
+      // 05 - Bandagen
+      '05': 'Bandagen',
+      
+      // 07 - Blindenhilfsmittel & Sehhilfen
       '07.03': 'Sehhilfen',
-      '15.25': 'Inkontinenzhilfen',
-      '17.18': 'Kompressionstherapie',
-      '18.99': 'Pflegebetten',
-      '21.33': 'Messgeräte',
+      '07.99': 'Hörhilfen',
+      
+      // 09 - Gehhilfen & Mobilitätshilfen
+      '09.12': 'Gehhilfen',
+      '09.24': 'Rollstühle',
+      '09.40': 'Treppensteighilfen',
+      
+      // 10 - Einlagen
+      '10.46': 'Einlagen',
+      
+      // 11 - Hilfsmittel zur Kompressionstherapie
+      '11.11': 'Kompressionsstrümpfe',
+      '11.31': 'Kompressionsbinden',
+      
+      // 12 - Hilfsmittel bei Tracheostoma
+      '12.24': 'Tracheostoma-Hilfsmittel',
+      
+      // 13 - Hörhilfen
+      '13.20': 'Hörgeräte',
+      
+      // 14 - Inhalations- und Atemtherapiegeräte
+      '14': 'Inhalationsgeräte',
+      
+      // 15 - Inkontinenzhilfen
+      '15.25': 'Inkontinenzartikel',
+      
+      // 16 - Kommunikationshilfen
+      '16': 'Kommunikationshilfen',
+      
+      // 17 - Kranken-/Behindertenfahrzeuge
+      '17.06': 'Krankenfahrzeuge',
+      '17.18': 'Elektromobile',
+      
+      // 18 - Krankenpflegeartikel
+      '18.50': 'Pflegebetten',
+      '18.99': 'Krankenpflegeartikel',
+      
+      // 19 - Lagerungshilfen
+      '19.40': 'Lagerungshilfen',
+      '19.99': 'Lagerungskissen',
+      
+      // 20 - Messgeräte für Körperzustände/-funktionen
+      '20': 'Körpermessgeräte',
+      
+      // 21 - Messgeräte
+      '21.28': 'Blutdruckmessgeräte',
+      '21.33': 'Blutzuckermessgeräte',
+      
+      // 22 - Mobilitätshilfen
+      '22': 'Mobilitätshilfen',
+      
+      // 23 - Orthesen/Schienen
+      '23.04': 'Armschienen',
+      '23.12': 'Beinschienen',
+      '23.14': 'Handschienen',
+      
+      // 24 - Prothesen
+      '24.71': 'Beinprothesen',
+      
+      // 25 - Sehhilfen
+      '25.50': 'Lesehilfen',
+      '25.56': 'Lupen',
+      
+      // 26 - Sitzhilfen
+      '26': 'Sitzhilfen',
+      
+      // 29 - Stomaartikel
+      '29.26': 'Stomabeutel',
+      
+      // 31 - Therapeutische Bewegungsgeräte
+      '31.03': 'Bewegungsgeräte',
+      
+      // 32 - Pflegeartikel
+      '32.99': 'Pflegehilfsmittel',
+      
+      // 33 - Urinale
+      '33.40': 'Urinflaschen',
+      
+      // 50 - Hilfsmittel gegen Dekubitus
+      '50.45': 'Dekubitus-Hilfsmittel',
+      
+      // 51 - Inkontinenz
+      '51.40': 'Inkontinenzvorlagen',
     };
-    return categoryMap[code] || `Kategorie ${code}`;
+    
+    // Try exact match first
+    if (categoryMap[code]) {
+      return categoryMap[code];
+    }
+    
+    // Try two-digit prefix (e.g., "13" from "13.20")
+    const prefix = code.split('.')[0];
+    if (categoryMap[prefix]) {
+      return categoryMap[prefix];
+    }
+    
+    // Fallback to technical name
+    return `Kategorie ${code}`;
   }
 
   mapCriteriaToGroups(criteria = {}) {
