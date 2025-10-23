@@ -105,17 +105,34 @@
         
         log('<p class="success">✅ Got tree with ' + nodes.length + ' nodes</p>');
         
-        // Find a hearing aid node (13.xx)
+        // Find a 10-DIGIT product node (actual product, not category!)
         let targetNode = null;
+        
+        // Look for a 10-digit code (e.g., "13.20.12.1234")
         for (const node of nodes) {
-          if (node.xSteller && node.xSteller.startsWith('13.20.12.')) {
+          const code = node.xSteller || '';
+          // 10-digit format: XX.XX.XX.XXXX
+          const parts = code.split('.');
+          if (parts.length === 4 && parts[3].length === 4) {
             targetNode = node;
+            log('<p class="success">🎯 Found 10-digit PRODUCT node: ' + code + '</p>');
             break;
           }
         }
         
+        if (!targetNode) {
+          log('<p class="warning">⚠️ No 10-digit product found, trying 7-digit...</p>');
+          // Fallback: 7-digit (Produktart)
+          for (const node of nodes) {
+            if (node.xSteller && node.xSteller.startsWith('13.20.12.')) {
+              targetNode = node;
+              break;
+            }
+          }
+        }
+        
         if (!targetNode && nodes.length > 0) {
-          // Just use first node with dots in code
+          // Last resort
           targetNode = nodes.find(n => n.xSteller && n.xSteller.includes('.'));
         }
         
@@ -136,15 +153,22 @@
           return;
         }
         
-        // Determine node type by xSteller length
+        // Determine node type by xSteller format
         const code = targetNode.xSteller || '';
+        const parts = code.split('.');
         let endpoint = '';
         
-        if (code.length <= 2) endpoint = 'Produktgruppe';
-        else if (code.length <= 5) endpoint = 'Produktgruppe'; // 4-digit
-        else if (code.length <= 8) endpoint = 'Untergruppe'; // 6-digit
-        else if (code.length <= 10) endpoint = 'Produktart'; // 7-digit
-        else endpoint = 'Produkt'; // 10-digit (actual product)
+        if (parts.length === 4 && parts[3].length === 4) {
+          endpoint = 'Produkt'; // 10-digit: XX.XX.XX.XXXX (ACTUAL PRODUCT!)
+        } else if (parts.length === 4 && parts[3].length === 1) {
+          endpoint = 'Produktart'; // 7-digit: XX.XX.XX.X
+        } else if (parts.length === 3) {
+          endpoint = 'Untergruppe'; // 6-digit: XX.XX.XX
+        } else if (parts.length === 2) {
+          endpoint = 'Produktgruppe'; // 4-digit: XX.XX
+        } else {
+          endpoint = 'Produktgruppe'; // 2-digit: XX
+        }
         
         log('<p class="info">Step 2: Querying /' + endpoint + '/' + guid + '</p>');
         
