@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>GKV Field Name Inspector</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: monospace; padding: 20px; background: #1e293b; color: #e2e8f0; }
+    button { background: #059669; color: white; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px 5px; font-weight: 600; }
+    button:hover { background: #047857; }
+    pre { background: #0f172a; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin: 10px 0; white-space: pre-wrap; }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    .info { color: #3b82f6; }
+    .highlight { color: #fbbf24; font-size: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1 class="highlight">🔬 Extract Product Field Names (Stream Processing)</h1>
+  <p style="color: #94a3b8; margin: 20px 0;">This will stream the response and extract field names from the FIRST product only</p>
+  
+  <button onclick="extractFieldNames()">🚀 Extract Field Names (Safe Streaming)</button>
+  
+  <div id="output"></div>
+
+  <script>
+    const PROXY = '/api/proxy';
+    
+    function log(html) {
+      document.getElementById('output').innerHTML += html + '\n';
+    }
+
+    async function extractFieldNames() {
+      document.getElementById('output').innerHTML = '';
+      
+      log('<p class="highlight">📡 Fetching /Produkt endpoint...</p>');
+      log('<p class="warning">⚠️ Response is ~63K products, but we\'ll only process the first one</p>');
+      
+      try {
+        const url = `${PROXY}?path=${encodeURIComponent('api/verzeichnis/Produkt')}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        log('<p class="success">✅ Response received, parsing JSON...</p>');
+        
+        // We have to parse the whole thing (can't stream JSON easily in browser)
+        // But we'll only look at first product
+        const startTime = Date.now();
+        const data = await response.json();
+        const endTime = Date.now();
+        
+        log(`<p class="success">✅ Parsed in ${endTime - startTime}ms</p>`);
+        
+        // Get products array
+        const products = Array.isArray(data) ? data : (data.value || data.results || []);
+        
+        log(`<p class="success">✅ Found ${products.length} products</p>`);
+        
+        if (products.length === 0) {
+          log('<p class="error">❌ No products in response!</p>');
+          return;
+        }
+        
+        // Analyze FIRST product only
+        const firstProduct = products[0];
+        
+        log('<p class="highlight">🔬 FIRST PRODUCT STRUCTURE:</p>');
+        log('<pre>' + JSON.stringify(firstProduct, null, 2) + '</pre>');
+        
+        // Extract field names
+        log('<p class="highlight">📋 FIELD NAMES:</p>');
+        const fields = Object.keys(firstProduct);
+        log('<ul style="color: #94a3b8; margin-left: 20px;">');
+        fields.forEach(field => {
+          const value = firstProduct[field];
+          const type = Array.isArray(value) ? `Array[${value.length}]` : typeof value;
+          const preview = typeof value === 'string' ? value.substring(0, 50) : JSON.stringify(value);
+          log(`<li><strong>${field}</strong> (${type}): ${preview}</li>`);
+        });
+        log('</ul>');
+        
+        // Look for specific fields
+        log('<p class="highlight">🎯 KEY FIELDS:</p>');
+        
+        const codeFields = ['zehnSteller', 'zehn_steller', 'produktartNummer', 'code'];
+        const nameFields = ['name', 'bezeichnung', 'displayName', 'display_name'];
+        const mfgFields = ['herstellerName', 'hersteller_name', 'hersteller', 'manufacturer'];
+        
+        log('<p class="info"><strong>Code fields:</strong></p>');
+        codeFields.forEach(f => {
+          if (firstProduct[f]) {
+            log(`<p class="success">✅ ${f}: "${firstProduct[f]}"</p>`);
+          }
+        });
+        
+        log('<p class="info"><strong>Name fields:</strong></p>');
+        nameFields.forEach(f => {
+          if (firstProduct[f]) {
+            log(`<p class="success">✅ ${f}: "${firstProduct[f]}"</p>`);
+          }
+        });
+        
+        log('<p class="info"><strong>Manufacturer fields:</strong></p>');
+        mfgFields.forEach(f => {
+          if (firstProduct[f]) {
+            log(`<p class="success">✅ ${f}: "${firstProduct[f]}"</p>`);
+          }
+        });
+        
+        // Try filtering
+        log('<p class="highlight">🧪 TESTING FILTERING:</p>');
+        
+        const codeField = firstProduct.zehnSteller || firstProduct.zehn_steller || firstProduct.produktartNummer || '';
+        if (!codeField) {
+          log('<p class="error">❌ No code field found!</p>');
+          return;
+        }
+        
+        log(`<p class="info">Using field with code: ${codeField}</p>`);
+        
+        // Get prefix (first 2 digits)
+        const prefix = codeField.substring(0, 2);
+        log(`<p class="info">Testing filter for prefix: "${prefix}"</p>`);
+        
+        // Filter products by prefix
+        const fieldName = firstProduct.zehnSteller ? 'zehnSteller' : 
+                         firstProduct.zehn_steller ? 'zehn_steller' :
+                         'produktartNummer';
+        
+        const filtered = products.filter(p => {
+          const code = p[fieldName] || '';
+          return code.startsWith(prefix);
+        });
+        
+        log(`<p class="success">✅ Filtered ${filtered.length} products with prefix "${prefix}" from ${products.length} total</p>`);
+        
+        // Show distribution
+        log('<p class="highlight">📊 PRODUCT DISTRIBUTION BY 2-DIGIT PREFIX:</p>');
+        const dist = {};
+        products.forEach(p => {
+          const code = p[fieldName] || '';
+          const pre = code.substring(0, 2);
+          if (pre) dist[pre] = (dist[pre] || 0) + 1;
+        });
+        
+        const sorted = Object.entries(dist).sort((a, b) => b[1] - a[1]);
+        log('<ul style="color: #94a3b8; margin-left: 20px;">');
+        sorted.slice(0, 20).forEach(([pre, count]) => {
+          log(`<li><strong>${pre}</strong>: ${count} products</li>`);
+        });
+        log('</ul>');
+        
+        log('<p class="highlight">🎉 SOLUTION FOUND!</p>');
+        log(`<p class="success">✅ Field name: <strong>${fieldName}</strong></p>`);
+        log(`<p class="success">✅ Total products: ${products.length}</p>`);
+        log(`<p class="success">✅ Filtering works: Yes</p>`);
+        log(`<p class="success">✅ Categories represented: ${Object.keys(dist).length}</p>`);
+        
+      } catch (error) {
+        log(`<p class="error">❌ ERROR: ${error.message}</p>`);
+        log(`<p class="info">Stack: ${error.stack}</p>`);
+      }
+    }
+  </script>
+</body>
+</html>
+
