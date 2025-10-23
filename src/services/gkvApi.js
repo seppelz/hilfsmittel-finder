@@ -236,98 +236,108 @@ function normalizeProduct(product) {
  * @returns {Array} Filtered and scored products (top 200)
  */
 function filterByFeatures(products, criteria) {
-  // If no specific criteria, return all products
-  if (!criteria || Object.keys(criteria).length === 0) {
-    return products;
-  }
+  try {
+    // If no specific criteria, return all products
+    if (!criteria || Object.keys(criteria).length === 0) {
+      return products;
+    }
 
-  // Score each product based on criteria match
-  const scoredProducts = products.map(product => {
-    let score = 0;
-    const decoded = decodeProduct(product);
-    const productName = (product.bezeichnung || product.name || '').toLowerCase();
-    const productDesc = (product.beschreibung || '').toLowerCase();
-    const searchText = `${productName} ${productDesc}`;
+    // Score each product based on criteria match
+    const scoredProducts = products.map(product => {
+      try {
+        let score = 0;
+        const decoded = decodeProduct(product);
+        const productName = (product.bezeichnung || product.name || '').toLowerCase();
+        const productDesc = (product.beschreibung || '').toLowerCase();
+        const searchText = `${productName} ${productDesc}`;
 
-    // Device type matching (high priority: +20 points)
-    if (criteria.device_type) {
-      const targetType = criteria.device_type.toLowerCase();
-      if (decoded.deviceType && decoded.deviceType.toLowerCase().includes(targetType)) {
-        score += 20;
+        // Device type matching (high priority: +20 points)
+        if (criteria.device_type) {
+          const targetType = criteria.device_type.toLowerCase();
+          if (decoded.deviceType && decoded.deviceType.toLowerCase().includes(targetType)) {
+            score += 20;
+          }
+          // Also check product name directly
+          if (targetType === 'hdo' && searchText.includes('hinter dem ohr')) score += 15;
+          if (targetType === 'ido' && (searchText.includes('im ohr') || searchText.includes('ido'))) score += 15;
+        }
+
+        // Feature matching (medium priority: +10 points each)
+        if (criteria.rechargeable) {
+          const hasFeature = (decoded.features && decoded.features.some(f => f.name === 'Wiederaufladbar')) ||
+                            searchText.includes('wiederaufladbar') ||
+                            searchText.includes('akku') ||
+                            searchText.includes('lithium');
+          if (hasFeature) score += 10;
+        }
+
+        if (criteria.bluetooth) {
+          const hasFeature = (decoded.features && decoded.features.some(f => f.name === 'Bluetooth')) ||
+                            searchText.includes('bluetooth') ||
+                            searchText.includes('wireless') ||
+                            searchText.includes('connect');
+          if (hasFeature) score += 10;
+        }
+
+        if (criteria.automatic) {
+          const hasFeature = searchText.includes('automatisch') ||
+                            searchText.includes('auto') ||
+                            searchText.includes('selbstanpassend');
+          if (hasFeature) score += 10;
+        }
+
+        // Situation-based features (medium priority: +10 points each)
+        if (criteria.noise_reduction) {
+          const hasFeature = searchText.includes('geräusch') ||
+                            searchText.includes('störschall') ||
+                            searchText.includes('noise') ||
+                            searchText.includes('richtwirkung');
+          if (hasFeature) score += 10;
+        }
+
+        if (criteria.phone_compatible) {
+          const hasFeature = searchText.includes('telefon') ||
+                            searchText.includes('phone') ||
+                            searchText.includes('telecoil');
+          if (hasFeature) score += 10;
+        }
+
+        if (criteria.tv_compatible) {
+          const hasFeature = searchText.includes('fernseh') ||
+                            searchText.includes('tv') ||
+                            searchText.includes('streaming');
+          if (hasFeature) score += 10;
+        }
+
+        // Severity-based scoring (low priority: +5 points for appropriate devices)
+        if (criteria.severity) {
+          if (criteria.severity === 'severe' && searchText.includes('power')) score += 5;
+          if (criteria.severity === 'mild' && (searchText.includes('basic') || searchText.includes('standard'))) score += 5;
+        }
+
+        // Bonus for products with more features overall
+        if (decoded.features && decoded.features.length >= 3) score += 5;
+
+        return { product, score };
+      } catch (error) {
+        console.error('[GKV] Error scoring product:', product?.bezeichnung || 'unknown', error);
+        return { product, score: 0 };
       }
-      // Also check product name directly
-      if (targetType === 'hdo' && searchText.includes('hinter dem ohr')) score += 15;
-      if (targetType === 'ido' && (searchText.includes('im ohr') || searchText.includes('ido'))) score += 15;
-    }
+    });
 
-    // Feature matching (medium priority: +10 points each)
-    if (criteria.rechargeable) {
-      const hasFeature = decoded.features.some(f => f.name === 'Wiederaufladbar') ||
-                        searchText.includes('wiederaufladbar') ||
-                        searchText.includes('akku') ||
-                        searchText.includes('lithium');
-      if (hasFeature) score += 10;
-    }
+    // Sort by score (highest first) and return top 200
+    const topProducts = scoredProducts
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 200)
+      .map(item => item.product);
 
-    if (criteria.bluetooth) {
-      const hasFeature = decoded.features.some(f => f.name === 'Bluetooth') ||
-                        searchText.includes('bluetooth') ||
-                        searchText.includes('wireless') ||
-                        searchText.includes('connect');
-      if (hasFeature) score += 10;
-    }
-
-    if (criteria.automatic) {
-      const hasFeature = searchText.includes('automatisch') ||
-                        searchText.includes('auto') ||
-                        searchText.includes('selbstanpassend');
-      if (hasFeature) score += 10;
-    }
-
-    // Situation-based features (medium priority: +10 points each)
-    if (criteria.noise_reduction) {
-      const hasFeature = searchText.includes('geräusch') ||
-                        searchText.includes('störschall') ||
-                        searchText.includes('noise') ||
-                        searchText.includes('richtwirkung');
-      if (hasFeature) score += 10;
-    }
-
-    if (criteria.phone_compatible) {
-      const hasFeature = searchText.includes('telefon') ||
-                        searchText.includes('phone') ||
-                        searchText.includes('telecoil');
-      if (hasFeature) score += 10;
-    }
-
-    if (criteria.tv_compatible) {
-      const hasFeature = searchText.includes('fernseh') ||
-                        searchText.includes('tv') ||
-                        searchText.includes('streaming');
-      if (hasFeature) score += 10;
-    }
-
-    // Severity-based scoring (low priority: +5 points for appropriate devices)
-    if (criteria.severity) {
-      if (criteria.severity === 'severe' && searchText.includes('power')) score += 5;
-      if (criteria.severity === 'mild' && (searchText.includes('basic') || searchText.includes('standard'))) score += 5;
-    }
-
-    // Bonus for products with more features overall
-    if (decoded.features.length >= 3) score += 5;
-
-    return { product, score };
-  });
-
-  // Sort by score (highest first) and return top 200
-  const topProducts = scoredProducts
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 200)
-    .map(item => item.product);
-
-  console.log('[GKV] Smart filtering: Reduced', products.length, 'products to top', topProducts.length, 'matches');
-  
-  return topProducts;
+    console.log('[GKV] Smart filtering: Reduced', products.length, 'products to top', topProducts.length, 'matches');
+    
+    return topProducts;
+  } catch (error) {
+    console.error('[GKV] Smart filtering failed, returning all products:', error);
+    return products.slice(0, 200); // Return first 200 as fallback
+  }
 }
 
 function safeParse(json) {
@@ -554,7 +564,7 @@ class GKVApiService {
     };
   }
 
-  async searchProducts(criteria, options = {}) {
+  async searchProducts(criteria, options = {}, selectedCategoryFilter = null) {
     await this.ensureLatestVersion();
     if (!criteria) return { products: [], total: 0, page: 1, pageSize: 20, totalPages: 1 };
 
@@ -570,6 +580,9 @@ class GKVApiService {
 
     // NEW APPROACH: Fetch ALL products from API and filter client-side
     console.log('[GKV] Searching with groups:', groups);
+    if (selectedCategoryFilter) {
+      console.log('[GKV] Category filter requested:', selectedCategoryFilter);
+    }
     const allProducts = await fetchAllProducts();
     console.log('[GKV] Total products available:', allProducts.length);
     
@@ -628,6 +641,16 @@ class GKVApiService {
     if (normalizedProducts.length > 1000 && filters) {
       console.log('[GKV] Applying smart filtering for', normalizedProducts.length, 'products');
       filteredProducts = filterByFeatures(normalizedProducts, filters);
+    }
+    
+    // Apply selected category filter BEFORE pagination
+    if (selectedCategoryFilter) {
+      const beforeFilterCount = filteredProducts.length;
+      filteredProducts = filteredProducts.filter(product => {
+        const code = product.zehnSteller || product.produktartNummer || product.code || '';
+        return code.startsWith(selectedCategoryFilter);
+      });
+      console.log('[GKV] Category filter applied:', selectedCategoryFilter, '→', filteredProducts.length, 'products (from', beforeFilterCount, ')');
     }
     
     const sortedProducts = filteredProducts.sort((a, b) => {
@@ -699,6 +722,10 @@ class GKVApiService {
       '04.02': 'Duschhocker',
       '04.03': 'Haltegriffe',
       '04.40': 'Badehilfen',
+      '04.40.01': 'Einstiegshilfen',
+      '04.40.02': 'Badewannensitze',
+      '04.40.03': 'Badewannenlifter',
+      '04.40.04': 'Duschsitze',
       '04.41': 'Toilettenhilfen',
       
       // 05 - Bandagen
@@ -785,6 +812,9 @@ class GKVApiService {
       '25.02': 'Kontaktlinsen',
       '25.03': 'Vergrößernde Sehhilfen',
       '25.21': 'Lupen',
+      '25.22': 'Handlupen',
+      '25.23': 'Standlupen',
+      '25.24': 'Lupenleuchten',
       '25.50': 'Lesehilfen',
       '25.56': 'Lupen - Verschiedene',
       '25.99': 'Sehhilfen - Sonstige',

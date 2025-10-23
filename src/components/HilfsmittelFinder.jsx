@@ -9,6 +9,7 @@ import { trackEvent, logError } from '../utils/analytics';
 
 const PAGE_SIZE = 12;
 const ANSWERS_STORAGE_KEY = 'aboelo_questionnaire_answers';
+const QUESTIONNAIRE_VERSION = '2025-10-23-v2';
 
 export function HilfsmittelFinder() {
   const [stage, setStage] = useState('welcome');
@@ -24,6 +25,19 @@ export function HilfsmittelFinder() {
     totalPages: 1,
   });
   const [page, setPage] = useState(1);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
+
+  // Clear old cached answers if questionnaire version changed
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const cachedVersion = localStorage.getItem('questionnaire_version');
+    if (cachedVersion !== QUESTIONNAIRE_VERSION) {
+      console.log('[App] Clearing old questionnaire cache (version changed)');
+      localStorage.removeItem(ANSWERS_STORAGE_KEY);
+      localStorage.setItem('questionnaire_version', QUESTIONNAIRE_VERSION);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -116,6 +130,13 @@ export function HilfsmittelFinder() {
     trackEvent('pagination_change', { page: nextPage });
   };
 
+  const handleCategoryFilterChange = (categoryCode) => {
+    setSelectedCategoryFilter(categoryCode);
+    setPage(1); // Reset to page 1
+    setStage('search'); // Trigger new search
+    trackEvent('category_filter_applied', { category: categoryCode });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {stage === 'welcome' && (
@@ -147,6 +168,7 @@ export function HilfsmittelFinder() {
               onResultsFound={handleSearchComplete}
               page={page}
               pageSize={PAGE_SIZE}
+              selectedCategoryFilter={selectedCategoryFilter}
             />
           ) : (
             <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
@@ -185,6 +207,8 @@ export function HilfsmittelFinder() {
           }}
           userAnswers={answers}
           categories={searchResults.categories || []}
+          onCategoryFilterChange={handleCategoryFilterChange}
+          selectedCategoryFilter={selectedCategoryFilter}
         />
       )}
 

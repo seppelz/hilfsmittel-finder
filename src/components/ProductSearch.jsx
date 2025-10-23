@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { gkvApi } from '../services/gkvApi';
 import { trackEvent, logError } from '../utils/analytics';
 
-export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 20 }) {
+export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 20, selectedCategoryFilter = null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -16,7 +16,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
       setError(null);
 
       try {
-        const results = await gkvApi.searchProducts(criteria, { page, pageSize });
+        const results = await gkvApi.searchProducts(criteria, { page, pageSize }, selectedCategoryFilter);
         if (!isMounted) return;
 
         onResultsFound?.(results);
@@ -24,6 +24,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
           total: results.total,
           page: results.page,
           pageSize,
+          categoryFilter: selectedCategoryFilter,
         });
       } catch (err) {
         logError('product_search_failed', err, { criteria });
@@ -42,7 +43,7 @@ export function ProductSearch({ criteria, onResultsFound, page = 1, pageSize = 2
     return () => {
       isMounted = false;
     };
-  }, [criteria, page, pageSize, onResultsFound]);
+  }, [criteria, page, pageSize, onResultsFound, selectedCategoryFilter]);
 
   if (loading) {
     return (

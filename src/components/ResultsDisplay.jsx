@@ -24,35 +24,30 @@ export function ResultsDisplay({
   pagination,
   userAnswers = null,
   categories = [],
+  onCategoryFilterChange,
+  selectedCategoryFilter = null,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  
-  // Filter products by selected category
-  // NOTE: Currently disabled - needs server-side implementation
-  const filteredProducts = useMemo(() => {
-    return products; // Always show all products for now
-  }, [products]);
   
   // Get category context based on selected filter or first product
   const categoryContext = useMemo(() => {
-    if (selectedCategory) {
+    if (selectedCategoryFilter) {
       // If filter is active, get context for that specific category
-      return getCategoryContext(selectedCategory);
+      return getCategoryContext(selectedCategoryFilter);
     }
     
     // Otherwise, get context from first product
-    const firstProduct = filteredProducts[0] || products[0];
+    const firstProduct = products[0];
     const productCode = firstProduct?.produktartNummer || firstProduct?.code;
     return productCode ? getCategoryContext(productCode) : null;
-  }, [selectedCategory, filteredProducts, products]);
+  }, [selectedCategoryFilter, products]);
 
   useEffect(() => {
     setSelected(selectedProducts);
   }, [selectedProducts]);
   
   const handleCategoryFilter = (categoryCode) => {
-    setSelectedCategory(selectedCategory === categoryCode ? null : categoryCode);
+    onCategoryFilterChange?.(categoryCode);
     trackEvent('category_filter_applied', { category: categoryCode });
   };
 
@@ -109,8 +104,8 @@ export function ResultsDisplay({
         </div>
       </header>
       
-      {/* Category Filter - TEMPORARILY DISABLED until server-side implementation */}
-      {false && categories && categories.length > 1 && (
+      {/* Category Filter */}
+      {categories && categories.length > 1 && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Filter className="h-5 w-5 text-gray-600" />
@@ -120,7 +115,7 @@ export function ResultsDisplay({
             <button
               onClick={() => handleCategoryFilter(null)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                !selectedCategory
+                !selectedCategoryFilter
                   ? 'bg-primary text-white shadow'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
@@ -132,7 +127,7 @@ export function ResultsDisplay({
                 key={category.code}
                 onClick={() => handleCategoryFilter(category.code)}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                  selectedCategory === category.code
+                  selectedCategoryFilter === category.code
                     ? 'bg-primary text-white shadow'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -141,9 +136,9 @@ export function ResultsDisplay({
               </button>
             ))}
           </div>
-          {selectedCategory && (
+          {selectedCategoryFilter && (
             <div className="mt-3 text-sm text-gray-600">
-              <span className="font-medium">{filteredProducts.length}</span> von <span className="font-medium">{totalResults || products.length}</span> Produkten angezeigt
+              <span className="font-medium">{products.length}</span> von <span className="font-medium">{totalResults}</span> Produkten in dieser Kategorie
             </div>
           )}
         </div>

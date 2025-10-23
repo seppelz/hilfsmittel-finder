@@ -6,25 +6,25 @@ export function Impressum() {
       <section className="space-y-2 text-lg text-gray-700">
         <h2 className="text-2xl font-semibold text-text">Angaben gemäß § 5 TMG</h2>
         <p>
-          [Ihr Firmenname]
+          Müller & Söcker GbR
           <br />
-          [Straße Hausnummer]
+          c/o VELT STUDIO GmbH
           <br />
-          [PLZ Ort]
+          Urbanstraße 71
+          <br />
+          10967 Berlin
         </p>
       </section>
 
       <section className="space-y-2 text-lg text-gray-700">
         <h2 className="text-2xl font-semibold text-text">Vertreten durch</h2>
-        <p>[Name der vertretungsberechtigten Person]</p>
+        <p>Thomas Müller, M.A. und Sebastian Söcker, M.A.</p>
       </section>
 
       <section className="space-y-2 text-lg text-gray-700">
         <h2 className="text-2xl font-semibold text-text">Kontakt</h2>
         <p>
-          Telefon: [Telefonnummer]
-          <br />
-          E-Mail: [E-Mail-Adresse]
+          E-Mail: info@aboelo.de
         </p>
       </section>
 
