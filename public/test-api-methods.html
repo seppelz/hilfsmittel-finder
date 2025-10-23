@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKV API - Method Testing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      padding: 20px; 
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #2563eb; margin-bottom: 20px; }
+    .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .method { margin-bottom: 30px; border-left: 4px solid #2563eb; padding-left: 15px; }
+    .method h3 { color: #1e40af; margin-bottom: 10px; }
+    .method pre { background: #f1f5f9; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    button { 
+      background: #2563eb; 
+      color: white; 
+      border: none; 
+      padding: 10px 20px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 14px;
+      margin: 5px 5px 5px 0;
+    }
+    button:hover { background: #1e40af; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    #log { 
+      background: #1e293b; 
+      color: #e2e8f0; 
+      padding: 15px; 
+      border-radius: 6px; 
+      font-family: 'Courier New', monospace; 
+      font-size: 12px; 
+      max-height: 600px; 
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    .info { color: #3b82f6; }
+    .highlight { color: #a78bfa; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 GKV API Method Testing</h1>
+    
+    <div class="section">
+      <h2>Testing Different API Access Methods</h2>
+      <p>Based on bundesAPI documentation, let's try different ways to access the API:</p>
+      
+      <div class="method">
+        <h3>Method 1: Fetch ALL Products (No Filter)</h3>
+        <pre>GET /api/verzeichnis/Produkt?$skip=0&$take=100</pre>
+        <p>Test if we can get the complete product list and filter client-side.</p>
+        <button onclick="testMethod1()">Test Method 1</button>
+      </div>
+
+      <div class="method">
+        <h3>Method 2: Use VerzeichnisTree First</h3>
+        <pre>GET /api/verzeichnis/VerzeichnisTree/4
+Then find category GUIDs and try:
+GET /api/verzeichnis/Produkt?produktgruppe={GUID}</pre>
+        <p>Fetch the tree structure, find correct GUIDs, then query products.</p>
+        <button onclick="testMethod2()">Test Method 2</button>
+      </div>
+
+      <div class="method">
+        <h3>Method 3: Try OData $filter Syntax</h3>
+        <pre>GET /api/verzeichnis/Produkt?$filter=produktartNummer startswith '13.20'</pre>
+        <p>Use OData filtering syntax instead of query parameters.</p>
+        <button onclick="testMethod3()">Test Method 3</button>
+      </div>
+
+      <div class="method">
+        <h3>Method 4: Search by Exact Product Code</h3>
+        <pre>GET /api/verzeichnis/Produkt?produktartNummer=13.20.12.1234</pre>
+        <p>Try querying by exact 10-digit product codes.</p>
+        <button onclick="testMethod4()">Test Method 4</button>
+      </div>
+
+      <div class="method">
+        <h3>Method 5: Get Tree Node Children</h3>
+        <pre>GET /api/verzeichnis/VerzeichnisTree/4/{categoryGUID}</pre>
+        <p>Get children of a specific category node.</p>
+        <button onclick="testMethod5()">Test Method 5</button>
+      </div>
+
+      <div class="method">
+        <h3>Test All Methods</h3>
+        <button onclick="testAllMethods()" style="background: #059669;">🚀 Test All Methods</button>
+        <button onclick="clearLog()" style="background: #64748b;">Clear Log</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📋 Results Log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const PROXY = '/api/proxy';
+    
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const className = type;
+      logEl.innerHTML += `<span class="${className}">[${time}] ${message}</span>\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+      log('Log cleared', 'info');
+    }
+
+    async function apiRequest(path) {
+      const url = `${PROXY}?path=${encodeURIComponent(path)}`;
+      log(`\n🌐 Request: ${path}`, 'info');
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    async function testMethod1() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('METHOD 1: Fetch ALL Products (No Filter)', 'highlight');
+      log('='.repeat(80), 'highlight');
+
+      const result = await apiRequest('api/verzeichnis/Produkt?$skip=0&$take=100&$count=true');
+      
+      if (result.success) {
+        const products = Array.isArray(result.data) ? result.data : (result.data.value || []);
+        const count = result.data['@odata.count'] || result.data.count || products.length;
+        
+        log(`✅ Success! Got ${products.length} products`, 'success');
+        log(`📊 Total count: ${count}`, 'info');
+        
+        if (products.length > 0) {
+          // Analyze product codes
+          const codes = products.map(p => p.produktartNummer || 'NO_CODE').filter(c => c !== 'NO_CODE');
+          const categories = {};
+          codes.forEach(code => {
+            const prefix = code.substring(0, 2);
+            categories[prefix] = (categories[prefix] || 0) + 1;
+          });
+          
+          log(`\n📦 Products by 2-digit prefix:`, 'info');
+          Object.entries(categories).sort((a, b) => b[1] - a[1]).forEach(([prefix, count]) => {
+            log(`   ${prefix}: ${count} products`, 'info');
+          });
+          
+          log(`\n📝 Sample products:`, 'info');
+          products.slice(0, 5).forEach(p => {
+            const code = p.produktartNummer || 'NO_CODE';
+            const name = (p.bezeichnung || p.name || 'NO_NAME').substring(0, 60);
+            log(`   ${code} - ${name}`, 'info');
+          });
+        }
+      } else {
+        log(`❌ Failed: ${result.error}`, 'error');
+      }
+    }
+
+    async function testMethod2() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('METHOD 2: Use VerzeichnisTree First', 'highlight');
+      log('='.repeat(80), 'highlight');
+
+      // Step 1: Fetch tree
+      log('\n📂 Step 1: Fetching VerzeichnisTree/4...', 'info');
+      const treeResult = await apiRequest('api/verzeichnis/VerzeichnisTree/4');
+      
+      if (!treeResult.success) {
+        log(`❌ Tree fetch failed: ${treeResult.error}`, 'error');
+        return;
+      }
+
+      const tree = treeResult.data;
+      log(`✅ Tree loaded`, 'success');
+      
+      // Step 2: Find Hörgeräte node (13.xx)
+      log('\n🔍 Step 2: Searching for Hörgeräte (13.xx) node...', 'info');
+      const nodes = tree.value || tree.children || [];
+      
+      function findNode(nodes, prefix) {
+        for (const node of nodes) {
+          const code = node.xSteller || node.code || '';
+          if (code.startsWith(prefix)) {
+            return node;
+          }
+          if (node.children) {
+            const found = findNode(node.children, prefix);
+            if (found) return found;
+          }
+        }
+        return null;
+      }
+      
+      const hearingNode = findNode(nodes, '13');
+      if (hearingNode) {
+        log(`✅ Found node: ${hearingNode.xSteller} - ${hearingNode.bezeichnung}`, 'success');
+        log(`   GUID: ${hearingNode.id || hearingNode.guid || 'NOT_FOUND'}`, 'info');
+        
+        // Step 3: Try to fetch products for this node
+        const guid = hearingNode.id || hearingNode.guid;
+        if (guid) {
+          log(`\n📦 Step 3: Fetching products for GUID ${guid}...`, 'info');
+          const productsResult = await apiRequest(`api/verzeichnis/Produkt?produktgruppe=${guid}&$take=20`);
+          
+          if (productsResult.success) {
+            const products = Array.isArray(productsResult.data) ? productsResult.data : (productsResult.data.value || []);
+            log(`✅ Got ${products.length} products`, 'success');
+            
+            if (products.length > 0) {
+              log(`\n📝 Sample:`, 'info');
+              products.slice(0, 3).forEach(p => {
+                const code = p.produktartNummer || 'NO_CODE';
+                const name = (p.bezeichnung || 'NO_NAME').substring(0, 60);
+                log(`   ${code} - ${name}`, 'info');
+              });
+            }
+          } else {
+            log(`❌ Product fetch failed: ${productsResult.error}`, 'error');
+          }
+        }
+      } else {
+        log(`❌ Could not find Hörgeräte node in tree`, 'error');
+      }
+    }
+
+    async function testMethod3() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('METHOD 3: Try OData $filter Syntax', 'highlight');
+      log('='.repeat(80), 'highlight');
+
+      const filters = [
+        "produktartNummer eq '13.20.12.1234'",
+        "startswith(produktartNummer, '13.20')",
+        "contains(produktartNummer, '13.20')",
+      ];
+
+      for (const filter of filters) {
+        log(`\n🔍 Testing: $filter=${filter}`, 'info');
+        const result = await apiRequest(`api/verzeichnis/Produkt?$filter=${encodeURIComponent(filter)}&$take=10`);
+        
+        if (result.success) {
+          const products = Array.isArray(result.data) ? result.data : (result.data.value || []);
+          log(`   ${products.length > 0 ? '✅' : '⚠️'} Returned ${products.length} products`, products.length > 0 ? 'success' : 'warning');
+        } else {
+          log(`   ❌ ${result.error}`, 'error');
+        }
+      }
+    }
+
+    async function testMethod4() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('METHOD 4: Search by Exact Product Code', 'highlight');
+      log('='.repeat(80), 'highlight');
+
+      // First, get some real product codes
+      log('📦 First, fetching sample products to get real codes...', 'info');
+      const sampleResult = await apiRequest('api/verzeichnis/Produkt?$take=10');
+      
+      if (!sampleResult.success) {
+        log(`❌ Failed to get sample products: ${sampleResult.error}`, 'error');
+        return;
+      }
+
+      const products = Array.isArray(sampleResult.data) ? sampleResult.data : (sampleResult.data.value || []);
+      const realCodes = products.map(p => p.produktartNummer).filter(c => c && c !== 'NO_CODE').slice(0, 3);
+      
+      log(`✅ Got ${realCodes.length} real product codes`, 'success');
+      
+      // Try fetching by exact code
+      for (const code of realCodes) {
+        log(`\n🔍 Fetching product: ${code}`, 'info');
+        const result = await apiRequest(`api/verzeichnis/Produkt?produktartNummer=${code}`);
+        
+        if (result.success) {
+          const found = Array.isArray(result.data) ? result.data : (result.data.value || []);
+          log(`   ${found.length > 0 ? '✅' : '⚠️'} Found ${found.length} products`, found.length > 0 ? 'success' : 'warning');
+        } else {
+          log(`   ❌ ${result.error}`, 'error');
+        }
+      }
+    }
+
+    async function testMethod5() {
+      log('\n' + '='.repeat(80), 'highlight');
+      log('METHOD 5: Get Tree Node Children', 'highlight');
+      log('='.repeat(80), 'highlight');
+
+      // First get tree to find a node GUID
+      log('📂 Fetching VerzeichnisTree/4...', 'info');
+      const treeResult = await apiRequest('api/verzeichnis/VerzeichnisTree/4');
+      
+      if (!treeResult.success) {
+        log(`❌ Failed: ${treeResult.error}`, 'error');
+        return;
+      }
+
+      const nodes = treeResult.data.value || treeResult.data.children || [];
+      if (nodes.length > 0) {
+        const firstNode = nodes[0];
+        const guid = firstNode.id || firstNode.guid;
+        log(`✅ Using first node: ${firstNode.xSteller} - ${firstNode.bezeichnung}`, 'success');
+        
+        if (guid) {
+          log(`\n🔍 Fetching children of node ${guid}...`, 'info');
+          const childResult = await apiRequest(`api/verzeichnis/VerzeichnisTree/4/${guid}`);
+          
+          if (childResult.success) {
+            const children = childResult.data.children || childResult.data.value || [];
+            log(`✅ Found ${children.length} children`, 'success');
+            
+            if (children.length > 0) {
+              log(`\n📝 First 3 children:`, 'info');
+              children.slice(0, 3).forEach(c => {
+                log(`   ${c.xSteller || 'NO_CODE'} - ${c.bezeichnung || 'NO_NAME'}`, 'info');
+              });
+            }
+          } else {
+            log(`❌ ${childResult.error}`, 'error');
+          }
+        }
+      } else {
+        log(`❌ No nodes found in tree`, 'error');
+      }
+    }
+
+    async function testAllMethods() {
+      clearLog();
+      log('🚀 Testing all methods sequentially...', 'highlight');
+      
+      await testMethod1();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await testMethod2();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await testMethod3();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await testMethod4();
+      await new Promise(r => setTimeout(r, 1000));
+      
+      await testMethod5();
+      
+      log('\n' + '='.repeat(80), 'highlight');
+      log('✅ ALL TESTS COMPLETED', 'highlight');
+      log('='.repeat(80), 'highlight');
+    }
+
+    // Auto-initialize
+    log('🔬 GKV API Method Tester Ready', 'highlight');
+    log('Click buttons above to test different API access methods\n', 'info');
+  </script>
+</body>
+</html>
+
