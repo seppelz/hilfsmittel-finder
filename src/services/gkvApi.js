@@ -9,6 +9,76 @@ const API_VERSION_ENDPOINT = null;
 const STORAGE_KEY = 'gkv_hilfsmittel_cache';
 const STORAGE_VERSION_KEY = 'gkv_hilfsmittel_api_version';
 
+const PLACEHOLDER_NAMES = new Set(['nicht besetzt']);
+
+function normalizeString(value) {
+  if (value === undefined || value === null) return null;
+  const stringValue = String(value).trim();
+  return stringValue.length ? stringValue : null;
+}
+
+function isPlaceholder(value) {
+  if (!value) return false;
+  return PLACEHOLDER_NAMES.has(value.toLowerCase());
+}
+
+function splitDisplayValue(value) {
+  const normalized = normalizeString(value);
+  if (!normalized) return { code: null, name: null };
+  const [code, ...rest] = normalized.split(' - ');
+  if (rest.length === 0) {
+    return { code: null, name: normalized };
+  }
+  return { code: normalizeString(code), name: normalizeString(rest.join(' - ')) };
+}
+
+function normalizeProduct(product) {
+  if (!product || typeof product !== 'object') return null;
+  if (product.istHerausgenommen) return null;
+
+  const displayParts = splitDisplayValue(product.displayName);
+  const nameCandidates = [
+    normalizeString(product.bezeichnung),
+    normalizeString(product.name),
+    displayParts.name,
+  ].filter(Boolean);
+
+  const cleanName = nameCandidates.find((candidate) => !isPlaceholder(candidate));
+  if (!cleanName) {
+    return null;
+  }
+
+  const codeCandidates = [
+    normalizeString(product.zehnSteller),
+    normalizeString(product.produktartNummer),
+    displayParts.code,
+    normalizeString(product.code),
+  ].filter(Boolean);
+  const cleanCode = codeCandidates[0] ?? null;
+
+  const manufacturer = normalizeString(
+    product.hersteller ?? product.herstellerName ?? product.hersteller_bezeichnung,
+  );
+
+  const normalizedProduct = {
+    ...product,
+    bezeichnung: cleanName,
+    name: cleanName,
+  };
+
+  if (cleanCode) {
+    normalizedProduct.produktartNummer = cleanCode;
+    normalizedProduct.zehnSteller = product.zehnSteller ?? cleanCode;
+    normalizedProduct.code = product.code ?? cleanCode;
+  }
+
+  if (manufacturer) {
+    normalizedProduct.hersteller = manufacturer;
+  }
+
+  return normalizedProduct;
+}
+
 function safeParse(json) {
   try {
     return JSON.parse(json);
@@ -151,18 +221,17 @@ class GKVApiService {
         apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
       );
       const items = Array.isArray(response) ? response : response.value ?? [];
-      const total = Array.isArray(response)
-        ? response.length
-        : response.Count ?? response.count ?? response.total ?? items.length;
+      const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
+      const total = normalizedItems.length;
 
       this.cache.productsByGroup[groupId] = {
-        items,
+        items: normalizedItems,
         total,
         limit: safeLimit,
       };
       this.saveToCache();
 
-      return { items, total };
+      return { items: normalizedItems, total };
     } catch (error) {
       if (cached) {
         console.warn('Using cached products due to API error');
@@ -203,11 +272,9 @@ class GKVApiService {
 
     const perGroupTake = Math.min(Math.max(page * pageSize * groups.length, pageSize), 500);
     const productMap = new Map();
-    let total = 0;
 
     for (const groupId of groups) {
       const { items, total: groupTotal } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
-      total += Number(groupTotal) || 0;
 
       items.forEach((product) => {
         const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
