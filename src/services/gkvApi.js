@@ -388,21 +388,19 @@ class GKVApiService {
 
     console.log(`📦 [gkvApi] Total unique products fetched: ${productMap.size}`);
 
-    // CRITICAL FIX: Filter products to only show categories that were asked about
-    // This prevents infusion tubes (03.29) from appearing in hearing searches (13.20)
-    const allowedCategories = this.extractAllowedCategories(groups);
-    console.log(`🔍 [gkvApi] Allowed categories for filtering:`, allowedCategories);
-    
     const allProducts = Array.from(productMap.values());
-    const relevantProducts = allProducts.filter(product => {
-      const code = product.produktartNummer || product.code || '';
-      if (!code) return false;
-      
-      // Check if product category matches any asked category
-      return allowedCategories.some(category => code.startsWith(category));
-    });
     
-    console.log(`✅ [gkvApi] Products after category filter: ${relevantProducts.length} (from ${allProducts.length})`);
+    // Debug: Log first 5 product codes to see what we're actually getting
+    console.log('🔍 [gkvApi] Sample product codes from API:', allProducts.slice(0, 5).map(p => ({
+      code: p.produktartNummer || p.code || 'NO CODE',
+      name: p.bezeichnung || p.name || 'NO NAME'
+    })));
+    
+    // TEMPORARY: Disable post-filter to diagnose the issue
+    // The API should already be returning only products from the queried groups
+    const relevantProducts = allProducts;
+    
+    console.log(`✅ [gkvApi] Using all ${relevantProducts.length} fetched products (post-filter disabled for debugging)`);
 
     const sortedProducts = relevantProducts.sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
