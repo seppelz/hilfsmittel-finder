@@ -92,17 +92,17 @@ export const questionFlow = {
         {
           text: 'Ich muss oft nachfragen und den Fernseher laut stellen',
           value: 'mild',
-          api_criteria: { productGroup: '07.99', hearing_aid: true, severity: 'mild' },
+          api_criteria: { productGroup: '13.20', hearing_aid: true, severity: 'mild' },
         },
         {
           text: 'Ich verstehe Gespräche nur noch mit großer Mühe',
           value: 'moderate',
-          api_criteria: { productGroup: '07.99', hearing_aid: true, severity: 'moderate' },
+          api_criteria: { productGroup: '13.20', hearing_aid: true, severity: 'moderate' },
         },
         {
           text: 'Ich höre fast nichts mehr',
           value: 'severe',
-          api_criteria: { productGroup: '07.99', hearing_aid: true, severity: 'severe' },
+          api_criteria: { productGroup: '13.20', hearing_aid: true, severity: 'severe' },
         },
       ],
     },
@@ -197,35 +197,24 @@ export function buildApiCriteria(answers) {
     }
   };
 
-  // Always log in production for debugging
-  console.log('🔍 [buildApiCriteria] Processing answers:', answers);
-
   for (const [questionId, answer] of Object.entries(answers)) {
     // Skip internal metadata fields (like _selectedCategory)
     if (questionId.startsWith('_')) {
-      console.log('⏭️ [buildApiCriteria] Skipping internal field:', questionId);
       continue;
     }
 
     const question = findQuestion(questionId);
-    if (!question) {
-      console.warn('⚠️ [buildApiCriteria] Question not found:', questionId);
-      continue;
-    }
+    if (!question) continue;
 
     const selection = Array.isArray(answer) ? answer : [answer];
 
     for (const selectedValue of selection) {
       const option = question.options.find((opt) => opt.value === selectedValue);
-      if (!option?.api_criteria) {
-        console.warn('⚠️ [buildApiCriteria] No api_criteria for:', questionId, '=', selectedValue);
-        continue;
-      }
+      if (!option?.api_criteria) continue;
 
       const { productGroup, ...rest } = option.api_criteria;
       if (productGroup) {
         productGroups.add(productGroup);
-        console.log('✅ [buildApiCriteria] Added productGroup:', productGroup, 'from', questionId, '=', selectedValue);
       }
 
       for (const [key, value] of Object.entries(rest)) {
@@ -234,12 +223,8 @@ export function buildApiCriteria(answers) {
     }
   }
 
-  const result = {
+  return {
     productGroups: Array.from(productGroups),
     filters,
   };
-
-  console.log('✅ [buildApiCriteria] Final criteria:', result);
-
-  return result;
 }
