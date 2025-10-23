@@ -16,7 +16,7 @@ The dev server should start on `http://localhost:5173`
 
 ### Step 2: Open Test Tool
 
-Navigate to: **`http://localhost:5173/test-api.html`**
+Navigate to: **`http://localhost:5173/test-api.html`** (dev) or **`https://your-domain.vercel.app/test-api.html`** (production)
 
 You should see the GKV API Category Tester interface.
 

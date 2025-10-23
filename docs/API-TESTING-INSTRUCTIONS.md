@@ -12,7 +12,8 @@ This document describes how to use the API testing tool to systematically verify
    ```
 
 2. **Open the test tool**:
-   - Navigate to `http://localhost:5173/test-api.html` in your browser
+   - Development: `http://localhost:5173/test-api.html`
+   - Production: `https://your-domain.vercel.app/test-api.html`
 
 3. **Run tests**:
    - Click "Test All Categories" to test all 7 categories
