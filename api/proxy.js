@@ -1,4 +1,4 @@
-// api/proxy.js
+const fetch = require('node-fetch');
 const API_BASE = 'https://hilfsmittel-api.gkv-spitzenverband.de';
 
 module.exports = async function handler(req, res) {
