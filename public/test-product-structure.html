@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKV Product Structure Inspector</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Courier New', monospace;
+      padding: 20px; 
+      background: #1e293b;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { color: #fbbf24; margin-bottom: 20px; }
+    button { 
+      background: #059669; 
+      color: white; 
+      border: none; 
+      padding: 15px 30px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 16px;
+      margin: 10px 5px 20px 0;
+      font-weight: 600;
+    }
+    button:hover { background: #047857; }
+    pre { 
+      background: #0f172a; 
+      padding: 15px; 
+      border-radius: 6px; 
+      overflow-x: auto;
+      font-size: 12px;
+      border: 1px solid #334155;
+      margin: 10px 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    .info { color: #3b82f6; }
+    .highlight { color: #a78bfa; font-weight: bold; }
+    .section { background: #334155; padding: 20px; margin: 20px 0; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔬 GKV Product Structure Inspector</h1>
+    <p style="color: #94a3b8; margin-bottom: 20px;">Fetch ONE product and inspect its ACTUAL structure</p>
+    
+    <button onclick="inspectProducts()">🔍 Inspect Product Structure</button>
+    <button onclick="testFiltering()">🧪 Test Filtering Methods</button>
+    
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const PROXY = '/api/proxy';
+    
+    function log(html) {
+      document.getElementById('output').innerHTML += html + '\n';
+    }
+
+    function clear() {
+      document.getElementById('output').innerHTML = '';
+    }
+
+    async function apiRequest(path) {
+      const url = `${PROXY}?path=${encodeURIComponent(path)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    }
+
+    async function inspectProducts() {
+      clear();
+      
+      log('<div class="section">');
+      log('<h2 class="highlight">📦 FETCHING PRODUCTS...</h2>');
+      log('<p class="info">Request: GET /api/verzeichnis/Produkt?$skip=0&$take=5</p>');
+      
+      try {
+        const data = await apiRequest('api/verzeichnis/Produkt?$skip=0&$take=5');
+        
+        log('<p class="success">✅ SUCCESS!</p>');
+        
+        // Check response structure
+        log('<h3 class="warning">🔍 Response Structure:</h3>');
+        log('<p class="info">Response type: ' + (Array.isArray(data) ? 'Array' : 'Object') + '</p>');
+        log('<p class="info">Response keys: ' + Object.keys(data).join(', ') + '</p>');
+        
+        // Get products array
+        const products = Array.isArray(data) ? data : (data.value || data.results || []);
+        log('<p class="success">✅ Found ' + products.length + ' products</p>');
+        
+        if (products.length === 0) {
+          log('<p class="error">❌ NO PRODUCTS IN RESPONSE!</p>');
+          log('<pre>' + JSON.stringify(data, null, 2) + '</pre>');
+          log('</div>');
+          return;
+        }
+        
+        // Inspect FIRST product in detail
+        const product = products[0];
+        log('<h3 class="highlight">🔬 FIRST PRODUCT - COMPLETE STRUCTURE:</h3>');
+        log('<pre>' + JSON.stringify(product, null, 2) + '</pre>');
+        
+        // Analyze field names
+        log('<h3 class="warning">📋 Available Fields:</h3>');
+        const fields = Object.keys(product);
+        log('<p class="info">Total fields: ' + fields.length + '</p>');
+        log('<ul style="color: #94a3b8; margin-left: 20px;">');
+        fields.forEach(field => {
+          const value = product[field];
+          const type = Array.isArray(value) ? 'Array' : typeof value;
+          const preview = Array.isArray(value) ? 
+            `[${value.length} items]` : 
+            (typeof value === 'string' ? (value.substring(0, 50) + (value.length > 50 ? '...' : '')) : value);
+          log('<li><strong>' + field + '</strong> (' + type + '): ' + preview + '</li>');
+        });
+        log('</ul>');
+        
+        // Look for CODE fields
+        log('<h3 class="highlight">🎯 LOOKING FOR CODE FIELDS:</h3>');
+        const codeFields = ['zehn_steller', 'zehnSteller', 'produktartNummer', 'produktArtNummer', 
+                            'code', 'productCode', 'nummer', 'xSteller', 'x_steller'];
+        let foundCode = null;
+        
+        codeFields.forEach(field => {
+          if (product[field]) {
+            log('<p class="success">✅ Found: <strong>' + field + '</strong> = "' + product[field] + '"</p>');
+            foundCode = product[field];
+          }
+        });
+        
+        if (!foundCode) {
+          log('<p class="error">❌ NO CODE FIELDS FOUND!</p>');
+        }
+        
+        // Look for NAME fields
+        log('<h3 class="highlight">🎯 LOOKING FOR NAME FIELDS:</h3>');
+        const nameFields = ['name', 'bezeichnung', 'displayName', 'display_name', 'title'];
+        let foundName = null;
+        
+        nameFields.forEach(field => {
+          if (product[field]) {
+            log('<p class="success">✅ Found: <strong>' + field + '</strong> = "' + product[field] + '"</p>');
+            foundName = product[field];
+          }
+        });
+        
+        if (!foundName) {
+          log('<p class="error">❌ NO NAME FIELDS FOUND!</p>');
+        }
+        
+        // Check ALL 5 products for patterns
+        log('<h3 class="warning">📊 CHECKING ALL 5 PRODUCTS:</h3>');
+        products.forEach((p, i) => {
+          const code = p.zehn_steller || p.zehnSteller || p.produktartNummer || p.code || 'NO_CODE';
+          const name = p.name || p.bezeichnung || p.displayName || 'NO_NAME';
+          log('<p class="info">Product ' + (i+1) + ': ' + code + ' - ' + name.substring(0, 60) + '</p>');
+        });
+        
+      } catch (error) {
+        log('<p class="error">❌ ERROR: ' + error.message + '</p>');
+      }
+      
+      log('</div>');
+    }
+
+    async function testFiltering() {
+      clear();
+      
+      log('<div class="section">');
+      log('<h2 class="highlight">🧪 TESTING FILTERING METHODS</h2>');
+      
+      try {
+        // First, get the actual field names
+        log('<p class="info">Step 1: Getting sample product to identify fields...</p>');
+        const sample = await apiRequest('api/verzeichnis/Produkt?$skip=0&$take=1');
+        const products = Array.isArray(sample) ? sample : (sample.value || []);
+        
+        if (products.length === 0) {
+          log('<p class="error">❌ No products returned!</p>');
+          log('</div>');
+          return;
+        }
+        
+        const product = products[0];
+        const codeField = product.zehnSteller || product.zehn_steller || product.produktartNummer || 
+                         product.produktArtNummer || product.code;
+        
+        log('<p class="success">✅ Sample product code field: ' + JSON.stringify(codeField) + '</p>');
+        
+        // Now try to fetch with filtering
+        log('<h3 class="warning">Testing OData $filter syntax:</h3>');
+        
+        const filterTests = [
+          "$filter=startswith(zehnSteller, '13')",
+          "$filter=startswith(produktartNummer, '13')",
+          "$filter=contains(zehnSteller, '13')",
+          "zehnSteller=13",
+        ];
+        
+        for (const filter of filterTests) {
+          try {
+            log('<p class="info">Testing: ' + filter + '</p>');
+            const result = await apiRequest('api/verzeichnis/Produkt?' + filter + '&$take=5');
+            const items = Array.isArray(result) ? result : (result.value || []);
+            log('<p class="success">  ✅ Returned ' + items.length + ' products</p>');
+          } catch (err) {
+            log('<p class="error">  ❌ Failed: ' + err.message + '</p>');
+          }
+        }
+        
+        // Try getting specific count
+        log('<h3 class="warning">Getting total count:</h3>');
+        try {
+          const countResult = await apiRequest('api/verzeichnis/Produkt?$count=true&$top=0');
+          log('<p class="success">✅ Total products: ' + (countResult['@odata.count'] || countResult.count || 'Unknown') + '</p>');
+        } catch (err) {
+          log('<p class="error">❌ Count failed: ' + err.message + '</p>');
+        }
+        
+      } catch (error) {
+        log('<p class="error">❌ ERROR: ' + error.message + '</p>');
+      }
+      
+      log('</div>');
+    }
+
+    // Auto-initialize
+    log('<div class="section">');
+    log('<p class="highlight">🔬 Product Structure Inspector Ready</p>');
+    log('<p class="info">This tool will inspect the ACTUAL structure of products returned by the API</p>');
+    log('<p class="warning">Click "Inspect Product Structure" to see raw product data</p>');
+    log('</div>');
+  </script>
+</body>
+</html>
+
