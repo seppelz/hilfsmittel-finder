@@ -59,9 +59,7 @@ export function ResultsDisplay({
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-3xl font-bold text-text">Ihre empfohlenen Hilfsmittel</h2>
-              <p className="text-gray-600">
-                Basierend auf Ihren Antworten aus der Kategorie "{getCategoryLabel(products)}".
-              </p>
+              <p className="text-gray-600">Basierend auf Ihren Antworten.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-primary">

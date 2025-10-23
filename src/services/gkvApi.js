@@ -134,22 +134,42 @@ class GKVApiService {
     }
   }
 
-  async fetchProductsByGroup(groupId) {
+  async fetchProductsByGroup(groupId, { limit } = {}) {
     await this.ensureLatestVersion();
 
-    if (this.cache.productsByGroup[groupId] && this.isCacheValid()) {
-      return this.cache.productsByGroup[groupId];
+    const safeLimit = Math.max(1, limit ?? 100);
+    const cached = this.cache.productsByGroup[groupId];
+    if (cached && cached.limit >= safeLimit && this.isCacheValid()) {
+      return {
+        items: cached.items.slice(0, safeLimit),
+        total: cached.total,
+      };
     }
 
     try {
-      const data = await this.fetchWithRetry(apiUrl(`Produkt?produktgruppe=${groupId}`));
-      this.cache.productsByGroup[groupId] = data;
+      const response = await this.fetchWithRetry(
+        apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
+      );
+      const items = Array.isArray(response) ? response : response.value ?? [];
+      const total = Array.isArray(response)
+        ? response.length
+        : response.Count ?? response.count ?? response.total ?? items.length;
+
+      this.cache.productsByGroup[groupId] = {
+        items,
+        total,
+        limit: safeLimit,
+      };
       this.saveToCache();
-      return data;
+
+      return { items, total };
     } catch (error) {
-      if (this.cache.productsByGroup[groupId]) {
+      if (cached) {
         console.warn('Using cached products due to API error');
-        return this.cache.productsByGroup[groupId];
+        return {
+          items: cached.items.slice(0, safeLimit),
+          total: cached.total,
+        };
       }
       throw error;
     }
@@ -157,12 +177,13 @@ class GKVApiService {
 
   async fetchProductsPaginated(groupId, page = 1, pageSize = 20) {
     await this.ensureLatestVersion();
-    const data = await this.fetchProductsByGroup(groupId);
+    const take = Math.max(page * pageSize, pageSize);
+    const { items, total } = await this.fetchProductsByGroup(groupId, { limit: take });
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     return {
-      products: data.slice(start, end),
-      total: data.length,
+      products: items.slice(start, end),
+      total,
     };
   }
 
@@ -180,21 +201,29 @@ class GKVApiService {
       return { products: [], total: 0, page, pageSize, totalPages: 1 };
     }
 
-    const allProducts = [];
+    const perGroupTake = Math.min(Math.max(page * pageSize * groups.length, pageSize), 500);
+    const productMap = new Map();
+    let total = 0;
 
     for (const groupId of groups) {
-      const groupProducts = await this.fetchProductsByGroup(groupId);
-      allProducts.push(...groupProducts.map((product) => ({ ...product, _groupId: groupId })));
+      const { items, total: groupTotal } = await this.fetchProductsByGroup(groupId, { limit: perGroupTake });
+      total += Number(groupTotal) || 0;
+
+      items.forEach((product) => {
+        const productId = product.id || product.produktId || product.zehnSteller || product.displayName;
+        if (!productId || productMap.has(productId)) return;
+        productMap.set(productId, { ...product, _groupId: groupId });
+      });
     }
 
-    const sortedProducts = allProducts.sort((a, b) => {
+    const sortedProducts = Array.from(productMap.values()).sort((a, b) => {
       const aCode = a.produktartNummer || a.code || a.bezeichnung || '';
       const bCode = b.produktartNummer || b.code || b.bezeichnung || '';
       return aCode.localeCompare(bCode, 'de');
     });
 
-    const total = sortedProducts.length;
-    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const totalUnique = sortedProducts.length;
+    const totalPages = Math.max(1, Math.ceil(totalUnique / pageSize));
     const safePage = Math.min(Math.max(page, 1), totalPages);
     const start = (safePage - 1) * pageSize;
     const end = start + pageSize;
@@ -202,7 +231,7 @@ class GKVApiService {
 
     return {
       products,
-      total,
+      total: totalUnique,
       page: safePage,
       pageSize,
       totalPages,
