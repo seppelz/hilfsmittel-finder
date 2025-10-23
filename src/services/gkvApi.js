@@ -12,38 +12,6 @@ const CACHE_SCHEMA_VERSION = '2025-10-23-products';
 
 const PLACEHOLDER_NAMES = new Set(['nicht besetzt']);
 
-function createEmptyCache() {
-  return {
-    productGroups: null,
-    productsByGroup: {},
-    groupIdByCode: {},
-    lastUpdate: null,
-    apiVersion: null,
-  };
-}
-
-function indexGroupTree(nodes, map) {
-  if (!Array.isArray(nodes)) {
-    return map;
-  }
-
-  nodes.forEach((node) => {
-    if (!node || typeof node !== 'object') return;
-
-    const code = normalizeString(node.xSteller);
-    const id = normalizeString(node.id);
-    if (code && id) {
-      map[code] = id;
-    }
-
-    if (Array.isArray(node.children) && node.children.length) {
-      indexGroupTree(node.children, map);
-    }
-  });
-
-  return map;
-}
-
 function normalizeString(value) {
   if (value === undefined || value === null) return null;
   const stringValue = String(value).trim();
@@ -137,7 +105,12 @@ const ERROR_MESSAGES = {
 
 class GKVApiService {
   constructor() {
-    this.cache = createEmptyCache();
+    this.cache = {
+      productGroups: null,
+      productsByGroup: {},
+      lastUpdate: null,
+      apiVersion: null,
+    };
     this.versionPromise = null;
 
     if (isBrowser) {
@@ -166,7 +139,6 @@ class GKVApiService {
           this.cache = {
             productGroups: data.productGroups ?? null,
             productsByGroup: data.productsByGroup ?? {},
-            groupIdByCode: data.groupIdByCode ?? {},
             lastUpdate: data.lastUpdate ?? null,
             apiVersion: data.apiVersion ?? null,
           };
@@ -194,10 +166,10 @@ class GKVApiService {
   }
 
   resetCache(newVersion = null) {
-    this.cache = {
-      ...createEmptyCache(),
-      apiVersion: newVersion,
-    };
+    this.cache.productGroups = null;
+    this.cache.productsByGroup = {};
+    this.cache.lastUpdate = null;
+    this.cache.apiVersion = newVersion;
   }
 
   async ensureLatestVersion() {
@@ -234,9 +206,7 @@ class GKVApiService {
     }
 
     try {
-      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/4'));
-      this.cache.groupIdByCode = indexGroupTree(data, {});
-
+      const data = await this.fetchWithRetry(apiUrl('VerzeichnisTree/1'));
       this.cache.productGroups = data;
       this.saveToCache();
       return data;
@@ -253,7 +223,6 @@ class GKVApiService {
     await this.ensureLatestVersion();
 
     const safeLimit = Math.max(1, limit ?? 100);
-    const groupKey = await this.resolveGroupId(groupId);
     const cached = this.cache.productsByGroup[groupId];
     if (cached && cached.limit >= safeLimit && this.isCacheValid()) {
       return {
@@ -262,37 +231,26 @@ class GKVApiService {
       };
     }
 
-    const endpointVariants = [];
-    if (groupKey) {
-      endpointVariants.push({
-        type: 'produktgruppe',
-        url: `Produkt?produktgruppe=${groupKey}&skip=0&take=${safeLimit}&$count=true`,
-      });
-    }
-    endpointVariants.push({
-      type: 'produktgruppennummer',
-      url: `Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`,
-    });
+    try {
+      const response = await this.fetchWithRetry(
+        apiUrl(`Produkt?produktgruppennummer=${groupId}&skip=0&take=${safeLimit}&$count=true`),
+      );
+      const items = Array.isArray(response) ? response : response.value ?? [];
+      const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
+      const total = Array.isArray(response)
+        ? normalizedItems.length
+        : response.Count ?? response.count ?? response.total ?? normalizedItems.length;
 
-    let response = null;
-    let lastError = null;
+      this.cache.productsByGroup[groupId] = {
+        items: normalizedItems,
+        total,
+        limit: safeLimit,
+        schemaVersion: CACHE_SCHEMA_VERSION,
+      };
+      this.saveToCache();
 
-    for (const variant of endpointVariants) {
-      try {
-        response = await this.fetchWithRetry(apiUrl(variant.url));
-        break;
-      } catch (error) {
-        lastError = error;
-        console.warn('[gkvApi] Produktabruf fehlgeschlagen, versuche Fallback', {
-          variant: variant.type,
-          groupId,
-          groupKey,
-          message: error?.message,
-        });
-      }
-    }
-
-    if (!response) {
+      return { items: normalizedItems, total };
+    } catch (error) {
       if (cached) {
         console.warn('Using cached products due to API error');
         return {
@@ -300,24 +258,8 @@ class GKVApiService {
           total: cached.total,
         };
       }
-      throw lastError ?? new Error(ERROR_MESSAGES.api_down);
+      throw error;
     }
-
-    const items = Array.isArray(response) ? response : response.value ?? [];
-    const normalizedItems = items.map((item) => normalizeProduct(item)).filter(Boolean);
-    const total = Array.isArray(response)
-      ? normalizedItems.length
-      : response.Count ?? response.count ?? response.total ?? normalizedItems.length;
-
-    this.cache.productsByGroup[groupId] = {
-      items: normalizedItems,
-      total,
-      limit: safeLimit,
-      schemaVersion: CACHE_SCHEMA_VERSION,
-    };
-    this.saveToCache();
-
-    return { items: normalizedItems, total };
   }
 
   async fetchProductsPaginated(groupId, page = 1, pageSize = 20) {
