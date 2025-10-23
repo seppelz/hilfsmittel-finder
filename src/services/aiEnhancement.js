@@ -429,15 +429,22 @@ export function isHighlyRecommended(product, userContext, decodedInfo) {
   const features = decodedInfo.features || [];
   const deviceType = decodedInfo.deviceType?.de || '';
   
+  // Convert features array to searchable string
+  // Features can be objects {name, icon, description} or strings
+  const featureString = features
+    .map(f => typeof f === 'string' ? f : (f?.name || ''))
+    .join(' ')
+    .toLowerCase();
+  
   // Check hearing aid context
   if (userContext.hearing_level) {
     // Rechargeable is great for seniors
-    if (features.some(f => f.toLowerCase().includes('wiederaufladbar'))) {
+    if (featureString.includes('wiederaufladbar') || featureString.includes('rechargeable')) {
       score += 2;
     }
     
     // Bluetooth good if they have smartphone
-    if (features.some(f => f.toLowerCase().includes('bluetooth'))) {
+    if (featureString.includes('bluetooth')) {
       score += 1;
     }
     
@@ -458,21 +465,23 @@ export function isHighlyRecommended(product, userContext, decodedInfo) {
   
   // Check mobility context
   if (userContext.mobility_ability) {
+    const deviceTypeLower = String(deviceType).toLowerCase();
+    
     // Lightweight is important
-    if (deviceType.toLowerCase().includes('leicht')) {
+    if (deviceTypeLower.includes('leicht')) {
       score += 2;
     }
     
     // For very limited mobility, prefer stable options
     if (userContext.mobility_ability === 'very_limited' || userContext.mobility_ability === 'no_walking') {
-      if (deviceType.toLowerCase().includes('stabil') || deviceType.toLowerCase().includes('vier')) {
+      if (deviceTypeLower.includes('stabil') || deviceTypeLower.includes('vier')) {
         score += 2;
       }
     }
     
     // For limited walking, prefer lightweight with wheels
     if (userContext.mobility_ability === 'limited_walking') {
-      if (deviceType.toLowerCase().includes('rollator') || deviceType.toLowerCase().includes('räder')) {
+      if (deviceTypeLower.includes('rollator') || deviceTypeLower.includes('räder')) {
         score += 2;
       }
     }
