@@ -1,5 +1,5 @@
 // Version number - increment this to force cache refresh
-const VERSION = 'v4.0';
+const VERSION = 'v4.1';
 const CACHE_NAME = `aboelo-hilfsmittel-static-${VERSION}`;
 const API_CACHE_NAME = `aboelo-hilfsmittel-api-${VERSION}`;
 const API_PROXY_PATH = '/api/proxy';
@@ -68,10 +68,12 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(
         fetch(request, { cache: 'no-cache' })  // Force revalidation
           .then((response) => {
-            // Only cache if successful
+            // Clone BEFORE using the response to avoid "body already used" error
             if (response && response.status === 200) {
-              const cache = caches.open(CACHE_NAME);
-              cache.then((c) => c.put(request, response.clone()));
+              const responseClone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(request, responseClone);
+              });
             }
             return response;
           })
@@ -88,8 +90,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) => {
         const fetchPromise = fetch(request).then((response) => {
+          // Clone BEFORE using the response to avoid "body already used" error
           if (response && response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
           }
           return response;
         });

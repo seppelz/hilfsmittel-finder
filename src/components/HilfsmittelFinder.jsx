@@ -59,11 +59,22 @@ export function HilfsmittelFinder() {
     setInsuranceType(insurance);
     setPflegegrad(pflege);
     
-    // Store selected category for filtering questions
-    setAnswers(prev => ({
-      ...prev,
+    // Reset answers and only keep selected category
+    // This prevents old answers from previous category selection from persisting
+    setAnswers({
       _selectedCategory: selectedCategory
-    }));
+    });
+    
+    // Also reset search results to prevent showing old results
+    setSearchResults({
+      products: [],
+      total: 0,
+      page: 1,
+      pageSize: PAGE_SIZE,
+      totalPages: 1,
+    });
+    setPage(1);
+    setSelectedProducts([]);
     
     setStage('questions');
     trackEvent('onboarding_started', { insurance, pflege, category: selectedCategory });
