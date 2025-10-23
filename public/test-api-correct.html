@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GKV API - Correct Hierarchical Access</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      padding: 20px; 
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { color: #2563eb; margin-bottom: 10px; }
+    .alert { 
+      background: #fef3c7; 
+      border-left: 4px solid #f59e0b; 
+      padding: 15px; 
+      margin-bottom: 20px; 
+      border-radius: 4px;
+    }
+    .alert strong { color: #92400e; }
+    .section { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    button { 
+      background: #2563eb; 
+      color: white; 
+      border: none; 
+      padding: 12px 24px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 16px;
+      margin: 5px 5px 5px 0;
+      font-weight: 600;
+    }
+    button:hover { background: #1e40af; }
+    button.primary { background: #059669; }
+    button.primary:hover { background: #047857; }
+    #log { 
+      background: #1e293b; 
+      color: #e2e8f0; 
+      padding: 15px; 
+      border-radius: 6px; 
+      font-family: 'Courier New', monospace; 
+      font-size: 12px; 
+      max-height: 600px; 
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    .info { color: #3b82f6; }
+    .highlight { color: #a78bfa; font-weight: bold; }
+    pre { background: #f1f5f9; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✅ GKV API - CORRECT Hierarchical Access</h1>
+    <p style="color: #64748b; margin-bottom: 20px;">Based on official Python client documentation</p>
+    
+    <div class="alert">
+      <strong>⚠️ Discovery:</strong> The <code>/Produkt</code> endpoint returns ALL products without filtering!<br>
+      We need to use hierarchical endpoints: <code>/Produktgruppe/{id}</code>, <code>/Untergruppe/{id}</code>, <code>/Produktart/{id}</code>
+    </div>
+
+    <div class="section">
+      <h2>API Structure (from Python docs)</h2>
+      <pre>Produktgruppe (2-digit, e.g., "13")
+  └─ Anwendungsort (4-digit, e.g., "13.20") 
+      └─ Untergruppe (6-digit, e.g., "13.20.12")
+          └─ Produktart (7-digit, e.g., "13.20.12.1")
+              └─ Produkt (10-digit, e.g., "13.20.12.1234")</pre>
+      
+      <h3>Available Endpoints:</h3>
+      <ul style="list-style-position: inside; margin-left: 20px;">
+        <li><code>GET /VerzeichnisTree/{level}</code> - Get tree structure (levels 1-4)</li>
+        <li><code>GET /Produktgruppe/{guid}</code> - Get product group details + products</li>
+        <li><code>GET /Untergruppe/{guid}</code> - Get subgroup details + products</li>
+        <li><code>GET /Produktart/{guid}</code> - Get product type details + products</li>
+        <li><code>GET /Produkt</code> - ALL products (no filtering!) ❌</li>
+        <li><code>GET /Produkt/{guid}</code> - Single product by GUID ✅</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>🎯 Correct Test: Navigate Tree → Query Hierarchical Endpoints</h2>
+      <button onclick="testCorrectApproach()" class="primary">🚀 Test Correct Approach</button>
+      <button onclick="clearLog()" style="background: #64748b;">Clear Log</button>
+      
+      <h3 style="margin-top: 20px;">What this will do:</h3>
+      <ol style="list-style-position: inside; margin-left: 20px; color: #64748b;">
+        <li>Fetch <code>/VerzeichnisTree/4</code> (complete tree)</li>
+        <li>Find "Hörgeräte" node (xSteller = 13.20)</li>
+        <li>Extract its GUID</li>
+        <li>Try <code>/Produktgruppe/{guid}</code> to get products</li>
+        <li>Try <code>/Untergruppe/{guid}</code> to get products</li>
+        <li>Compare with old <code>/Produkt?produktgruppennummer=13.20</code> method</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>📋 Results Log</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    const PROXY = '/api/proxy';
+    
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const className = type;
+      logEl.innerHTML += `<span class="${className}">[${time}] ${message}</span>\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+      log('Log cleared - Ready to test correct API approach', 'info');
+    }
+
+    async function apiRequest(path) {
+      const url = `${PROXY}?path=${encodeURIComponent(path)}`;
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return { success: true, data };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    function findNodeInTree(nodes, xStellerPrefix) {
+      for (const node of nodes) {
+        const code = node.xSteller || node.code || '';
+        if (code === xStellerPrefix || code.startsWith(xStellerPrefix + '.')) {
+          return node;
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findNodeInTree(node.children, xStellerPrefix);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    async function testCorrectApproach() {
+      clearLog();
+      log('════════════════════════════════════════════════════════════════════════════════', 'highlight');
+      log('🔬 TESTING CORRECT HIERARCHICAL API ACCESS', 'highlight');
+      log('════════════════════════════════════════════════════════════════════════════════', 'highlight');
+      
+      // Step 1: Fetch tree
+      log('\n📂 STEP 1: Fetching complete tree structure...', 'highlight');
+      log('   Request: GET /api/verzeichnis/VerzeichnisTree/4', 'info');
+      
+      const treeResult = await apiRequest('api/verzeichnis/VerzeichnisTree/4');
+      
+      if (!treeResult.success) {
+        log(`   ❌ FAILED: ${treeResult.error}`, 'error');
+        return;
+      }
+
+      const treeData = treeResult.data;
+      const nodes = treeData.value || treeData.children || treeData || [];
+      log(`   ✅ SUCCESS: Loaded tree with ${nodes.length} top-level nodes`, 'success');
+      
+      // Step 2: Find Hörgeräte (13)
+      log('\n🔍 STEP 2: Finding Hörgeräte node (code 13.xx)...', 'highlight');
+      
+      const hearingNode = findNodeInTree(nodes, '13');
+      if (!hearingNode) {
+        log(`   ❌ Could not find node with xSteller starting with 13`, 'error');
+        return;
+      }
+      
+      log(`   ✅ FOUND: ${hearingNode.xSteller} - ${hearingNode.bezeichnung || 'NO_NAME'}`, 'success');
+      log(`   Node Type: ${hearingNode.typ || hearingNode.type || 'UNKNOWN'}`, 'info');
+      log(`   GUID: ${hearingNode.id || hearingNode.guid || 'NO_GUID'}`, 'info');
+      log(`   Has Children: ${hearingNode.children ? hearingNode.children.length : 0}`, 'info');
+      
+      const guid = hearingNode.id || hearingNode.guid;
+      if (!guid) {
+        log(`   ❌ Node has no GUID!`, 'error');
+        return;
+      }
+
+      // Step 3: Try hierarchical endpoints
+      log('\n🎯 STEP 3: Testing hierarchical endpoints with GUID...', 'highlight');
+      
+      // Try /Produktgruppe/{guid}
+      log('\n   📦 Testing: GET /Produktgruppe/' + guid, 'info');
+      const pgResult = await apiRequest(`api/verzeichnis/Produktgruppe/${guid}`);
+      
+      if (pgResult.success) {
+        const pg = pgResult.data;
+        log(`   ✅ SUCCESS: Got Produktgruppe response`, 'success');
+        log(`   Name: ${pg.bezeichnung || 'NO_NAME'}`, 'info');
+        log(`   xSteller: ${pg.xSteller || 'NO_CODE'}`, 'info');
+        
+        // Check for products
+        const products = pg.produkte || pg.products || pg.value || [];
+        log(`   Products in response: ${products.length}`, products.length > 0 ? 'success' : 'warning');
+        
+        if (products.length > 0) {
+          log(`\n   📝 Sample products from Produktgruppe:`, 'success');
+          products.slice(0, 5).forEach(p => {
+            log(`      • ${p.produktartNummer || 'NO_CODE'} - ${(p.bezeichnung || 'NO_NAME').substring(0, 60)}`, 'info');
+          });
+        } else {
+          log(`   ⚠️ No products array in Produktgruppe response`, 'warning');
+          log(`   Response keys: ${Object.keys(pg).join(', ')}`, 'info');
+        }
+        
+        // Check if node has children (Untergruppen)
+        if (pg.children && pg.children.length > 0) {
+          log(`\n   📂 Produktgruppe has ${pg.children.length} children (Untergruppen)`, 'info');
+          const firstChild = pg.children[0];
+          const childGuid = firstChild.id || firstChild.guid;
+          
+          if (childGuid) {
+            log(`\n   📦 Testing child: GET /Untergruppe/${childGuid}`, 'info');
+            const ugResult = await apiRequest(`api/verzeichnis/Untergruppe/${childGuid}`);
+            
+            if (ugResult.success) {
+              const ug = ugResult.data;
+              log(`   ✅ SUCCESS: Got Untergruppe response`, 'success');
+              log(`   Name: ${ug.bezeichnung || 'NO_NAME'}`, 'info');
+              log(`   xSteller: ${ug.xSteller || 'NO_CODE'}`, 'info');
+              
+              const ugProducts = ug.produkte || ug.products || ug.value || [];
+              log(`   Products: ${ugProducts.length}`, ugProducts.length > 0 ? 'success' : 'warning');
+              
+              if (ugProducts.length > 0) {
+                log(`\n   📝 Sample products from Untergruppe:`, 'success');
+                ugProducts.slice(0, 5).forEach(p => {
+                  log(`      • ${p.produktartNummer || 'NO_CODE'} - ${(p.bezeichnung || 'NO_NAME').substring(0, 60)}`, 'info');
+                });
+              }
+            } else {
+              log(`   ❌ Untergruppe request failed: ${ugResult.error}`, 'error');
+            }
+          }
+        }
+      } else {
+        log(`   ❌ FAILED: ${pgResult.error}`, 'error');
+      }
+
+      // Step 4: Compare with old method
+      log('\n🔄 STEP 4: Compare with OLD method (for reference)...', 'highlight');
+      log('   Request: GET /Produkt?produktgruppennummer=13.20&take=10', 'info');
+      
+      const oldResult = await apiRequest('api/verzeichnis/Produkt?produktgruppennummer=13.20&$take=10');
+      
+      if (oldResult.success) {
+        const oldProducts = Array.isArray(oldResult.data) ? oldResult.data : (oldResult.data.value || []);
+        log(`   ✅ Old method returned ${oldProducts.length} products`, 'warning');
+        
+        // Filter out placeholders
+        const realProducts = oldProducts.filter(p => {
+          const name = p.bezeichnung || '';
+          return !name.toLowerCase().includes('nicht besetzt');
+        });
+        
+        log(`   (${realProducts.length} real, ${oldProducts.length - realProducts.length} placeholders)`, 'warning');
+        
+        if (realProducts.length > 0) {
+          log(`\n   📝 Sample from OLD method:`, 'warning');
+          realProducts.slice(0, 3).forEach(p => {
+            log(`      • ${p.produktartNummer || 'NO_CODE'} - ${(p.bezeichnung || 'NO_NAME').substring(0, 60)}`, 'info');
+          });
+        }
+      }
+
+      // Summary
+      log('\n════════════════════════════════════════════════════════════════════════════════', 'highlight');
+      log('📊 SUMMARY & NEXT STEPS', 'highlight');
+      log('════════════════════════════════════════════════════════════════════════════════', 'highlight');
+      log('\n✅ Tree navigation: WORKS', 'success');
+      log('✅ Finding nodes by xSteller: WORKS', 'success');
+      
+      if (pgResult.success) {
+        const pg = pgResult.data;
+        const products = pg.produkte || pg.products || pg.value || [];
+        
+        if (products.length > 0) {
+          log('✅ Hierarchical endpoints return products: YES!', 'success');
+          log('\n🎉 SOLUTION FOUND!', 'success');
+          log('   Update app to use: /Produktgruppe/{guid} or /Untergruppe/{guid}', 'success');
+          log('   Instead of: /Produkt?produktgruppennummer=...', 'success');
+        } else {
+          log('⚠️ Hierarchical endpoints return metadata, but no products array', 'warning');
+          log('   Response contains: ' + Object.keys(pg).join(', '), 'info');
+          log('\n🔍 NEXT: Check if we need to traverse deeper or use different approach', 'warning');
+        }
+      } else {
+        log('❌ Hierarchical endpoints not accessible', 'error');
+      }
+    }
+
+    // Auto-initialize
+    log('✅ Correct API Test Tool Ready', 'highlight');
+    log('📚 Based on official Python client documentation', 'info');
+    log('Click "Test Correct Approach" to run the test\n', 'info');
+  </script>
+</body>
+</html>
+
