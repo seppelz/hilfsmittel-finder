@@ -912,18 +912,18 @@ class GKVApiService {
     }
 
     const mapping = {
-      walker: ['09.12'],
-      walker_needed: ['09.12'],
-      rollator: ['09.12.02'],
-      wheelchair_needed: ['09.24'],
-      fulltime: ['09.24.01'],
-      stairs: ['09.40'],
+      walker: ['10'],
+      walker_needed: ['10'],
+      rollator: ['10.03'],
+      wheelchair_needed: ['22'],
+      fulltime: ['22'],
+      stairs: ['10'],
       shower_chair: ['04.40.04'],
       bath_lift: ['04.40'],
       toilet_seat: ['04.41'],
       grab_bars: ['04.40.01'],
-      hearing_aid: ['07.99'],
-      severity: ['07.99'],
+      hearing_aid: ['13'],
+      severity: ['13'],
       magnifier: ['25.50'],
       lighting: ['25.56'],
       vision_aids: ['25'],
@@ -931,8 +931,8 @@ class GKVApiService {
       compression: ['11.31'],
       care_beds: ['18.50'],
       measurement: ['22.50', '22.51'],
-      indoor: ['09.12', '09.24'],
-      outdoor: ['09.12.02', '09.24'],
+      indoor: ['10'],
+      outdoor: ['10'],
     };
 
     for (const [key, value] of Object.entries(criteria)) {

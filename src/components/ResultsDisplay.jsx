@@ -174,7 +174,7 @@ export function ResultsDisplay({
         <strong>Wichtiger Hinweis:</strong> Diese Informationen ersetzen keine ärztliche Beratung. Die endgültige Entscheidung über die Kostenübernahme trifft Ihre Krankenkasse.
       </div>
 
-      {(totalResults || filteredProducts.length) === 0 ? (
+      {(totalResults || products.length) === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
           <h3 className="text-2xl font-semibold text-text">Keine Hilfsmittel gefunden</h3>
           <p className="mt-2 text-gray-600">
@@ -192,10 +192,10 @@ export function ResultsDisplay({
         </div>
       ) : (
         <ProductList
-          products={filteredProducts}
+          products={products}
           selectedProducts={selected}
           onToggleProduct={handleSelect}
-          pagination={selectedCategory ? null : pagination}
+          pagination={selectedCategoryFilter ? null : pagination}
           userContext={userAnswers}
         />
       )}
