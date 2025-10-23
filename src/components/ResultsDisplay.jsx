@@ -21,6 +21,7 @@ export function ResultsDisplay({
   onGenerateLetter,
   onBack,
   pagination,
+  userAnswers = null,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
   
@@ -152,6 +153,7 @@ export function ResultsDisplay({
           selectedProducts={selected}
           onToggleProduct={handleSelect}
           pagination={pagination}
+          userContext={userAnswers}
         />
       )}
 

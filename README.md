@@ -6,6 +6,9 @@ Eine Progressive Web App (PWA) für den deutschen Markt, die Senioren dabei hilf
 
 - 🔍 **Intelligente Produktsuche**: Durchsucht die offizielle GKV-Hilfsmitteldatenbank mit über 56.000 Produkten
 - 📝 **Geführter Fragebogen**: Einfacher Schritt-für-Schritt-Prozess zur Ermittlung passender Hilfsmittel
+- 🤖 **KI-Produkterklärungen**: Nutzt Google Gemini Flash 2.0 für personalisierte, leicht verständliche Erklärungen (Phase 2)
+- 🏷️ **Intelligenter Decoder**: Übersetzt technische Abkürzungen (IIC, RIC, BTE) in einfache Sprache (Phase 1)
+- 📊 **Kategorie-Kontext**: Zeigt Auswahlhilfen und Erklärungen für jede Produktkategorie (Phase 1)
 - 📄 **Antragsschreiben-Generator**: Erstellt rechtssichere Anträge mit offiziellen Produktcodes
 - 📱 **PWA-fähig**: Installierbar auf iOS und Android, funktioniert auch offline
 - ♿ **Barrierefrei**: WCAG AA-konform mit großen Schriften und hohem Kontrast
@@ -17,6 +20,7 @@ Eine Progressive Web App (PWA) für den deutschen Markt, die Senioren dabei hilf
 - **Styling**: Tailwind CSS
 - **Routing**: React Router v7
 - **PDF-Generierung**: jsPDF
+- **KI**: Google Gemini Flash 2.0 (kostenlos)
 - **API**: Offizielle GKV-Spitzenverband Hilfsmittel-API
 - **Deployment**: Vercel
 
@@ -54,7 +58,19 @@ Die App nutzt folgende Umgebungsvariablen (optional):
 ```bash
 # API-Base URL (Standard: /api/proxy)
 VITE_API_BASE=/api/proxy
+
+# Google Gemini API Key (für KI-Erklärungen - Phase 2)
+VITE_GEMINI_API_KEY=dein_api_key_hier
 ```
+
+**Gemini API Key holen**:
+1. Besuche [Google AI Studio](https://ai.google.dev/)
+2. Erstelle einen kostenlosen API-Key (keine Kreditkarte erforderlich)
+3. Füge ihn zur `.env` Datei hinzu
+
+**Kostenlos**: 1,500 Requests/Tag, 1M Tokens/Minute
+
+**Ohne API-Key**: Die App funktioniert weiterhin mit Phase 1 (Decoder + Kontext)
 
 In der Produktion werden API-Anfragen über den Vercel Proxy (`/api/proxy`) geleitet, um CORS-Probleme zu vermeiden.
 

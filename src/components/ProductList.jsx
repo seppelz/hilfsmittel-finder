@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ProductCard } from './ProductCard';
 import { getProductId } from '../utils/productUtils';
 
-export function ProductList({ products = [], selectedProducts = [], onToggleProduct, pagination }) {
+export function ProductList({ products = [], selectedProducts = [], onToggleProduct, pagination, userContext = null }) {
   const selectedIds = useMemo(() => {
     return new Set((selectedProducts ?? []).map((item) => getProductId(item)));
   }, [selectedProducts]);
@@ -22,6 +22,7 @@ export function ProductList({ products = [], selectedProducts = [], onToggleProd
               product={product}
               selected={selectedIds.has(id)}
               onSelect={() => onToggleProduct?.(product)}
+              userContext={userContext}
             />
           );
         })}

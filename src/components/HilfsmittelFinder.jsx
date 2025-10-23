@@ -165,6 +165,7 @@ export function HilfsmittelFinder() {
             totalPages: searchResults.totalPages,
             onPageChange: handlePageChange,
           }}
+          userAnswers={answers}
         />
       )}
 

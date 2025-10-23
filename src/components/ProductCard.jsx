@@ -1,8 +1,10 @@
-import { Check, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, Info, Sparkles } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
 import { getCategoryIcon, getCategoryName } from '../data/productContexts';
+import { generateProductDescription, isAIAvailable } from '../services/aiEnhancement';
 
-export function ProductCard({ product, selected = false, onSelect }) {
+export function ProductCard({ product, selected = false, onSelect, userContext = null }) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
   const name = product?.bezeichnung || product?.name || 'Hilfsmittel';
   const description = product?.beschreibung || product?.description;
@@ -19,6 +21,35 @@ export function ProductCard({ product, selected = false, onSelect }) {
   // Additional info that might be available
   const indikation = product?.indikation;
   const anwendungsgebiet = product?.anwendungsgebiet;
+  
+  // AI-generated description state
+  const [aiDescription, setAiDescription] = useState(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [showAI, setShowAI] = useState(false);
+  
+  // Auto-generate AI description when card becomes visible (for selected products)
+  useEffect(() => {
+    if (selected && isAIAvailable() && !aiDescription && !loadingAI) {
+      loadAIDescription();
+    }
+  }, [selected]);
+  
+  const loadAIDescription = async () => {
+    if (loadingAI || aiDescription) return;
+    
+    setLoadingAI(true);
+    try {
+      const generated = await generateProductDescription(product, userContext, decodedInfo);
+      if (generated) {
+        setAiDescription(generated);
+        setShowAI(true);
+      }
+    } catch (error) {
+      console.error('Failed to generate AI description:', error);
+    } finally {
+      setLoadingAI(false);
+    }
+  };
 
   const handleClick = () => {
     onSelect?.(product);
@@ -72,11 +103,41 @@ export function ProductCard({ product, selected = false, onSelect }) {
         </div>
       )}
       
-      {description && (
+      {/* AI-Generated Description */}
+      {showAI && aiDescription && (
+        <div className="mt-3 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
+          <div className="flex items-start gap-2">
+            <Sparkles className="h-5 w-5 flex-shrink-0 text-purple-600 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-purple-900 mb-1">KI-Erklärung für Sie:</p>
+              <p className="text-base leading-relaxed text-gray-700">{aiDescription}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Show AI button if not selected and AI is available */}
+      {!showAI && !selected && isAIAvailable() && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            loadAIDescription();
+          }}
+          disabled={loadingAI}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-wait"
+        >
+          <Sparkles className="h-4 w-4" />
+          {loadingAI ? 'Wird erklärt...' : 'KI-Erklärung anzeigen'}
+        </button>
+      )}
+      
+      {/* Original description or indikation */}
+      {!showAI && description && (
         <p className="mt-2 text-lg text-gray-600">{description}</p>
       )}
       
-      {!description && (indikation || anwendungsgebiet) && (
+      {!showAI && !description && (indikation || anwendungsgebiet) && (
         <div className="mt-2 space-y-1">
           {indikation && (
             <p className="text-base text-gray-600">
