@@ -1,5 +1,5 @@
-const CACHE_NAME = 'aboelo-hilfsmittel-static-v2';
-const API_CACHE_NAME = 'aboelo-hilfsmittel-api-v2';
+const CACHE_NAME = 'aboelo-hilfsmittel-static-v3';
+const API_CACHE_NAME = 'aboelo-hilfsmittel-api-v3';
 const API_PROXY_PATH = '/api/proxy';
 
 const STATIC_ASSETS = [
@@ -38,8 +38,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle same-origin requests with cache-first strategy
+  // Handle same-origin requests
   if (url.origin === self.location.origin) {
+    // Network-first for HTML and JavaScript to avoid stale app
+    if (request.destination === 'document' || request.destination === 'script') {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            const cache = caches.open(CACHE_NAME);
+            cache.then((c) => c.put(request, response.clone()));
+            return response;
+          })
+          .catch(() => caches.match(request))
+      );
+      return;
+    }
+    
+    // Cache-first for other assets (CSS, images, fonts)
     event.respondWith(
       caches.match(request).then((cached) => cached || fetch(request)),
     );

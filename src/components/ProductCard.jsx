@@ -3,9 +3,13 @@ import { Check } from 'lucide-react';
 export function ProductCard({ product, selected = false, onSelect }) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
   const name = product?.bezeichnung || product?.name || 'Hilfsmittel';
-  const description = product?.beschreibung || product?.description || 'Keine Beschreibung verfügbar.';
+  const description = product?.beschreibung || product?.description;
   const zuzahlung = product?.zuzahlung || '10% des Preises (min. 5€, max. 10€)';
   const hersteller = product?.hersteller || product?.manufacturer;
+  
+  // Additional info that might be available
+  const indikation = product?.indikation;
+  const anwendungsgebiet = product?.anwendungsgebiet;
 
   const handleClick = () => {
     onSelect?.(product);
@@ -27,7 +31,25 @@ export function ProductCard({ product, selected = false, onSelect }) {
       </div>
 
       <h3 className="text-2xl font-semibold text-text">{name}</h3>
-      <p className="mt-2 text-lg text-gray-600">{description}</p>
+      
+      {description && (
+        <p className="mt-2 text-lg text-gray-600">{description}</p>
+      )}
+      
+      {!description && (indikation || anwendungsgebiet) && (
+        <div className="mt-2 space-y-1">
+          {indikation && (
+            <p className="text-base text-gray-600">
+              <span className="font-medium">Indikation:</span> {indikation}
+            </p>
+          )}
+          {anwendungsgebiet && (
+            <p className="text-base text-gray-600">
+              <span className="font-medium">Anwendungsgebiet:</span> {anwendungsgebiet}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4">
         <p className="text-sm font-semibold text-green-900">✓ Von der GKV erstattungsfähig</p>

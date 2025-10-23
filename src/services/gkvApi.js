@@ -77,13 +77,30 @@ function normalizeProduct(product) {
     normalizedProduct.hersteller = manufacturer;
   }
 
+  // Try multiple fields for description
   const descriptionCandidates = [
+    normalizeString(product.beschreibung),
+    normalizeString(product.description),
     normalizeString(product.erleuterungstext),
-    normalizeString(Array.isArray(product.typenAusfuehrungen) ? product.typenAusfuehrungen.join('\n') : null),
+    normalizeString(product.produktbeschreibung),
+    normalizeString(product.indikation),
+    normalizeString(product.anwendungsgebiet),
+    normalizeString(Array.isArray(product.typenAusfuehrungen) && product.typenAusfuehrungen.length 
+      ? product.typenAusfuehrungen.join(' | ') 
+      : null),
   ].filter(Boolean);
 
   if (descriptionCandidates.length) {
     normalizedProduct.beschreibung = descriptionCandidates[0];
+  }
+
+  // Log missing descriptions for debugging (only in development)
+  if (!normalizedProduct.beschreibung && !import.meta.env.PROD) {
+    console.log('[gkvApi] Product missing description:', {
+      name: cleanName,
+      code: cleanCode,
+      availableFields: Object.keys(product)
+    });
   }
 
   return normalizedProduct;
