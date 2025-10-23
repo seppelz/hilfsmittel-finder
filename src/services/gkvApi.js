@@ -638,6 +638,7 @@ class GKVApiService {
     
     // Apply smart filtering if we have many products (hearing aids with 27k+ products)
     let filteredProducts = normalizedProducts;
+    const filters = criteria.filters ?? criteria;
     if (normalizedProducts.length > 1000 && filters) {
       console.log('[GKV] Applying smart filtering for', normalizedProducts.length, 'products');
       filteredProducts = filterByFeatures(normalizedProducts, filters);
