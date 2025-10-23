@@ -129,89 +129,6 @@ Beginne direkt mit der Erklärung des Produkts.`;
   return prompt;
 }
 
-/**
- * Add contextual emojis to text for better readability
- * Seniors benefit from visual cues
- * @param {string} text - The text to enhance
- * @returns {string} Text with emojis
- */
-function addContextualEmojis(text) {
-  const emojiMap = {
-    // Features
-    'wiederaufladbar': '🔋',
-    'aufladen': '🔋',
-    'Batterien': '🔋',
-    'Bluetooth': '📱',
-    'Smartphone': '📱',
-    'Telefon': '📞',
-    'Handy': '📱',
-    
-    // Hearing aids
-    'Hörgerät': '👂',
-    'hören': '👂',
-    'Gehörgang': '👂',
-    'Ohr': '👂',
-    'Ton': '🔊',
-    'Lautstärke': '🔊',
-    'Geräusch': '🔊',
-    
-    // Mobility
-    'Gehstock': '🦯',
-    'Rollator': '🦽',
-    'gehen': '🚶',
-    'laufen': '🚶',
-    'Beine': '🦵',
-    'Gleichgewicht': '⚖️',
-    'Stabilität': '⚖️',
-    
-    // Comfort
-    'bequem': '😊',
-    'leicht': '🪶',
-    'einfach': '✨',
-    'sicher': '🛡️',
-    'Sicherheit': '🛡️',
-    
-    // Home/Daily
-    'Wohnung': '🏠',
-    'Zuhause': '🏠',
-    'draußen': '🌳',
-    'drinnen': '🏠',
-    'Bad': '🚿',
-    'Küche': '🍳',
-    
-    // Time
-    'Tag': '☀️',
-    'Nacht': '🌙',
-    'abends': '🌙',
-    
-    // Positive
-    'hilft': '💪',
-    'unterstützt': '🤝',
-    'perfekt': '⭐',
-    'ideal': '⭐',
-    'empfehlen': '👍',
-  };
-  
-  let enhancedText = text;
-  
-  // Add emoji before first occurrence of each keyword
-  Object.entries(emojiMap).forEach(([keyword, emoji]) => {
-    // Use word boundary to match whole words only
-    const regex = new RegExp(`\\b${keyword}`, 'gi');
-    let hasReplaced = false;
-    
-    enhancedText = enhancedText.replace(regex, (match) => {
-      // Only add emoji to first occurrence
-      if (!hasReplaced) {
-        hasReplaced = true;
-        return `${emoji} ${match}`;
-      }
-      return match;
-    });
-  });
-  
-  return enhancedText;
-}
 
 /**
  * Call Gemini API to generate product description
@@ -283,9 +200,6 @@ async function callGeminiAPI(prompt) {
   greetingsToRemove.forEach(pattern => {
     cleanedText = cleanedText.replace(pattern, '');
   });
-  
-  // Add contextual emojis for better readability (seniors benefit from visual cues)
-  cleanedText = addContextualEmojis(cleanedText);
   
   return cleanedText.trim();
 }
