@@ -588,7 +588,15 @@ class GKVApiService {
       '07.99': 'Sehhilfen - Sonstige',
       
       // 09 - Gehhilfen & Mobilitätshilfen
+      '09': 'Mobilitätshilfen',
       '09.12': 'Gehhilfen',
+      '09.12.01': 'Gehstöcke',
+      '09.12.02': 'Unterarmgehstützen',
+      '09.12.03': 'Achselstützen',
+      '09.12.04': 'Gehrahmen',
+      '09.12.05': 'Gehwagen',
+      '09.12.06': 'Rollatoren',
+      '09.12.07': 'Gehhilfen - Zubehör',
       '09.24': 'Rollstühle',
       '09.40': 'Treppensteighilfen',
       
