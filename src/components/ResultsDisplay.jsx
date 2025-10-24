@@ -270,17 +270,51 @@ export function ResultsDisplay({
         // Collect all displayed criteria
         const displayedCriteria = [];
         
-        // Hearing criteria
-        if (userAnswers.severity === 'moderate') displayedCriteria.push('Mittlerer Hörverlust');
-        if (userAnswers.severity === 'severe') displayedCriteria.push('Starker Hörverlust');
-        if (userAnswers.severity === 'profound') displayedCriteria.push('Sehr starker Hörverlust');
-        if (userAnswers.hearing_aid) displayedCriteria.push('Hörgerät benötigt');
-        if (userAnswers.device_type) displayedCriteria.push(`Bauform: ${userAnswers.device_type === 'ido' ? 'Im Ohr' : userAnswers.device_type === 'hdo' ? 'Hinter dem Ohr' : userAnswers.device_type}`);
-        if (userAnswers.rechargeable) displayedCriteria.push('Wiederaufladbar bevorzugt');
-        if (userAnswers.bluetooth) displayedCriteria.push('Bluetooth gewünscht');
-        if (userAnswers.noise_reduction) displayedCriteria.push('Geräuschunterdrückung wichtig');
-        if (userAnswers.phone_compatible) displayedCriteria.push('Telefonieren wichtig');
-        if (userAnswers.tv_compatible) displayedCriteria.push('Fernsehen wichtig');
+        // Hearing criteria (use actual field names from questionnaire)
+        if (userAnswers.hearing_level === 'mild') displayedCriteria.push('Leichter Hörverlust');
+        if (userAnswers.hearing_level === 'moderate') displayedCriteria.push('Mittlerer Hörverlust');
+        if (userAnswers.hearing_level === 'severe') displayedCriteria.push('Starker Hörverlust');
+        if (userAnswers.hearing_level === 'profound') displayedCriteria.push('Sehr starker Hörverlust');
+        
+        // Device type
+        if (userAnswers.hearing_device_type) {
+          const deviceTypeLabels = {
+            'ite': 'Im Ohr (ITE)',
+            'ido': 'Im Ohr',
+            'hdo': 'Hinter dem Ohr',
+            'bte': 'Hinter dem Ohr (BTE)',
+            'ric': 'Receiver-in-Canal (RIC)',
+            'any': 'Keine Präferenz'
+          };
+          displayedCriteria.push(`Bauform: ${deviceTypeLabels[userAnswers.hearing_device_type] || userAnswers.hearing_device_type}`);
+        }
+        
+        // Features (stored as array)
+        if (Array.isArray(userAnswers.hearing_features)) {
+          userAnswers.hearing_features.forEach(feature => {
+            const featureLabels = {
+              'rechargeable': 'Wiederaufladbar bevorzugt',
+              'bluetooth': 'Bluetooth gewünscht',
+              'automatic': 'Automatische Anpassung',
+              'discreet': 'Unauffällig gewünscht'
+            };
+            if (featureLabels[feature]) displayedCriteria.push(featureLabels[feature]);
+          });
+        }
+        
+        // Situations (stored as array)
+        if (Array.isArray(userAnswers.hearing_situations)) {
+          userAnswers.hearing_situations.forEach(situation => {
+            const situationLabels = {
+              'noise': 'Geräuschunterdrückung wichtig',
+              'phone': 'Telefonieren wichtig',
+              'tv': 'Fernsehen wichtig',
+              'conversation': 'Gespräche wichtig',
+              'music': 'Musik wichtig'
+            };
+            if (situationLabels[situation]) displayedCriteria.push(situationLabels[situation]);
+          });
+        }
         
         // Mobility criteria
         if (userAnswers.walker_needed) displayedCriteria.push('Gehhilfe benötigt');
@@ -314,120 +348,12 @@ export function ResultsDisplay({
               <span className="font-semibold text-gray-900">Ihre Angaben aus dem Fragebogen:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-            {/* Map questionnaire answers to readable criteria */}
-            {userAnswers.severity === 'moderate' && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Mittlerer Hörverlust
+            {/* Render all collected criteria as badges */}
+            {displayedCriteria.map((criterion, index) => (
+              <span key={index} className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
+                ✓ {criterion}
               </span>
-            )}
-            {userAnswers.severity === 'severe' && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Starker Hörverlust
-              </span>
-            )}
-            {userAnswers.severity === 'profound' && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Sehr starker Hörverlust
-              </span>
-            )}
-            {userAnswers.hearing_aid && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Hörgerät benötigt
-              </span>
-            )}
-            {userAnswers.device_type && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Bauform: {userAnswers.device_type === 'ido' ? 'Im Ohr' : userAnswers.device_type === 'hdo' ? 'Hinter dem Ohr' : userAnswers.device_type}
-              </span>
-            )}
-            {userAnswers.rechargeable && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Wiederaufladbar bevorzugt
-              </span>
-            )}
-            {userAnswers.bluetooth && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Bluetooth gewünscht
-              </span>
-            )}
-            {userAnswers.noise_reduction && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Geräuschunterdrückung wichtig
-              </span>
-            )}
-            {userAnswers.phone_compatible && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Telefonieren wichtig
-              </span>
-            )}
-            {userAnswers.tv_compatible && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Fernsehen wichtig
-              </span>
-            )}
-            {/* Mobility criteria */}
-            {userAnswers.walker_needed && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Gehhilfe benötigt
-              </span>
-            )}
-            {userAnswers.mobility_support_type === 'rollator' && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Rollator bevorzugt
-              </span>
-            )}
-            {userAnswers.mobility_support_type === 'walker' && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Gehstock bevorzugt
-              </span>
-            )}
-            {userAnswers.stairs && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Treppen im Alltag
-              </span>
-            )}
-            {userAnswers.indoor && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Für drinnen
-              </span>
-            )}
-            {userAnswers.outdoor && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Für draußen
-              </span>
-            )}
-            {/* Bathroom criteria */}
-            {userAnswers.shower_chair && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Duschhocker benötigt
-              </span>
-            )}
-            {userAnswers.bath_lift && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Badewannenlift benötigt
-              </span>
-            )}
-            {userAnswers.toilet_seat && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Toilettensitzerhöhung benötigt
-              </span>
-            )}
-            {userAnswers.grab_bars && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Haltegriffe benötigt
-              </span>
-            )}
-            {/* Vision criteria */}
-            {userAnswers.magnifier && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Lupe benötigt
-              </span>
-            )}
-            {userAnswers.lighting && (
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-sm text-blue-800 border border-blue-200">
-                ✓ Mit Beleuchtung
-              </span>
-            )}
+            ))}
             </div>
             <p className="mt-3 text-xs text-blue-700">
               💡 Diese Kriterien wurden bereits bei der Suche berücksichtigt. Nutzen Sie die Filter unten für weitere Verfeinerung.
