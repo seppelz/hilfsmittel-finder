@@ -198,8 +198,8 @@ export function ResultsDisplay({
         </div>
       </header>
       
-      {/* Category Filter - Always show if we have categories OR if a filter is active */}
-      {categories && (categories.length > 1 || selectedCategoryFilter) && (
+      {/* Category Filter - Always show if we have categories OR if a filter is active, but hide for Gehhilfen */}
+      {categories && (categories.length > 1 || selectedCategoryFilter) && userAnswers._selectedCategory !== 'mobility' && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Filter className="h-5 w-5 text-gray-600" />

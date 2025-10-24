@@ -684,6 +684,7 @@ class GKVApiService {
     let filteredProducts = normalizedProducts;
     const filters = criteria.filters ?? criteria;
     if (normalizedProducts.length > 1000 && filters) {
+      console.log('[GKV] Smart filtering criteria:', filters);
       console.log('[GKV] Applying smart filtering for', normalizedProducts.length, 'products');
       filteredProducts = filterByFeatures(normalizedProducts, filters);
     }
@@ -827,6 +828,46 @@ class GKVApiService {
       }
       if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
         featureCounts['AI'] = (featureCounts['AI'] || 0) + 1;
+      }
+      
+      // Gehhilfen device types
+      if (name.includes('STOCK') || name.includes('STAB')) {
+        featureCounts['GEHSTOCK'] = (featureCounts['GEHSTOCK'] || 0) + 1;
+      }
+      if (name.includes('ROLLATOR')) {
+        featureCounts['ROLLATOR'] = (featureCounts['ROLLATOR'] || 0) + 1;
+      }
+      if (name.includes('WAGEN') || name.includes('WALKER')) {
+        featureCounts['GEHWAGEN'] = (featureCounts['GEHWAGEN'] || 0) + 1;
+      }
+      if (name.includes('GEHSTÜTZE') || name.includes('KRÜCKE') || name.includes('UNTERARM')) {
+        featureCounts['GEHSTUETZEN'] = (featureCounts['GEHSTUETZEN'] || 0) + 1;
+      }
+      if (name.includes('GESTELL') || name.includes('GEHBOCK')) {
+        featureCounts['GEHGESTELL'] = (featureCounts['GEHGESTELL'] || 0) + 1;
+      }
+      
+      // Gehhilfen features
+      if (name.includes('FALTBAR') || name.includes('KLAPPBAR')) {
+        featureCounts['FALTBAR'] = (featureCounts['FALTBAR'] || 0) + 1;
+      }
+      if (name.includes('HÖHENVERSTELLBAR') || name.includes('VERSTELLBAR')) {
+        featureCounts['HOEHENVERSTELLBAR'] = (featureCounts['HOEHENVERSTELLBAR'] || 0) + 1;
+      }
+      if (name.includes('BREMSE')) {
+        featureCounts['BREMSEN'] = (featureCounts['BREMSEN'] || 0) + 1;
+      }
+      if (name.includes('SITZ') || name.includes('SITZFLÄCHE')) {
+        featureCounts['SITZFLAECHE'] = (featureCounts['SITZFLAECHE'] || 0) + 1;
+      }
+      if (name.includes('KORB') || name.includes('TASCHE')) {
+        featureCounts['KORB'] = (featureCounts['KORB'] || 0) + 1;
+      }
+      if (name.includes('4 RÄDER') || name.includes('4-RÄDER')) {
+        featureCounts['4RAEDER'] = (featureCounts['4RAEDER'] || 0) + 1;
+      }
+      if (name.includes('3 RÄDER') || name.includes('3-RÄDER')) {
+        featureCounts['3RAEDER'] = (featureCounts['3RAEDER'] || 0) + 1;
       }
     });
 

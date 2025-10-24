@@ -100,6 +100,25 @@ export function HilfsmittelFinder() {
   const handleQuestionsComplete = (finalAnswers) => {
     setAnswers(finalAnswers);
     setPage(1);
+    
+    // Pre-select device type filter for Gehhilfen based on questionnaire answer
+    const initialFilters = [];
+    if (finalAnswers.mobility_device_type && finalAnswers.mobility_device_type !== 'any') {
+      // Map questionnaire values to filter keys
+      const deviceTypeMap = {
+        'gehstock': 'GEHSTOCK',
+        'rollator': 'ROLLATOR',
+        'gehwagen': 'GEHWAGEN',
+        'unterarmgehstuetzen': 'GEHSTUETZEN',
+        'gehgestell': 'GEHGESTELL'
+      };
+      const filterKey = deviceTypeMap[finalAnswers.mobility_device_type];
+      if (filterKey) {
+        initialFilters.push(filterKey);
+      }
+    }
+    setSelectedFeatureFilters(initialFilters);
+    
     setStage('search');
     trackEvent('questionnaire_completed', { answeredQuestions: Object.keys(finalAnswers).length });
   };
