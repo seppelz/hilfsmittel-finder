@@ -640,19 +640,18 @@ Keine weiteren Erklärungen oder Text.`;
           temperature: 0.1,  // Low for factual pricing
           maxOutputTokens: 50,  // Short response
         },
-        // Enable Google Search Grounding (correct v1beta syntax)
-        config: {
-          tools: [
-            {
-              google_search: {}
-            }
-          ]
-        }
+        // Enable Google Search Grounding (v1beta syntax)
+        tools: [
+          {
+            googleSearchRetrieval: {}
+          }
+        ]
       })
     });
     
     if (!response.ok) {
-      console.warn('[AI] Price search API failed:', response.status);
+      const errorText = await response.text();
+      console.error('[AI] Price search API failed:', response.status, errorText);
       return null;
     }
     
@@ -739,19 +738,18 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
           temperature: 0.1,
           maxOutputTokens: 500,  // More tokens for multiple products
         },
-        // Enable Google Search Grounding (correct v1beta syntax)
-        config: {
-          tools: [
-            {
-              google_search: {}
-            }
-          ]
-        }
+        // Enable Google Search Grounding (v1beta syntax)
+        tools: [
+          {
+            googleSearchRetrieval: {}
+          }
+        ]
       })
     });
     
     if (!response.ok) {
-      console.warn('[AI] Batch price search API failed:', response.status);
+      const errorText = await response.text();
+      console.error('[AI] Batch price search API failed:', response.status, errorText);
       return {};
     }
     
