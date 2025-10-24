@@ -643,12 +643,7 @@ Keine weiteren Erklärungen oder Text.`;
         // Enable Google Search Grounding
         tools: [
           {
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: {
-                mode: "MODE_DYNAMIC",
-                dynamicThreshold: 0.3
-              }
-            }
+            googleSearch: {}  // Simplified syntax for v1 API
           }
         ]
       })
@@ -745,12 +740,7 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
         // Enable Google Search Grounding
         tools: [
           {
-            googleSearchRetrieval: {
-              dynamicRetrievalConfig: {
-                mode: "MODE_DYNAMIC",
-                dynamicThreshold: 0.3
-              }
-            }
+            googleSearch: {}  // Simplified syntax for v1 API
           }
         ]
       })
