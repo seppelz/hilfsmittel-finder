@@ -640,10 +640,9 @@ Keine weiteren Erklärungen oder Text.`;
           temperature: 0.1,  // Low for factual pricing
           maxOutputTokens: 50,  // Short response
         },
-        // Enable Google Search Grounding (v1beta syntax)
         tools: [
           {
-            googleSearchRetrieval: {}
+            googleSearch: {}
           }
         ]
       })
@@ -738,10 +737,9 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
           temperature: 0.1,
           maxOutputTokens: 500,  // More tokens for multiple products
         },
-        // Enable Google Search Grounding (v1beta syntax)
         tools: [
           {
-            googleSearchRetrieval: {}
+            googleSearch: {}
           }
         ]
       })
