@@ -229,12 +229,11 @@ async function callGeminiAPI(prompt) {
     throw new Error('Gemini API key not configured');
   }
   
-  const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-  
-  const response = await fetch(url, {
+  const response = await fetch(GEMINI_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': GEMINI_API_KEY,
     },
     body: JSON.stringify({
       contents: [
@@ -621,12 +620,11 @@ Antworte NUR mit dem Preis im Format "ca. X.XXX €" ODER "Preis nicht gefunden"
 Keine weiteren Erklärungen oder Text.`;
 
   try {
-    const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-    
-    const response = await fetch(url, {
+    const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify({
         contents: [
@@ -722,14 +720,13 @@ Antworte NUR mit JSON im folgenden Format (keine weiteren Erklärungen):
 Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefunden: "Preis nicht gefunden"`;
 
   try {
-    const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
-    
     console.log('[AI] Batch price search for', products.length, 'products');
     
-    const response = await fetch(url, {
+    const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
       },
       body: JSON.stringify({
         contents: [
