@@ -31,6 +31,11 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const typenAusfuehrungen = product?.typenAusfuehrungen;
   const technischeDaten = product?.technischeDaten;
   
+  // Debug: Log merkmale availability
+  if (!import.meta.env.PROD && code) {
+    console.log(`[ProductCard ${code}] Merkmale:`, merkmale, 'Produktart:', produktart, 'Available fields:', Object.keys(product || {}));
+  }
+  
   // AI-generated description state
   const [aiDescription, setAiDescription] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -128,35 +133,6 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </div>
       )}
       
-      {/* AI-Generated Description */}
-      {showAI && aiDescription && (
-        <div className="mt-3 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
-          <div className="flex items-start gap-2">
-            <Sparkles className="h-5 w-5 flex-shrink-0 text-purple-600 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-purple-900 mb-1">KI-Erklärung für Sie:</p>
-              <p className="text-base leading-relaxed text-gray-700">{aiDescription}</p>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Show AI button if not selected and AI is available */}
-      {!showAI && !selected && isAIAvailable() && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            loadAIDescription();
-          }}
-          disabled={loadingAI}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-wait"
-        >
-          <Sparkles className="h-4 w-4" />
-          {loadingAI ? 'Wird erklärt...' : 'KI-Erklärung anzeigen'}
-        </button>
-      )}
-      
       {/* Original description or indikation */}
       {!showAI && description && (
         <p className="mt-2 text-lg text-gray-600">{description}</p>
@@ -177,7 +153,7 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </div>
       )}
 
-      {/* Merkmale & Technische Details - Collapsible */}
+      {/* Merkmale & Technische Details - Collapsible - PRIORITY: Show API data first! */}
       {(merkmale && merkmale.length > 0) && (
         <div className="mt-4 border-t border-gray-200 pt-4">
           <button
@@ -221,6 +197,35 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
             </div>
           )}
         </div>
+      )}
+
+      {/* AI-Generated Description - Show AFTER API data */}
+      {showAI && aiDescription && (
+        <div className="mt-3 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-4">
+          <div className="flex items-start gap-2">
+            <Sparkles className="h-5 w-5 flex-shrink-0 text-purple-600 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-purple-900 mb-1">KI-Erklärung für Sie:</p>
+              <p className="text-base leading-relaxed text-gray-700">{aiDescription}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Show AI button if not selected and AI is available - Show AFTER API data */}
+      {!showAI && !selected && isAIAvailable() && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            loadAIDescription();
+          }}
+          disabled={loadingAI}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-purple-100 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-200 disabled:opacity-50 disabled:cursor-wait"
+        >
+          <Sparkles className="h-4 w-4" />
+          {loadingAI ? 'Wird erklärt...' : 'KI-Erklärung anzeigen'}
+        </button>
       )}
 
       {hersteller && <p className="mt-4 text-sm text-gray-500">Hersteller: {hersteller}</p>}

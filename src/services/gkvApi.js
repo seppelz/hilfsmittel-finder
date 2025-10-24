@@ -251,6 +251,16 @@ function normalizeProduct(product) {
         .map(item => item.trim())
         .filter(item => item.length > 3 && !item.match(/^Merkmale|^Komponenten/i));
     }
+    
+    // Debug: Log successful extraction
+    if (!import.meta.env.PROD) {
+      console.log('[gkvApi] Extracted merkmale for', cleanCode, ':', normalizedProduct.merkmale?.length || 0, 'items');
+    }
+  } else {
+    // Debug: Log missing merkmale
+    if (!import.meta.env.PROD && cleanCode?.startsWith('10.46')) {
+      console.log('[gkvApi] No merkmale found for', cleanCode, 'Available fields:', Object.keys(product).filter(k => k.toLowerCase().includes('merkmal') || k.toLowerCase().includes('komponente') || k.toLowerCase().includes('ausstattung')));
+    }
   }
 
   // Extract Produktart
