@@ -560,33 +560,92 @@ export function ResultsDisplay({
 
       {/* Floating Comparison Indicator */}
       {comparisonProducts && comparisonProducts.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="rounded-2xl border-2 border-purple-300 bg-purple-50 shadow-xl px-6 py-4 flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Scale className="h-5 w-5 text-purple-600" />
-              <span className="font-semibold text-purple-900">
-                {comparisonProducts.length} {comparisonProducts.length === 1 ? 'Produkt' : 'Produkte'} ausgewählt
-              </span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-4xl w-full px-4">
+          <div className="rounded-2xl border-2 border-purple-300 bg-purple-50 shadow-xl p-4">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Scale className="h-5 w-5 text-purple-600" />
+                <span className="font-semibold text-purple-900">
+                  {comparisonProducts.length} {comparisonProducts.length === 1 ? 'Produkt' : 'Produkte'} zum Vergleich
+                </span>
+              </div>
+              
+              <button
+                onClick={() => comparisonProducts.forEach(p => onRemoveFromComparison(p))}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Alle entfernen
+              </button>
             </div>
-            
-            <button
-              onClick={onShowComparison}
-              disabled={comparisonProducts.length < 2}
-              className={`rounded-xl px-6 py-2 font-medium transition ${
-                comparisonProducts.length >= 2
-                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              Vergleichen {comparisonProducts.length < 2 && `(min. 2)`}
-            </button>
-            
-            <button
-              onClick={() => comparisonProducts.forEach(p => onRemoveFromComparison(p))}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Alle entfernen
-            </button>
+
+            {/* Product Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              {comparisonProducts.map((product) => {
+                const code = product?.produktartNummer || product?.code || 'Unbekannt';
+                const name = product?.bezeichnung || product?.name || 'Produkt';
+                const manufacturer = product?.hersteller;
+                
+                return (
+                  <div 
+                    key={code}
+                    className="relative bg-white rounded-xl p-3 border-2 border-purple-200 shadow-sm"
+                  >
+                    <button
+                      onClick={() => onRemoveFromComparison(product)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition shadow-md"
+                      title="Aus Vergleich entfernen"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                    
+                    <div className="font-mono text-xs text-gray-500 mb-1">{code}</div>
+                    <div className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                      {name}
+                    </div>
+                    {manufacturer && (
+                      <div className="text-xs text-gray-600">
+                        {manufacturer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* Placeholder for remaining slots */}
+              {comparisonProducts.length < 3 && (
+                <div className="bg-white/50 rounded-xl p-3 border-2 border-dashed border-purple-200 flex items-center justify-center text-sm text-gray-500">
+                  <div className="text-center">
+                    <Scale className="h-6 w-6 mx-auto mb-1 text-gray-400" />
+                    <div>Produkt hinzufügen</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={onShowComparison}
+                disabled={comparisonProducts.length < 2}
+                className={`flex-1 rounded-xl px-6 py-3 font-semibold transition ${
+                  comparisonProducts.length >= 2
+                    ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-md'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {comparisonProducts.length < 2 ? (
+                  <>Vergleichen (min. 2 Produkte)</>
+                ) : (
+                  <>
+                    <Scale className="inline h-5 w-5 mr-2" />
+                    Jetzt vergleichen
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
