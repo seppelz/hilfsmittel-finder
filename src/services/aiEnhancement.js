@@ -262,15 +262,18 @@ async function callGeminiAPI(prompt) {
   
   if (!response.ok) {
     const errorData = await response.text();
+    console.error('[AI] Product description API error:', response.status, errorData);
     throw new Error(`Gemini API error: ${response.status} - ${errorData}`);
   }
   
   const data = await response.json();
+  console.log('[AI] Description API response:', JSON.stringify(data, null, 2));
   
   // Extract text from response
   const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   
   if (!generatedText) {
+    console.error('[AI] No text in response. Full response:', data);
     throw new Error('No text generated from Gemini API');
   }
   
@@ -752,10 +755,19 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
     }
     
     const data = await response.json();
+    console.log('[AI] Batch price search API response:', JSON.stringify(data, null, 2));
+    
     const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!responseText) {
-      console.warn('[AI] No response text from batch price search');
+      console.error('[AI] No response text from batch price search. Full response:', data);
+      console.error('[AI] Response structure:', {
+        hasCandidates: !!data?.candidates,
+        candidatesLength: data?.candidates?.length,
+        firstCandidate: data?.candidates?.[0],
+        content: data?.candidates?.[0]?.content,
+        parts: data?.candidates?.[0]?.content?.parts
+      });
       return {};
     }
     
