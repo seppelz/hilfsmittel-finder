@@ -10,6 +10,7 @@ export function ProductComparison({
 }) {
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [technicalSpecs, setTechnicalSpecs] = useState(null);
   
   useEffect(() => {
     if (products.length >= 2) {
@@ -21,7 +22,38 @@ export function ProductComparison({
     setLoadingAI(true);
     try {
       const analysis = await generateComparisonAnalysis(products, userContext);
-      setAiAnalysis(analysis);
+      
+      // Try to parse JSON from response
+      try {
+        // Extract JSON from response (might have markdown code blocks)
+        const jsonMatch = analysis.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          console.log('[ProductComparison] Parsed JSON:', parsed);
+          
+          // Separate specs and recommendation
+          if (parsed.products) {
+            setTechnicalSpecs(parsed.products);
+            console.log('[ProductComparison] Technical specs loaded:', parsed.products.length, 'products');
+          }
+          
+          // Build recommendation text
+          if (parsed.recommendation) {
+            const recText = `**Beste Wahl:** ${parsed.recommendation.best_choice}\n\n**Alternative:** ${parsed.recommendation.alternative}\n\n**Wichtigster Unterschied:** ${parsed.recommendation.key_difference}`;
+            setAiAnalysis(recText);
+          } else {
+            // Fallback to raw text if no recommendation structure
+            setAiAnalysis(analysis);
+          }
+        } else {
+          // Fallback: use raw text if no JSON
+          console.log('[ProductComparison] No JSON found, using raw text');
+          setAiAnalysis(analysis);
+        }
+      } catch (parseError) {
+        console.error('[ProductComparison] JSON parse failed, using raw text:', parseError);
+        setAiAnalysis(analysis);
+      }
     } catch (error) {
       console.error('AI comparison failed:', error);
     } finally {
@@ -513,6 +545,77 @@ export function ProductComparison({
                     </tr>
                   </>
                 )}
+                
+                {/* Dynamic Technical Specifications from AI */}
+                {technicalSpecs && technicalSpecs.length > 0 && (() => {
+                  console.log('[ProductComparison] Rendering dynamic specs for', technicalSpecs.length, 'products');
+                  
+                  // Extract all unique spec keys
+                  const allSpecKeys = new Set();
+                  technicalSpecs.forEach(product => {
+                    if (product.specs) {
+                      Object.keys(product.specs).forEach(key => allSpecKeys.add(key));
+                    }
+                  });
+                  
+                  // Map keys to German labels
+                  const specLabels = {
+                    'max_weight': 'Max. Benutzergewicht',
+                    'body_height': 'Körpergröße',
+                    'seat_height': 'Sitzhöhe',
+                    'total_height': 'Gesamthöhe',
+                    'width': 'Breite',
+                    'weight': 'Gewicht',
+                    'power_level': 'Leistungsstufe (AI)',
+                    'device_type': 'Bauform (AI)',
+                    'battery_type': 'Batterie/Akku',
+                    'bluetooth': 'Bluetooth (AI)',
+                    'telecoil': 'Telefonspule (AI)',
+                    'channels': 'Kanäle',
+                    'programs': 'Programme',
+                    'magnification': 'Vergrößerung',
+                    'light': 'Beleuchtung',
+                    'material': 'Material',
+                    'dimensions': 'Maße',
+                    'mounting': 'Montage',
+                    'foldable': 'Faltbar (AI)',
+                    'brakes': 'Bremsen (AI)',
+                    'wheels': 'Räder (AI)',
+                    'non_slip': 'Rutschfest',
+                    'battery': 'Batteriebetrieb',
+                    'size': 'Größe'
+                  };
+                  
+                  // Create rows for each spec
+                  const specRows = Array.from(allSpecKeys).map((specKey, idx) => {
+                    const label = specLabels[specKey] || specKey;
+                    const isEvenRow = idx % 2 === 0;
+                    
+                    return (
+                      <tr key={`spec-${specKey}`} className={isEvenRow ? "bg-blue-50" : "bg-white"}>
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          🔍 {label}
+                        </td>
+                        {technicalSpecs.map((productSpec, prodIdx) => {
+                          const value = productSpec.specs?.[specKey];
+                          const code = productSpec.code;
+                          
+                          return (
+                            <td key={prodIdx} className="px-6 py-4">
+                              {value && value !== "Nicht angegeben" ? (
+                                <span className="text-sm font-semibold text-gray-900">{value}</span>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  });
+                  
+                  return specRows;
+                })()}
                 
                 {/* GKV Erstattung */}
                 <tr>

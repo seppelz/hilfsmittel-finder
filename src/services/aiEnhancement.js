@@ -84,6 +84,80 @@ function detectProductCategory(product) {
 }
 
 /**
+ * Detect both category AND subcategory from products
+ * @param {Array} products - Array of products to analyze
+ * @returns {object} Object with category and subcategory
+ */
+function detectProductDetails(products) {
+  const firstProduct = products[0];
+  const code = firstProduct?.produktartNummer || firstProduct?.code || '';
+  const name = (firstProduct?.bezeichnung || '').toUpperCase();
+  
+  let category = 'general';
+  let subcategory = null;
+  
+  // Hearing aids
+  if (code.startsWith('13.')) {
+    category = 'hearing';
+    // Detect device type from name
+    if (name.includes('IIC') || name.includes('INVISIBLE')) {
+      subcategory = 'IIC (Invisible In Canal)';
+    } else if (name.includes('CIC')) {
+      subcategory = 'CIC (Completely In Canal)';
+    } else if (name.includes('ITC')) {
+      subcategory = 'ITC (In The Canal)';
+    } else if (name.includes('ITE')) {
+      subcategory = 'ITE (In The Ear)';
+    } else if (name.includes('RIC') || name.includes('RITE')) {
+      subcategory = 'RIC/RITE (Receiver In Canal)';
+    } else if (name.includes('BTE')) {
+      subcategory = 'BTE (Behind The Ear)';
+    }
+  }
+  
+  // Mobility aids
+  else if (code.startsWith('10.') || code.startsWith('09.')) {
+    category = 'mobility';
+    // Detect device type from name
+    if (name.includes('ROLLATOR')) {
+      subcategory = 'Rollatoren';
+    } else if (name.includes('STOCK') || name.includes('STAB')) {
+      subcategory = 'Gehstöcke';
+    } else if (name.includes('GEHWAGEN') || name.includes('WALKER')) {
+      subcategory = 'Gehwagen';
+    } else if (name.includes('GEHSTÜTZE') || name.includes('KRÜCKE') || name.includes('UNTERARM')) {
+      subcategory = 'Unterarmgehstützen';
+    } else if (name.includes('GESTELL') || name.includes('GEHBOCK')) {
+      subcategory = 'Gehgestelle';
+    }
+  }
+  
+  // Vision aids
+  else if (code.startsWith('25.') || code.startsWith('07.')) {
+    category = 'vision';
+    if (name.includes('LUPE')) {
+      subcategory = 'Lupen';
+    } else if (name.includes('BRILLE')) {
+      subcategory = 'Sehhilfenbrillen';
+    }
+  }
+  
+  // Bathroom aids
+  else if (code.startsWith('04.')) {
+    category = 'bathroom';
+    if (name.includes('DUSCHSITZ') || name.includes('DUSCHSTUHL')) {
+      subcategory = 'Duschsitze';
+    } else if (name.includes('HALTEGRIFF')) {
+      subcategory = 'Haltegriffe';
+    } else if (name.includes('BADEWANNENSITZ')) {
+      subcategory = 'Badewannensitze';
+    }
+  }
+  
+  return { category, subcategory };
+}
+
+/**
  * Extract structured user needs from questionnaire
  * @param {object} userContext - User context from questionnaire
  * @returns {string} Formatted user needs string
@@ -641,15 +715,62 @@ export async function generateComparisonAnalysis(products, userContext) {
   // Import here to avoid circular dependency
   const { decodeProduct } = await import('../utils/productDecoder');
   
-  // Detect category from first product
-  const category = detectProductCategory(products[0]);
-  const expertRole = {
-    'hearing': 'Hörgeräte',
-    'mobility': 'Gehhilfen und Mobilitätshilfen',
-    'vision': 'Sehhilfen',
-    'bathroom': 'Badehilfen',
-    'general': 'Hilfsmittel'
-  }[category];
+  // Detect both category AND subcategory
+  const { category, subcategory } = detectProductDetails(products);
+  
+  // Build expert role with subcategory
+  let expertRole = 'Hilfsmittel';
+  if (category === 'hearing') {
+    expertRole = subcategory ? `Hörgeräte (speziell ${subcategory})` : 'Hörgeräte';
+  } else if (category === 'mobility') {
+    expertRole = subcategory ? `Gehhilfen (speziell ${subcategory})` : 'Gehhilfen';
+  } else if (category === 'vision') {
+    expertRole = subcategory ? `Sehhilfen (speziell ${subcategory})` : 'Sehhilfen';
+  } else if (category === 'bathroom') {
+    expertRole = subcategory ? `Badehilfen (speziell ${subcategory})` : 'Badehilfen';
+  }
+  
+  // Define category-specific technical specs to request
+  const requiredSpecs = {
+    'hearing': [
+      { key: 'power_level', label: 'Leistungsstufe', example: 'M, HP, UP, SP' },
+      { key: 'device_type', label: 'Bauform', example: 'BTE, RIC, ITE, CIC' },
+      { key: 'battery_type', label: 'Batterie/Akku', example: 'Lithium-Akku, Batterie 312' },
+      { key: 'bluetooth', label: 'Bluetooth', example: 'Ja, Nein' },
+      { key: 'telecoil', label: 'Telefonspule', example: 'Ja, Nein' },
+      { key: 'channels', label: 'Kanäle', example: '8, 12, 16, 24' },
+      { key: 'programs', label: 'Programme', example: '4, 5, 6' }
+    ],
+    'mobility': [
+      { key: 'max_weight', label: 'Max. Benutzergewicht', example: '100 kg, 130 kg, 150 kg' },
+      { key: 'body_height', label: 'Körpergröße', example: '150-200 cm, 135-170 cm' },
+      { key: 'seat_height', label: 'Sitzhöhe', example: '55 cm, 62 cm' },
+      { key: 'total_height', label: 'Gesamthöhe', example: '84-100 cm, 98-111.5 cm' },
+      { key: 'width', label: 'Breite', example: '61 cm, 68 cm' },
+      { key: 'weight', label: 'Gewicht', example: '7.5 kg, 10.9 kg' },
+      { key: 'foldable', label: 'Faltbar', example: 'Ja, Nein' },
+      { key: 'brakes', label: 'Bremsen', example: 'Ja, Nein' },
+      { key: 'wheels', label: 'Räder', example: '3 Räder, 4 Räder' }
+    ],
+    'vision': [
+      { key: 'magnification', label: 'Vergrößerung', example: '2x, 5x, 10x' },
+      { key: 'light', label: 'Beleuchtung', example: 'LED, keine' },
+      { key: 'size', label: 'Größe', example: '10 cm, 15 cm Durchmesser' },
+      { key: 'battery', label: 'Batteriebetrieb', example: 'Ja, Nein' }
+    ],
+    'bathroom': [
+      { key: 'max_weight', label: 'Max. Belastung', example: '100 kg, 150 kg' },
+      { key: 'dimensions', label: 'Maße (BxTxH)', example: '45x40x50 cm' },
+      { key: 'material', label: 'Material', example: 'Aluminium, Kunststoff' },
+      { key: 'non_slip', label: 'Rutschfest', example: 'Ja, Nein' },
+      { key: 'mounting', label: 'Montage', example: 'Wandmontage, Freistehend' }
+    ]
+  };
+  
+  const specsToRequest = requiredSpecs[category] || [];
+  const specsDescription = specsToRequest.map(s => 
+    `- ${s.label} (${s.key}): ${s.example}`
+  ).join('\n');
   
   // Build comparison prompt
   const userNeeds = extractUserNeeds(userContext);
@@ -668,15 +789,7 @@ Erkannte Eigenschaften:
 ${capabilities}`;
   }).join('\n\n');
   
-  // Category-specific comparison focus
-  const comparisonFocus = {
-    'hearing': 'Leistungsstufen, Bauform, Wiederaufladbarkeit, Bluetooth',
-    'mobility': 'Belastbarkeit, Körpergröße, Sitzhöhe, Maße, Gewicht, Faltbarkeit, Bremsen',
-    'vision': 'Vergrößerung, Beleuchtung, Größe',
-    'bathroom': 'Belastbarkeit, Maße, Rutschfestigkeit, Montage'
-  }[category] || 'Technische Spezifikationen';
-  
-  const prompt = `Du bist Experte für ${expertRole}. Vergleiche diese ${products.length} Produkte für den Nutzer.
+  const prompt = `Du bist Experte für ${expertRole}. Vergleiche diese ${products.length} Produkte anhand ihrer technischen Spezifikationen.
 
 NUTZER-BEDÜRFNISSE:
 ${userNeeds}
@@ -684,17 +797,45 @@ ${userNeeds}
 ZU VERGLEICHENDE PRODUKTE:
 ${productsInfo}
 
-WICHTIG: Suche im Internet nach den genauen technischen Unterschieden zwischen diesen Produkten anhand ihrer Hilfsmittelnummern (Codes).
-Relevante technische Daten: ${comparisonFocus}
+WICHTIG: 
+1. Suche im Internet nach den genauen technischen Spezifikationen für jedes Produkt anhand der Hilfsmittelnummern (Codes).
+2. Finde und vergleiche ALLE relevanten technischen Daten:
+${specsDescription}
 
 AUFGABE:
-1. Beste Wahl (1-2 Sätze): Welches Produkt passt am besten zu den Bedürfnissen und warum? Nenne konkrete technische Unterschiede (z.B. Belastbarkeit, Körpergröße, Maße).
-2. Alternative (1 Satz): Wann wäre das andere Produkt besser? (z.B. "Produkt 2 ist für kleinere/größere Personen geeignet")
-3. Wichtigster Unterschied (1 Satz): Was ist der Hauptunterschied für den Nutzer?
+Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführungszeichen):
 
-STIL: Einfache Sprache, direkte Empfehlung mit konkreten technischen Daten, max. 120 Wörter. Nutze "Produkt 1", "Produkt 2" etc. zur Referenz.`;
+{
+  "products": [
+    {
+      "code": "${products[0]?.produktartNummer || products[0]?.code}",
+      "specs": {
+        ${specsToRequest.map(s => `"${s.key}": "Wert hier"`).join(',\n        ')}
+      }
+    },
+    {
+      "code": "${products[1]?.produktartNummer || products[1]?.code}",
+      "specs": {
+        ${specsToRequest.map(s => `"${s.key}": "Wert hier"`).join(',\n        ')}
+      }
+    }
+  ],
+  "recommendation": {
+    "best_choice": "Welches Produkt passt am besten und warum? (konkrete technische Unterschiede nennen)",
+    "alternative": "Wann wäre das andere Produkt besser?",
+    "key_difference": "Was ist der Hauptunterschied für den Nutzer?"
+  }
+}
+
+STIL: 
+- JSON MUSS VALIDE sein
+- Wenn ein Wert nicht gefunden wird: "Nicht angegeben"
+- Nutze die exakten key-Namen aus der Liste oben
+- Recommendation in einfacher, direkter Sprache für Senioren (max. 2-3 Sätze pro Feld)`;
 
   try {
+    console.log('[AI] Generating structured comparison with specs for:', expertRole);
+    
     // Use Google Search Grounding for technical specs research
     const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
@@ -713,8 +854,8 @@ STIL: Einfache Sprache, direkte Empfehlung mit konkreten technischen Daten, max.
           }
         ],
         generationConfig: {
-          temperature: 0.4,  // Balanced for factual comparison
-          maxOutputTokens: 1000,
+          temperature: 0.3,  // Lower for more structured output
+          maxOutputTokens: 2000,  // Increased for JSON response with specs
           topP: 0.85,
           topK: 40,
           thinkingConfig: {
@@ -749,9 +890,12 @@ STIL: Einfache Sprache, direkte Empfehlung mit konkreten technischen Daten, max.
       throw new Error('No comparison text generated');
     }
     
+    console.log('[AI] Comparison response received, length:', analysis.length);
+    
     trackEvent('ai_comparison_generated', { 
       productCount: products.length,
       category: category,
+      subcategory: subcategory,
       success: true 
     });
     
