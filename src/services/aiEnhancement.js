@@ -68,6 +68,22 @@ function cacheDescription(productCode, description) {
 }
 
 /**
+ * Detect product category from product code
+ * @param {object} product - Product object
+ * @returns {string} Category identifier
+ */
+function detectProductCategory(product) {
+  const code = product?.produktartNummer || product?.code || '';
+  
+  if (code.startsWith('13.')) return 'hearing';
+  if (code.startsWith('10.')) return 'mobility';
+  if (code.startsWith('25.') || code.startsWith('07.')) return 'vision';
+  if (code.startsWith('04.')) return 'bathroom';
+  
+  return 'general';
+}
+
+/**
  * Extract structured user needs from questionnaire
  * @param {object} userContext - User context from questionnaire
  * @returns {string} Formatted user needs string
@@ -139,46 +155,110 @@ function extractUserNeeds(userContext) {
  * Extract device capabilities from product data
  * @param {object} product - Product object
  * @param {object} decodedInfo - Decoded product information
+ * @param {string} category - Product category
  * @returns {string} Formatted device capabilities string
  */
-function extractDeviceCapabilities(product, decodedInfo) {
+function extractDeviceCapabilities(product, decodedInfo, category) {
   const caps = [];
   const name = (product?.bezeichnung || '').toUpperCase();
   
-  // Power level
-  if (name.includes(' HP') || name.includes('(HP')) {
-    caps.push('Leistung: HP (High Power - für starken Hörverlust)');
-  } else if (name.includes(' UP') || name.includes('(UP')) {
-    caps.push('Leistung: UP (Ultra Power - für sehr starken Hörverlust)');
-  } else if (name.includes(' SP') || name.includes('(SP')) {
-    caps.push('Leistung: SP (Super Power)');
-  } else if (name.includes(' M ') || name.includes(' M-') || name.includes('(M)')) {
-    caps.push('Leistung: M (Medium - für leichten bis mittleren Hörverlust)');
+  // Category-specific capability extraction
+  if (category === 'hearing') {
+    // Hörgeräte capabilities
+    // Power level
+    if (name.includes(' HP') || name.includes('(HP')) {
+      caps.push('Leistung: HP (High Power - für starken Hörverlust)');
+    } else if (name.includes(' UP') || name.includes('(UP')) {
+      caps.push('Leistung: UP (Ultra Power - für sehr starken Hörverlust)');
+    } else if (name.includes(' SP') || name.includes('(SP')) {
+      caps.push('Leistung: SP (Super Power)');
+    } else if (name.includes(' M ') || name.includes(' M-') || name.includes('(M)')) {
+      caps.push('Leistung: M (Medium - für leichten bis mittleren Hörverlust)');
+    }
+    
+    // Device type
+    if (decodedInfo?.deviceType?.de) {
+      caps.push(`Bauform: ${decodedInfo.deviceType.de}`);
+    }
+    
+    // Charging
+    if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
+        name.includes('LITHIUM') || name.includes('AKKU')) {
+      caps.push('Wiederaufladbar (kein Batteriewechsel nötig)');
+    }
+    
+    // Connectivity
+    if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
+      caps.push('Bluetooth (direkte Verbindung zu TV, Handy)');
+    }
+    if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
+      caps.push('Telefonspule (für Induktionsschleifen)');
+    }
+    if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
+      caps.push('KI-gestützte Anpassung');
+    }
+  } else if (category === 'mobility') {
+    // Gehhilfen capabilities
+    // Device type
+    if (name.includes('ROLLATOR')) {
+      caps.push('Typ: Rollator (mit Rädern und Bremsen)');
+    } else if (name.includes('STOCK') || name.includes('STAB')) {
+      caps.push('Typ: Gehstock (für leichte Unterstützung)');
+    } else if (name.includes('WAGEN') || name.includes('WALKER')) {
+      caps.push('Typ: Gehwagen (sehr stabil)');
+    } else if (name.includes('GEHSTÜTZE') || name.includes('KRÜCKE') || name.includes('UNTERARM')) {
+      caps.push('Typ: Unterarmgehstützen (für stärkere Unterstützung)');
+    } else if (name.includes('GESTELL') || name.includes('GEHBOCK')) {
+      caps.push('Typ: Gehgestell (stabil, ohne Räder)');
+    }
+    
+    // Features
+    if (name.includes('FALTBAR') || name.includes('KLAPPBAR')) {
+      caps.push('Faltbar (platzsparend für Transport)');
+    }
+    if (name.includes('HÖHENVERSTELLBAR') || name.includes('VERSTELLBAR')) {
+      caps.push('Höhenverstellbar (anpassbar an Körpergröße)');
+    }
+    if (name.includes('BREMSE')) {
+      caps.push('Mit Bremsen (für sicheres Anhalten)');
+    }
+    if (name.includes('SITZ') || name.includes('SITZFLÄCHE')) {
+      caps.push('Mit Sitzfläche (für Pausen unterwegs)');
+    }
+    if (name.includes('KORB') || name.includes('TASCHE')) {
+      caps.push('Mit Korb/Tasche (für Einkäufe)');
+    }
+    if (name.includes('4 RÄDER') || name.includes('4-RÄDER')) {
+      caps.push('4 Räder (sehr stabil)');
+    } else if (name.includes('3 RÄDER') || name.includes('3-RÄDER')) {
+      caps.push('3 Räder (wendig)');
+    }
+  } else if (category === 'vision') {
+    // Sehhilfen capabilities
+    if (name.includes('LUPE')) {
+      caps.push('Typ: Lupe (Vergrößerungshilfe)');
+    }
+    if (name.includes('LED') || name.includes('LICHT') || name.includes('BELEUCHT')) {
+      caps.push('Mit Beleuchtung (bessere Sicht)');
+    }
+    if (name.includes('ELEKTRONISCH') || name.includes('DIGITAL')) {
+      caps.push('Elektronisch (einstellbare Vergrößerung)');
+    }
+  } else if (category === 'bathroom') {
+    // Badehilfen capabilities
+    if (name.includes('DUSCHSITZ') || name.includes('DUSCHSTUHL')) {
+      caps.push('Typ: Duschsitz (zum Sitzen beim Duschen)');
+    } else if (name.includes('HALTEGRIFF') || name.includes('GRIFF')) {
+      caps.push('Typ: Haltegriff (zum Festhalten)');
+    } else if (name.includes('BADEWANNENSITZ')) {
+      caps.push('Typ: Badewannensitz (erleichtert Baden)');
+    }
+    if (name.includes('RUTSCHFEST') || name.includes('ANTI-RUTSCH')) {
+      caps.push('Rutschfest (erhöhte Sicherheit)');
+    }
   }
   
-  // Device type
-  if (decodedInfo?.deviceType?.de) {
-    caps.push(`Bauform: ${decodedInfo.deviceType.de}`);
-  }
-  
-  // Charging
-  if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
-      name.includes('LITHIUM') || name.includes('AKKU')) {
-    caps.push('Wiederaufladbar (kein Batteriewechsel nötig)');
-  }
-  
-  // Connectivity
-  if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
-    caps.push('Bluetooth (direkte Verbindung zu TV, Handy)');
-  }
-  if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
-    caps.push('Telefonspule (für Induktionsschleifen in öffentlichen Gebäuden)');
-  }
-  if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
-    caps.push('KI-gestützte Anpassung');
-  }
-  
-  return caps.length > 0 ? '- ' + caps.join('\n- ') : 'Standardgerät';
+  return caps.length > 0 ? '- ' + caps.join('\n- ') : 'Standardausführung';
 }
 
 /**
@@ -193,27 +273,38 @@ function buildPrompt(product, userContext, decodedInfo) {
   const manufacturer = product?.hersteller || 'Hersteller unbekannt';
   const deviceType = decodedInfo?.deviceType?.de || '';
   
+  // Detect category and set appropriate expert role
+  const category = detectProductCategory(product);
+  const expertRole = {
+    'hearing': 'Hörgeräte',
+    'mobility': 'Gehhilfen und Mobilitätshilfen',
+    'vision': 'Sehhilfen',
+    'bathroom': 'Badehilfen',
+    'general': 'Hilfsmittel'
+  }[category];
+  
   // Extract structured user needs and device capabilities
   const userNeeds = extractUserNeeds(userContext);
-  const deviceCapabilities = extractDeviceCapabilities(product, decodedInfo);
+  const deviceCapabilities = extractDeviceCapabilities(product, decodedInfo, category);
   
-  const prompt = `Du bist Experte für Hörgeräte. Vergleiche die Bedürfnisse des Nutzers mit diesem Gerät.
+  const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
 
-NUTZER-BEDÜRFNISSE:
+NUTZER-SITUATION:
 ${userNeeds}
 
-GERÄTE-EIGENSCHAFTEN:
-Name: ${productName}
+PRODUKT:
+${productName}
 ${deviceType ? `Typ: ${deviceType}` : ''}
 ${deviceCapabilities}
 Hersteller: ${manufacturer}
 
-AUFGABE:
-1. Bewertung (1 Satz): Wie gut passt das Gerät? (Perfekt geeignet / Gut geeignet / Eingeschränkt geeignet)
-2. Wichtigste Vorteile (1-2 Stichpunkte): Was passt besonders gut zu den Bedürfnissen?
-3. Eventuelle Einschränkungen (optional, 1 Stichpunkt): Falls etwas nicht optimal passt
+AUFGABE (max. 80 Wörter):
+1. PASSUNG (1 Satz): "Sehr gut geeignet" / "Gut geeignet" / "Eingeschränkt geeignet"
+2. HAUPTVORTEILE (2-3 Punkte): Was spricht dafür?
+3. ZU BEACHTEN (optional, 1 Punkt): Wichtige Einschränkung?
+4. NÄCHSTER SCHRITT (1 Satz): Wie bekomme ich es? (Arzt/Rezept/Beratung)
 
-STIL: Einfache Sprache, direkte Ansprache ("Sie können...", "Das hilft Ihnen..."), max. 80 Wörter. KEINE Begrüßung.`;
+STIL: Einfache Sprache für Senioren. Direkt und professionell. Keine Begrüßung. Keine Sternchen.`;
 
   return prompt;
 }
@@ -594,229 +685,3 @@ STIL: Einfache Sprache, direkte Empfehlung, max. 100 Wörter. Nutze "Produkt 1",
     return 'Vergleich konnte nicht erstellt werden. Bitte vergleichen Sie die Eigenschaften in der Tabelle.';
   }
 }
-
-/**
- * Search for approximate product price using Google Search Grounding
- * @param {object} product - Product object
- * @returns {Promise<string|null>} Price information or null
- */
-export async function searchProductPrice(product) {
-  if (!isAIAvailable()) {
-    console.warn('[AI] Price search skipped: No API key');
-    return null;
-  }
-  
-  const productName = product?.bezeichnung || product?.name;
-  const manufacturer = product?.hersteller;
-  const code = product?.produktartNummer || product?.code;
-  
-  if (!productName) {
-    console.warn('[AI] Price search skipped: No product name');
-    return null;
-  }
-  
-  const prompt = `Suche den aktuellen Verkaufspreis für dieses Hörgerät in Deutschland:
-
-Produkt: ${productName}
-Hersteller: ${manufacturer || 'unbekannt'}
-GKV-Code: ${code}
-
-Finde den ungefähren Verkaufspreis bei Hörgeräteakustikern oder Online-Shops.
-Antworte NUR mit dem Preis im Format "ca. X.XXX €" ODER "Preis nicht gefunden".
-Keine weiteren Erklärungen oder Text.`;
-
-  try {
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1,  // Low for factual pricing
-          maxOutputTokens: 150,  // Increased for thinking mode overhead
-          thinkingConfig: {
-            thinkingBudget: 0  // Disable thinking mode for price search
-          }
-        },
-        tools: [
-          {
-            googleSearch: {}
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[AI] Price search API failed:', response.status, errorText);
-      return null;
-    }
-    
-    const data = await response.json();
-    const priceText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!priceText || priceText.toLowerCase().includes('nicht gefunden')) {
-      console.log('[AI] Price not found for:', productName);
-      return null;
-    }
-    
-    trackEvent('ai_price_search_success', { 
-      product: code,
-      foundPrice: true 
-    });
-    
-    console.log('[AI] Price found for', productName, ':', priceText.trim());
-    return priceText.trim();
-  } catch (error) {
-    logError('ai_price_search_failed', error);
-    console.error('[AI] Price search error:', error);
-    return null;
-  }
-}
-
-/**
- * Search for prices of multiple products in a single AI request (batch processing)
- * @param {Array} products - Array of product objects
- * @returns {Promise<Object>} Map of product codes to prices { code: price }
- */
-export async function searchMultipleProductPrices(products) {
-  if (!isAIAvailable()) {
-    console.warn('[AI] Batch price search skipped: No API key');
-    return {};
-  }
-  
-  if (!products || products.length === 0) {
-    return {};
-  }
-  
-  // Build list of products for the prompt
-  const productList = products.map((p, idx) => {
-    const name = p?.bezeichnung || p?.name || 'Unbekannt';
-    const manufacturer = p?.hersteller || 'unbekannt';
-    const code = p?.produktartNummer || p?.code || '';
-    return `${idx + 1}. Code: ${code} | Produkt: ${name} | Hersteller: ${manufacturer}`;
-  }).join('\n');
-  
-  const prompt = `Suche die aktuellen Verkaufspreise für diese Hörgeräte in Deutschland:
-
-${productList}
-
-Antworte NUR mit JSON im folgenden Format (keine weiteren Erklärungen):
-{
-  "prices": [
-    {"code": "13.20.10.0671", "price": "ca. 1.200 €"},
-    {"code": "13.20.10.0672", "price": "ca. 1.500 €"},
-    {"code": "13.20.10.0670", "price": "Preis nicht gefunden"}
-  ]
-}
-
-Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefunden: "Preis nicht gefunden"`;
-
-  try {
-    console.log('[AI] Batch price search for', products.length, 'products');
-    
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 800,  // More tokens for multiple products + thinking overhead
-          thinkingConfig: {
-            thinkingBudget: 0  // Disable thinking mode for batch price search
-          }
-        },
-        tools: [
-          {
-            googleSearch: {}
-          }
-        ]
-      })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[AI] Batch price search API failed:', response.status, errorText);
-      return {};
-    }
-    
-    const data = await response.json();
-    console.log('[AI] Batch price search API response:', JSON.stringify(data, null, 2));
-    
-    const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!responseText) {
-      console.error('[AI] No response text from batch price search. Full response:', data);
-      console.error('[AI] Response structure:', {
-        hasCandidates: !!data?.candidates,
-        candidatesLength: data?.candidates?.length,
-        firstCandidate: data?.candidates?.[0],
-        content: data?.candidates?.[0]?.content,
-        parts: data?.candidates?.[0]?.content?.parts
-      });
-      return {};
-    }
-    
-    // Parse JSON response
-    try {
-      // Extract JSON from response (may have markdown code blocks)
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.warn('[AI] No JSON found in response');
-        return {};
-      }
-      
-      const parsed = JSON.parse(jsonMatch[0]);
-      const priceMap = {};
-      
-      if (parsed.prices && Array.isArray(parsed.prices)) {
-        parsed.prices.forEach(item => {
-          if (item.code && item.price) {
-            // Keep all entries, even "Preis nicht gefunden" - UI will handle display
-            priceMap[item.code] = item.price;
-          }
-        });
-      }
-      
-      console.log('[AI] Batch price search complete:', Object.keys(priceMap).length, 'prices found');
-      trackEvent('ai_batch_price_search_success', { 
-        productsRequested: products.length,
-        pricesFound: Object.keys(priceMap).length
-      });
-      
-      return priceMap;
-    } catch (parseError) {
-      console.error('[AI] Failed to parse batch price response:', parseError);
-      console.log('[AI] Raw response:', responseText);
-      return {};
-    }
-  } catch (error) {
-    logError('ai_batch_price_search_failed', error);
-    console.error('[AI] Batch price search error:', error);
-    return {};
-  }
-}
-

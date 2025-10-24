@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Minus, Sparkles, Scale, TrendingUp, Info } from 'lucide-react';
+import { X, Check, Minus, Sparkles, Scale, Info } from 'lucide-react';
 import { decodeProduct } from '../utils/productDecoder';
-import { generateComparisonAnalysis, searchMultipleProductPrices } from '../services/aiEnhancement';
+import { generateComparisonAnalysis } from '../services/aiEnhancement';
 
 export function ProductComparison({ 
   products, 
@@ -10,13 +10,10 @@ export function ProductComparison({
 }) {
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
-  const [productPrices, setProductPrices] = useState({});
-  const [loadingPrices, setLoadingPrices] = useState(true);
   
   useEffect(() => {
     if (products.length >= 2) {
       loadAIAnalysis();
-      loadProductPrices();
     }
   }, [products]);
   
@@ -32,40 +29,6 @@ export function ProductComparison({
     }
   };
   
-  // Load prices for all products using batched AI search
-  const loadProductPrices = async () => {
-    setLoadingPrices(true);
-    
-    // Separate products into those with API prices and those needing search
-    const productsNeedingSearch = [];
-    const prices = {};
-    
-    for (const product of products) {
-      const code = product?.produktartNummer || product?.code;
-      
-      // Skip if product already has price from API
-      if (product?.preis || product?.price) {
-        prices[code] = product.preis || product.price;
-        console.log('[ProductComparison] Using API price for:', code);
-      } else {
-        productsNeedingSearch.push(product);
-      }
-    }
-    
-    // Batch search for products without API prices
-    if (productsNeedingSearch.length > 0) {
-      console.log('[ProductComparison] Batch searching AI prices for', productsNeedingSearch.length, 'products');
-      const aiPrices = await searchMultipleProductPrices(productsNeedingSearch);
-      
-      // Merge AI prices into prices object
-      Object.assign(prices, aiPrices);
-    }
-    
-    setProductPrices(prices);
-    setLoadingPrices(false);
-    console.log('[ProductComparison] Price loading complete:', Object.keys(prices).length, 'prices available');
-  };
-  
   // Extract features for comparison
   const comparisonData = products.map(product => {
     const decoded = decodeProduct(product);
@@ -78,12 +41,6 @@ export function ProductComparison({
     
     // Extract power level from features (not from string matching)
     const powerFeature = decoded.features?.find(f => ['M', 'HP', 'UP', 'SP'].includes(f.key));
-    
-    // Determine price and source
-    const apiPrice = product?.preis || product?.price;
-    const aiPrice = productPrices[code];
-    const finalPrice = apiPrice || aiPrice;
-    const priceSource = apiPrice ? 'API' : (aiPrice ? 'AI' : null);
     
     return {
       product,
@@ -105,10 +62,6 @@ export function ProductComparison({
       
       // All features for display
       allFeatures: decoded.features || [],
-      
-      // Price with source tracking
-      price: finalPrice,
-      priceSource: priceSource,
     };
   });
   
@@ -352,37 +305,20 @@ export function ProductComparison({
                   ))}
                 </tr>
                 
-                {/* Preis */}
+                {/* GKV Erstattung */}
                 <tr>
                   <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-gray-500" />
-                      Preis (ca.)
-                    </div>
+                    ✓ GKV Erstattung
                   </td>
                   {comparisonData.map((item, idx) => (
                     <td key={idx} className="px-6 py-4">
-                      {loadingPrices && !item.price ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Sparkles className="h-4 w-4 animate-pulse text-purple-500" />
-                          <span>Suche Preis...</span>
+                      <div className="text-sm text-green-700">
+                        <div className="font-medium flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          Erstattungsfähig
                         </div>
-                      ) : item.price ? (
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">{item.price}</div>
-                          {item.priceSource === 'AI' && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Sparkles className="h-3 w-3 text-purple-600" />
-                              <span className="text-xs text-purple-600">KI-Recherche</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">
-                          <div className="font-medium">GKV-Festbetrag</div>
-                          <div className="text-xs text-gray-400 mt-1">Zuzahlung: 5-10€</div>
-                        </div>
-                      )}
+                        <div className="text-xs text-gray-600 mt-1">Zuzahlung: 5-10€</div>
+                      </div>
                     </td>
                   ))}
                 </tr>
@@ -393,12 +329,11 @@ export function ProductComparison({
           {/* GKV Info */}
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
             <p className="text-sm text-blue-800">
-              ℹ️ <strong>Wichtig:</strong> Alle hier gezeigten Produkte sind von der GKV erstattungsfähig. 
-              Die meisten Hörgeräte haben einen Festbetrag (Zuzahlung: 10% des Preises, min. 5€, max. 10€).
+              ℹ️ <strong>Wichtig:</strong> Alle hier gezeigten Produkte sind von der GKV erstattungsfähig.
               <br/><br/>
-              💡 <strong>Preisinformation:</strong> Preise wurden per KI-Websuche recherchiert und sind unverbindlich. 
-              Die GKV übernimmt die Kosten bis zum Festbetrag (~700-800€ pro Gerät). 
-              Genaue Preise und Beratung erhalten Sie beim Hörgeräteakustiker.
+              💡 <strong>Kostenübernahme:</strong> Die GKV übernimmt die Kosten bis zum Festbetrag (ca. 700-800€ pro Gerät). 
+              Ihre Zuzahlung beträgt 10% des Preises (mind. 5€, max. 10€). 
+              Genaue Beratung zu Kosten und Auswahl erhalten Sie beim Fachakustiker mit Ihrem Rezept.
             </p>
           </div>
         </div>

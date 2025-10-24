@@ -1,5 +1,5 @@
 // Version number - increment this to force cache refresh
-const VERSION = 'v4.1';
+const VERSION = 'v4.2';
 const CACHE_NAME = `aboelo-hilfsmittel-static-${VERSION}`;
 const API_CACHE_NAME = `aboelo-hilfsmittel-api-${VERSION}`;
 const API_PROXY_PATH = '/api/proxy';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, Info, Sparkles, Award, Scale, TrendingUp } from 'lucide-react';
+import { Check, Info, Sparkles, Award, Scale } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
 import { getCategoryIcon, getCategoryName } from '../data/productContexts';
 import { generateProductDescription, isAIAvailable, isHighlyRecommended } from '../services/aiEnhancement';
@@ -172,15 +172,51 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         <p className="text-sm font-semibold text-green-900">✓ Von der GKV erstattungsfähig</p>
         <p className="mt-1 text-sm text-green-700">Zuzahlung: {zuzahlung}</p>
       </div>
+      
+      {/* Practical Information - Category specific */}
+      <div className="mt-4 space-y-2">
+        {/* Hearing Aids - Next Steps */}
+        {code.startsWith('13.') && (
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+            <span className="text-blue-600 font-bold">→</span>
+            <p className="text-sm text-blue-800">
+              <strong>Nächster Schritt:</strong> Rezept vom HNO-Arzt holen und zum Hörgeräteakustiker gehen
+            </p>
+          </div>
+        )}
+        
+        {/* Mobility Aids - Next Steps */}
+        {(code.startsWith('10.') || code.startsWith('09.')) && (
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+            <span className="text-blue-600 font-bold">→</span>
+            <p className="text-sm text-blue-800">
+              <strong>Nächster Schritt:</strong> Rezept vom Hausarzt oder Orthopäden holen und im Sanitätshaus beraten lassen
+            </p>
+          </div>
+        )}
+        
+        {/* Vision Aids - Next Steps */}
+        {(code.startsWith('25.') || code.startsWith('07.')) && (
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+            <span className="text-blue-600 font-bold">→</span>
+            <p className="text-sm text-blue-800">
+              <strong>Nächster Schritt:</strong> Rezept vom Augenarzt holen und im Fachgeschäft beraten lassen
+            </p>
+          </div>
+        )}
+        
+        {/* Bathroom Aids - Next Steps */}
+        {code.startsWith('04.') && (
+          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+            <span className="text-blue-600 font-bold">→</span>
+            <p className="text-sm text-blue-800">
+              <strong>Nächster Schritt:</strong> Rezept vom Hausarzt holen und im Sanitätshaus beraten lassen
+            </p>
+          </div>
+        )}
+      </div>
 
       {hersteller && <p className="mt-4 text-sm text-gray-500">Hersteller: {hersteller}</p>}
-      
-      {product?.preis && (
-        <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-          <TrendingUp className="h-4 w-4" />
-          <span>ca. {product.preis}</span>
-        </div>
-      )}
       
       {name !== simplifiedName && (
         <details className="mt-3">
