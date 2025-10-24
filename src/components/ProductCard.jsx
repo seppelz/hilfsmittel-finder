@@ -25,10 +25,19 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const indikation = product?.indikation;
   const anwendungsgebiet = product?.anwendungsgebiet;
   
+  // Extract Merkmale (detailed features from API)
+  const merkmale = product?.merkmale;
+  const produktart = product?.produktart;
+  const typenAusfuehrungen = product?.typenAusfuehrungen;
+  const technischeDaten = product?.technischeDaten;
+  
   // AI-generated description state
   const [aiDescription, setAiDescription] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [showAI, setShowAI] = useState(false);
+  
+  // State for collapsible Merkmale section
+  const [showMerkmale, setShowMerkmale] = useState(false);
   
   // Auto-generate AI description when card becomes visible (for selected products)
   useEffect(() => {
@@ -168,53 +177,51 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </div>
       )}
 
-      <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4">
-        <p className="text-sm font-semibold text-green-900">✓ Von der GKV erstattungsfähig</p>
-        <p className="mt-1 text-sm text-green-700">Zuzahlung: {zuzahlung}</p>
-      </div>
-      
-      {/* Practical Information - Category specific */}
-      <div className="mt-4 space-y-2">
-        {/* Hearing Aids - Next Steps */}
-        {code.startsWith('13.') && (
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-            <span className="text-blue-600 font-bold">→</span>
-            <p className="text-sm text-blue-800">
-              <strong>Nächster Schritt:</strong> Rezept vom HNO-Arzt holen und zum Hörgeräteakustiker gehen
-            </p>
-          </div>
-        )}
-        
-        {/* Mobility Aids - Next Steps */}
-        {(code.startsWith('10.') || code.startsWith('09.')) && (
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-            <span className="text-blue-600 font-bold">→</span>
-            <p className="text-sm text-blue-800">
-              <strong>Nächster Schritt:</strong> Rezept vom Hausarzt oder Orthopäden holen und im Sanitätshaus beraten lassen
-            </p>
-          </div>
-        )}
-        
-        {/* Vision Aids - Next Steps */}
-        {(code.startsWith('25.') || code.startsWith('07.')) && (
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-            <span className="text-blue-600 font-bold">→</span>
-            <p className="text-sm text-blue-800">
-              <strong>Nächster Schritt:</strong> Rezept vom Augenarzt holen und im Fachgeschäft beraten lassen
-            </p>
-          </div>
-        )}
-        
-        {/* Bathroom Aids - Next Steps */}
-        {code.startsWith('04.') && (
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-            <span className="text-blue-600 font-bold">→</span>
-            <p className="text-sm text-blue-800">
-              <strong>Nächster Schritt:</strong> Rezept vom Hausarzt holen und im Sanitätshaus beraten lassen
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Merkmale & Technische Details - Collapsible */}
+      {(merkmale && merkmale.length > 0) && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMerkmale(!showMerkmale);
+            }}
+            className="flex w-full items-center justify-between text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition"
+          >
+            <span className="text-sm font-semibold text-gray-900">
+              📋 Merkmale & Details ({merkmale.length})
+            </span>
+            <span className="text-gray-500 text-lg">
+              {showMerkmale ? '▼' : '▶'}
+            </span>
+          </button>
+          
+          {showMerkmale && (
+            <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-4">
+              <ul className="list-none space-y-1.5 text-sm text-gray-700">
+                {merkmale.map((merkmal, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold mt-0.5">✓</span>
+                    <span>{merkmal}</span>
+                  </li>
+                ))}
+              </ul>
+              
+              {produktart && (
+                <p className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
+                  <strong>Produktart:</strong> {produktart}
+                </p>
+              )}
+              
+              {typenAusfuehrungen && typenAusfuehrungen.length > 0 && (
+                <p className="mt-2 text-xs text-gray-600">
+                  <strong>Verfügbare Ausführungen:</strong> {typenAusfuehrungen.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {hersteller && <p className="mt-4 text-sm text-gray-500">Hersteller: {hersteller}</p>}
       

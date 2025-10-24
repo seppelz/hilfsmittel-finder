@@ -226,6 +226,48 @@ function normalizeProduct(product) {
     });
   }
 
+  // Extract Merkmale/Features (detailed product characteristics)
+  const merkmaleFields = [
+    product.merkmale,
+    product.Merkmale,
+    product.merkmaleKomponenten,
+    product.komponenten,
+    product.ausstattung,
+    product.features,
+    product.eigenschaften,
+  ];
+
+  const merkmaleRaw = merkmaleFields.find(field => 
+    field && (typeof field === 'string' || Array.isArray(field))
+  );
+
+  if (merkmaleRaw) {
+    if (Array.isArray(merkmaleRaw)) {
+      normalizedProduct.merkmale = merkmaleRaw.filter(item => item && item.length > 3);
+    } else if (typeof merkmaleRaw === 'string') {
+      // Parse string into array (split by newlines, bullets, or common separators)
+      normalizedProduct.merkmale = merkmaleRaw
+        .split(/\n|•|-\s/)
+        .map(item => item.trim())
+        .filter(item => item.length > 3 && !item.match(/^Merkmale|^Komponenten/i));
+    }
+  }
+
+  // Extract Produktart
+  if (product.produktart || product.Produktart) {
+    normalizedProduct.produktart = product.produktart || product.Produktart;
+  }
+
+  // Extract Typen/Ausführungen (already partially extracted in description, but ensure it's kept separately)
+  if (Array.isArray(product.typenAusfuehrungen) && product.typenAusfuehrungen.length) {
+    normalizedProduct.typenAusfuehrungen = product.typenAusfuehrungen;
+  }
+
+  // Extract Technische Daten if available
+  if (product.technischeDaten || product.technische_daten) {
+    normalizedProduct.technischeDaten = product.technischeDaten || product.technische_daten;
+  }
+
   // Add price normalization
   const price = normalizeString(
     product.preis ?? 

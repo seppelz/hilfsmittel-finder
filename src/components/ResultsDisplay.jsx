@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Filter, Scale } from 'lucide-react';
+import { Filter, Scale, Check } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { ProductList } from './ProductList';
 import { getCategoryContext } from '../data/productContexts';
@@ -704,6 +704,75 @@ export function ResultsDisplay({
       <div className="rounded-3xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
         <strong>Wichtiger Hinweis:</strong> Diese Informationen ersetzen keine ärztliche Beratung. Die endgültige Entscheidung über die Kostenübernahme trifft Ihre Krankenkasse.
       </div>
+
+      {/* Single GKV Info Banner - Show once for all products */}
+      {products.length > 0 && (
+        <div className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Check className="h-6 w-6 text-green-600" />
+                <h3 className="text-lg font-bold text-green-900">
+                  Alle Produkte sind GKV-erstattungsfähig
+                </h3>
+              </div>
+              <p className="text-sm text-green-800 mb-3">
+                Die Krankenkasse übernimmt die Kosten nach Genehmigung. 
+                <strong> Ihre Zuzahlung:</strong> 10% des Preises (mindestens 5€, maximal 10€)
+              </p>
+              
+              {/* Category-specific next steps */}
+              {userAnswers._selectedCategory === 'hearing' && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-300 px-4 py-3">
+                  <span className="text-blue-600 font-bold text-lg">→</span>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Nächster Schritt für Hörgeräte:</p>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Rezept vom HNO-Arzt holen und zum Hörgeräteakustiker gehen
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {userAnswers._selectedCategory === 'mobility' && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-300 px-4 py-3">
+                  <span className="text-blue-600 font-bold text-lg">→</span>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Nächster Schritt für Gehhilfen:</p>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Rezept vom Hausarzt oder Orthopäden holen und im Sanitätshaus beraten lassen
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {userAnswers._selectedCategory === 'vision' && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-300 px-4 py-3">
+                  <span className="text-blue-600 font-bold text-lg">→</span>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Nächster Schritt für Sehhilfen:</p>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Rezept vom Augenarzt holen und zum Optiker gehen
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {userAnswers._selectedCategory === 'bathroom' && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-blue-50 border border-blue-300 px-4 py-3">
+                  <span className="text-blue-600 font-bold text-lg">→</span>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">Nächster Schritt für Badehilfen:</p>
+                    <p className="text-sm text-blue-800 mt-1">
+                      Rezept vom Hausarzt holen und im Sanitätshaus oder Reha-Fachhandel beraten lassen
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {(totalResults || products.length) === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">

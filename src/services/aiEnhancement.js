@@ -361,6 +361,20 @@ function buildPrompt(product, userContext, decodedInfo) {
   const userNeeds = extractUserNeeds(userContext);
   const deviceCapabilities = extractDeviceCapabilities(product, decodedInfo, category);
   
+  // Build Merkmale section if available
+  let merkmaleText = '';
+  if (product.merkmale && product.merkmale.length > 0) {
+    merkmaleText = `\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
+  }
+  
+  // Add Produktart if available
+  const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
+  
+  // Add available Ausführungen if present
+  const ausfuehrungenText = product.typenAusfuehrungen && product.typenAusfuehrungen.length > 0
+    ? `\nVerfügbare Ausführungen: ${product.typenAusfuehrungen.join(', ')}`
+    : '';
+  
   const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
 
 NUTZER-SITUATION:
@@ -368,8 +382,11 @@ ${userNeeds}
 
 PRODUKT:
 ${productName}
-${deviceType ? `Typ: ${deviceType}` : ''}
+${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${merkmaleText}${ausfuehrungenText}
+
+Erkannte Eigenschaften:
 ${deviceCapabilities}
+
 Hersteller: ${manufacturer}
 
 AUFGABE (max. 80 Wörter):
@@ -781,10 +798,20 @@ export async function generateComparisonAnalysis(products, userContext) {
     const decoded = decodeProduct(product);
     const capabilities = extractDeviceCapabilities(product, decoded, category);
     
+    // Build Merkmale section if available
+    let merkmaleText = '';
+    if (product.merkmale && product.merkmale.length > 0) {
+      merkmaleText = `\n\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
+    }
+    
+    // Add Produktart if available
+    const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
+    
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
-Hersteller: ${product?.hersteller || 'Unbekannt'}
+Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${merkmaleText}
+
 Erkannte Eigenschaften:
 ${capabilities}`;
   }).join('\n\n');
