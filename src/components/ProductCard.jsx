@@ -25,15 +25,16 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const indikation = product?.indikation;
   const anwendungsgebiet = product?.anwendungsgebiet;
   
-  // Extract Merkmale (detailed features from API)
+  // Extract Merkmale (detailed features from API - from erleuterungstext)
   const merkmale = product?.merkmale;
   const produktart = product?.produktart;
   const typenAusfuehrungen = product?.typenAusfuehrungen;
+  const nutzungsdauer = product?.nutzungsdauer;
   const technischeDaten = product?.technischeDaten;
   
   // Debug: Log merkmale availability (ALWAYS for now - only for mobility products)
   if (code?.startsWith('10.')) {
-    console.log(`[ProductCard ${code}] Merkmale:`, merkmale, 'Produktart:', produktart, 'typenAusfuehrungen:', typenAusfuehrungen);
+    console.log(`[ProductCard ${code}] Merkmale:`, merkmale?.length || 0, 'items | typenAusfuehrungen:', typenAusfuehrungen?.length || 0, 'items | nutzungsdauer:', nutzungsdauer);
   }
   
   // AI-generated description state
@@ -192,6 +193,12 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
               {typenAusfuehrungen && typenAusfuehrungen.length > 0 && (
                 <p className="mt-2 text-xs text-gray-600">
                   <strong>Verfügbare Ausführungen:</strong> {typenAusfuehrungen.join(', ')}
+                </p>
+              )}
+              
+              {nutzungsdauer && (
+                <p className="mt-2 text-xs text-gray-600">
+                  <strong>Nutzungsdauer:</strong> {nutzungsdauer}
                 </p>
               )}
             </div>

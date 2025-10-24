@@ -226,69 +226,31 @@ function normalizeProduct(product) {
     });
   }
 
-  // DEBUG: Log ALL fields for mobility products to see what API provides
-  if (cleanCode?.startsWith('10.46')) {
-    console.log(`[gkvApi DEBUG] Full API data for ${cleanCode}:`, {
-      allFields: Object.keys(product),
-      sampleData: {
-        name: product.bezeichnung,
-        description: product.beschreibung,
-        merkmale: product.merkmale,
-        Merkmale: product.Merkmale,
-        merkmaleKomponenten: product.merkmaleKomponenten,
-        komponenten: product.komponenten,
-        ausstattung: product.ausstattung,
-        features: product.features,
-        eigenschaften: product.eigenschaften,
-        produktart: product.produktart,
-        Produktart: product.Produktart,
-        typenAusfuehrungen: product.typenAusfuehrungen,
-        technischeDaten: product.technischeDaten,
-        // Show any field that might contain additional info
-        indikation: product.indikation,
-        anwendungsgebiet: product.anwendungsgebiet,
-      }
-    });
+  // Removed comprehensive debug logging - we found erleuterungstext is the key field!
+
+  // Extract Erläuterungstext (detailed product characteristics - this is what the API actually calls it!)
+  const erleuterungstext = product.erleuterungstext || product.Erleuterungstext;
+  
+  if (erleuterungstext && typeof erleuterungstext === 'string' && erleuterungstext.length > 10) {
+    // Parse the erleuterungstext into array items
+    // It often contains structured text with bullets, dashes, or newlines
+    const parsed = erleuterungstext
+      .split(/\n|•|-(?=\s)/)  // Split by newline, bullet, or dash followed by space
+      .map(item => item.trim())
+      .filter(item => item.length > 3 && !item.match(/^(Merkmale|Komponenten|Erläuterungstext):/i));
     
-    // For the first Gemino product, log the COMPLETE raw object
-    if (cleanCode === '10.46.04.0002' || cleanCode === '10.46.04.0003') {
-      console.log(`[gkvApi DEBUG] COMPLETE RAW OBJECT for ${cleanCode}:`, product);
+    if (parsed.length > 0) {
+      normalizedProduct.merkmale = parsed;
+      console.log('[gkvApi] ✅ Extracted erleuterungstext for', cleanCode, ':', parsed.length, 'items');
+    } else {
+      // If parsing failed, store as single item
+      normalizedProduct.merkmale = [erleuterungstext];
+      console.log('[gkvApi] ✅ Extracted erleuterungstext (unparsed) for', cleanCode);
     }
-  }
-
-  // Extract Merkmale/Features (detailed product characteristics)
-  const merkmaleFields = [
-    product.merkmale,
-    product.Merkmale,
-    product.merkmaleKomponenten,
-    product.komponenten,
-    product.ausstattung,
-    product.features,
-    product.eigenschaften,
-  ];
-
-  const merkmaleRaw = merkmaleFields.find(field => 
-    field && (typeof field === 'string' || Array.isArray(field))
-  );
-
-  if (merkmaleRaw) {
-    if (Array.isArray(merkmaleRaw)) {
-      normalizedProduct.merkmale = merkmaleRaw.filter(item => item && item.length > 3);
-    } else if (typeof merkmaleRaw === 'string') {
-      // Parse string into array (split by newlines, bullets, or common separators)
-      normalizedProduct.merkmale = merkmaleRaw
-        .split(/\n|•|-\s/)
-        .map(item => item.trim())
-        .filter(item => item.length > 3 && !item.match(/^Merkmale|^Komponenten/i));
-    }
-    
-    // Debug: Log successful extraction (ALWAYS for now)
-    console.log('[gkvApi] Extracted merkmale for', cleanCode, ':', normalizedProduct.merkmale?.length || 0, 'items');
-  } else {
-    // Debug: Log missing merkmale (ALWAYS for now - especially for mobility products)
-    if (cleanCode?.startsWith('10.')) {
-      console.log('[gkvApi] No merkmale found for', cleanCode, 'Available fields:', Object.keys(product).filter(k => k.toLowerCase().includes('merkmal') || k.toLowerCase().includes('komponente') || k.toLowerCase().includes('ausstattung')));
-    }
+  } else if (erleuterungstext) {
+    console.log('[gkvApi] ⚠️ Erleuterungstext exists but too short for', cleanCode, ':', erleuterungstext?.length || 0, 'chars');
+  } else if (cleanCode?.startsWith('10.')) {
+    console.log('[gkvApi] ❌ No erleuterungstext found for', cleanCode);
   }
 
   // Extract Produktart
@@ -296,9 +258,20 @@ function normalizeProduct(product) {
     normalizedProduct.produktart = product.produktart || product.Produktart;
   }
 
-  // Extract Typen/Ausführungen (already partially extracted in description, but ensure it's kept separately)
-  if (Array.isArray(product.typenAusfuehrungen) && product.typenAusfuehrungen.length) {
+  // Extract Typen/Ausführungen (different product versions/types)
+  if (Array.isArray(product.typenAusfuehrungen) && product.typenAusfuehrungen.length > 0) {
     normalizedProduct.typenAusfuehrungen = product.typenAusfuehrungen;
+    if (!import.meta.env.PROD && cleanCode?.startsWith('10.')) {
+      console.log('[gkvApi] ✅ Found', product.typenAusfuehrungen.length, 'Typen/Ausführungen for', cleanCode);
+    }
+  }
+
+  // Extract Nutzungsdauer (usage duration/lifespan)
+  if (product.nutzungsdauer) {
+    normalizedProduct.nutzungsdauer = product.nutzungsdauer;
+    if (!import.meta.env.PROD && cleanCode?.startsWith('10.')) {
+      console.log('[gkvApi] ✅ Nutzungsdauer for', cleanCode, ':', product.nutzungsdauer);
+    }
   }
 
   // Extract Technische Daten if available

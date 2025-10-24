@@ -375,6 +375,11 @@ function buildPrompt(product, userContext, decodedInfo) {
     ? `\nVerfügbare Ausführungen: ${product.typenAusfuehrungen.join(', ')}`
     : '';
   
+  // Add Nutzungsdauer if available
+  const nutzungsdauerText = product.nutzungsdauer
+    ? `\nNutzungsdauer: ${product.nutzungsdauer}`
+    : '';
+  
   const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
 
 NUTZER-SITUATION:
@@ -382,7 +387,7 @@ ${userNeeds}
 
 PRODUKT:
 ${productName}
-${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${merkmaleText}${ausfuehrungenText}
+${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
 
 Erkannte Eigenschaften:
 ${deviceCapabilities}
@@ -807,10 +812,20 @@ export async function generateComparisonAnalysis(products, userContext) {
     // Add Produktart if available
     const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
     
+    // Add typenAusfuehrungen if available
+    const ausfuehrungenText = product.typenAusfuehrungen && product.typenAusfuehrungen.length > 0
+      ? `\nVerfügbare Ausführungen: ${product.typenAusfuehrungen.join(', ')}`
+      : '';
+    
+    // Add Nutzungsdauer if available
+    const nutzungsdauerText = product.nutzungsdauer
+      ? `\nNutzungsdauer: ${product.nutzungsdauer}`
+      : '';
+    
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
-Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${merkmaleText}
+Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${ausfuehrungenText}${nutzungsdauerText}${merkmaleText}
 
 Erkannte Eigenschaften:
 ${capabilities}`;
