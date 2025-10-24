@@ -384,8 +384,8 @@ export function ResultsDisplay({
       })()}
 
       {/* Feature Filter for Hearing Aids */}
-      {(availableFeatures.power.length > 0 || availableFeatures.charging.length > 0 || 
-        availableFeatures.type.length > 0 || availableFeatures.connectivity.length > 0) && (
+      {(availableFeatures.power?.length > 0 || availableFeatures.charging?.length > 0 || 
+        availableFeatures.type?.length > 0 || availableFeatures.connectivity?.length > 0) && (
         <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
