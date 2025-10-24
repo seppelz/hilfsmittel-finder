@@ -247,9 +247,12 @@ async function callGeminiAPI(prompt) {
       ],
       generationConfig: {
         temperature: 0.6,  // Slightly lower for more consistent, factual output
-        maxOutputTokens: 200,  // Increased for comparison-style descriptions
+        maxOutputTokens: 800,  // Increased to account for thinking mode
         topP: 0.85,
-        topK: 40
+        topK: 40,
+        thinkingConfig: {
+          thinkingBudget: 0  // Disable thinking mode to save tokens
+        }
       },
       safetySettings: [
         {
@@ -641,7 +644,10 @@ Keine weiteren Erklärungen oder Text.`;
         ],
         generationConfig: {
           temperature: 0.1,  // Low for factual pricing
-          maxOutputTokens: 50,  // Short response
+          maxOutputTokens: 150,  // Increased for thinking mode overhead
+          thinkingConfig: {
+            thinkingBudget: 0  // Disable thinking mode for price search
+          }
         },
         tools: [
           {
@@ -738,7 +744,10 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 500,  // More tokens for multiple products
+          maxOutputTokens: 800,  // More tokens for multiple products + thinking overhead
+          thinkingConfig: {
+            thinkingBudget: 0  // Disable thinking mode for batch price search
+          }
         },
         tools: [
           {
