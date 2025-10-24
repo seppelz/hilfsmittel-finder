@@ -4,7 +4,7 @@
 import { logError, trackEvent } from '../utils/analytics';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-latest:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const CACHE_KEY_PREFIX = 'ai_description_';
 const CACHE_DURATION = 30 * 24 * 60 * 60 * 1000; // 30 days (descriptions don't change)
@@ -640,12 +640,14 @@ Keine weiteren Erklärungen oder Text.`;
           temperature: 0.1,  // Low for factual pricing
           maxOutputTokens: 50,  // Short response
         },
-        // Enable Google Search Grounding
-        tools: [
-          {
-            googleSearch: {}  // Simplified syntax for v1 API
-          }
-        ]
+        // Enable Google Search Grounding (correct v1beta syntax)
+        config: {
+          tools: [
+            {
+              google_search: {}
+            }
+          ]
+        }
       })
     });
     
@@ -737,12 +739,14 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
           temperature: 0.1,
           maxOutputTokens: 500,  // More tokens for multiple products
         },
-        // Enable Google Search Grounding
-        tools: [
-          {
-            googleSearch: {}  // Simplified syntax for v1 API
-          }
-        ]
+        // Enable Google Search Grounding (correct v1beta syntax)
+        config: {
+          tools: [
+            {
+              google_search: {}
+            }
+          ]
+        }
       })
     });
     
