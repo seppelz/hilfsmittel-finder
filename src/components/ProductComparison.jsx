@@ -126,6 +126,48 @@ export function ProductComparison({
     ? detectCategory(comparisonData[0].code) 
     : 'general';
   
+  // Merge AI technical specs with manual detection
+  const mergedComparisonData = comparisonData.map((item) => {
+    // Find matching AI specs for this product
+    const aiSpec = technicalSpecs?.find(spec => spec.code === item.code);
+    
+    // Merge: AI data takes priority, manual detection as fallback
+    return {
+      ...item,
+      // Use AI specs if available, otherwise manual detection
+      foldable: aiSpec?.specs?.foldable === "Ja" ? "Ja" : 
+                aiSpec?.specs?.foldable === "Nein" ? "Nein" :
+                item.foldable ? "Ja (erkannt)" : "Nicht angegeben",
+                
+      brakes: aiSpec?.specs?.brakes === "Ja" ? "Ja" :
+              aiSpec?.specs?.brakes === "Nein" ? "Nein" :
+              item.brakes ? "Ja (erkannt)" : "Nicht angegeben",
+              
+      wheels: aiSpec?.specs?.wheels && aiSpec.specs.wheels !== "Nicht angegeben" 
+              ? aiSpec.specs.wheels 
+              : (item.wheels && item.wheels !== "Keine Angabe" ? item.wheels : "Nicht angegeben"),
+      
+      // Technical specs from AI (no manual detection for these)
+      max_weight: aiSpec?.specs?.max_weight || null,
+      body_height: aiSpec?.specs?.body_height || null,
+      seat_height: aiSpec?.specs?.seat_height || null,
+      total_height: aiSpec?.specs?.total_height || null,
+      width: aiSpec?.specs?.width || null,
+      weight: aiSpec?.specs?.weight || null,
+      
+      // Hearing aids specs
+      power_level: aiSpec?.specs?.power_level || null,
+      device_type_ai: aiSpec?.specs?.device_type || null,
+      battery_type: aiSpec?.specs?.battery_type || null,
+      bluetooth_ai: aiSpec?.specs?.bluetooth || null,
+      telecoil_ai: aiSpec?.specs?.telecoil || null,
+      channels: aiSpec?.specs?.channels || null,
+      programs: aiSpec?.specs?.programs || null,
+    };
+  });
+  
+  console.log('[ProductComparison] Merged comparison data:', mergedComparisonData);
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
@@ -371,251 +413,175 @@ export function ProductComparison({
                   </>
                 )}
                 
-                {/* GEHHILFEN FEATURES */}
+                {/* GEHHILFEN FEATURES - Merged AI + Manual Detection */}
                 {productCategory === 'mobility' && (
                   <>
-                    {/* Faltbar */}
-                    <tr className="bg-gray-50">
+                    {/* Technical Specs from AI (numerical data) - only show if at least one product has the value */}
+                    {mergedComparisonData.some(item => item.max_weight) && (
+                      <tr className="bg-blue-50">
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          ⚖️ Max. Benutzergewicht
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.max_weight ? (
+                              <span className="text-sm font-bold text-gray-900">{item.max_weight}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {mergedComparisonData.some(item => item.body_height) && (
+                      <tr>
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          📏 Körpergröße
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.body_height ? (
+                              <span className="text-sm font-bold text-gray-900">{item.body_height}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {mergedComparisonData.some(item => item.seat_height) && (
+                      <tr className="bg-blue-50">
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          💺 Sitzhöhe
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.seat_height ? (
+                              <span className="text-sm font-bold text-gray-900">{item.seat_height}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {mergedComparisonData.some(item => item.total_height) && (
+                      <tr>
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          📐 Gesamthöhe
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.total_height ? (
+                              <span className="text-sm font-bold text-gray-900">{item.total_height}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {mergedComparisonData.some(item => item.width) && (
+                      <tr className="bg-blue-50">
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          ↔️ Breite
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.width ? (
+                              <span className="text-sm font-bold text-gray-900">{item.width}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {mergedComparisonData.some(item => item.weight) && (
+                      <tr>
+                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
+                          ⚖️ Gewicht
+                        </td>
+                        {mergedComparisonData.map((item, idx) => (
+                          <td key={idx} className="px-6 py-4">
+                            {item.weight ? (
+                              <span className="text-sm font-bold text-gray-900">{item.weight}</span>
+                            ) : (
+                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )}
+                    
+                    {/* Boolean Features - Merged AI + Manual Detection */}
+                    <tr className="bg-blue-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          🚪 Faltbar
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Kann zusammengeklappt werden für einfachen Transport und Lagerung
-                            </div>
-                          </div>
-                        </div>
+                        🚪 Faltbar
                       </td>
-                      {comparisonData.map((item, idx) => (
+                      {mergedComparisonData.map((item, idx) => (
                         <td key={idx} className="px-6 py-4">
-                          {item.foldable ? (
+                          {item.foldable === "Ja" || item.foldable === "Ja (erkannt)" ? (
                             <div className="flex items-center gap-2">
                               <Check className="h-5 w-5 text-green-600" />
                               <span className="text-sm text-green-700 font-medium">Ja</span>
                             </div>
-                          ) : (
+                          ) : item.foldable === "Nein" ? (
                             <div className="flex items-center gap-2">
                               <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                              <span className="text-sm text-gray-500">Nein</span>
                             </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
                           )}
                         </td>
                       ))}
                     </tr>
                     
-                    {/* Höhenverstellbar */}
                     <tr>
                       <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          📏 Höhenverstellbar
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Kann an die Körpergröße angepasst werden
-                            </div>
-                          </div>
-                        </div>
+                        🛑 Bremsen
                       </td>
-                      {comparisonData.map((item, idx) => (
+                      {mergedComparisonData.map((item, idx) => (
                         <td key={idx} className="px-6 py-4">
-                          {item.heightAdjustable ? (
+                          {item.brakes === "Ja" || item.brakes === "Ja (erkannt)" ? (
                             <div className="flex items-center gap-2">
                               <Check className="h-5 w-5 text-green-600" />
                               <span className="text-sm text-green-700 font-medium">Ja</span>
                             </div>
-                          ) : (
+                          ) : item.brakes === "Nein" ? (
                             <div className="flex items-center gap-2">
                               <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                              <span className="text-sm text-gray-500">Nein</span>
                             </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
                           )}
                         </td>
                       ))}
                     </tr>
                     
-                    {/* Bremsen */}
-                    <tr className="bg-gray-50">
+                    <tr className="bg-blue-50">
                       <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          🛑 Bremsen
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Bremssystem für sicheres Anhalten (typisch bei Rollatoren)
-                            </div>
-                          </div>
-                        </div>
+                        🔘 Räder
                       </td>
-                      {comparisonData.map((item, idx) => (
+                      {mergedComparisonData.map((item, idx) => (
                         <td key={idx} className="px-6 py-4">
-                          {item.brakes ? (
-                            <div className="flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />
-                              <span className="text-sm text-green-700 font-medium">Ja</span>
-                            </div>
+                          {item.wheels && item.wheels !== "Keine Angabe" && item.wheels !== "Nicht angegeben" ? (
+                            <span className="text-sm font-medium text-gray-900">{item.wheels}</span>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
-                            </div>
+                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
                           )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    {/* Sitzfläche */}
-                    <tr>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          💺 Sitzfläche
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Eingebaute Sitzfläche für Pausen unterwegs (typisch bei Rollatoren)
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          {item.seat ? (
-                            <div className="flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />
-                              <span className="text-sm text-green-700 font-medium">Ja</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    {/* Korb/Tasche */}
-                    <tr className="bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          🛒 Korb/Tasche
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Einkaufskorb oder Tasche für Transport von Gegenständen
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          {item.basket ? (
-                            <div className="flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />
-                              <span className="text-sm text-green-700 font-medium">Ja</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
-                            </div>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    {/* Räder */}
-                    <tr>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        <div className="flex items-center gap-2">
-                          🔘 Räder
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              Anzahl der Räder (4 Räder = mehr Stabilität, 3 Räder = wendiger)
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      {comparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          <span className="text-sm text-gray-900">{item.wheels}</span>
                         </td>
                       ))}
                     </tr>
                   </>
                 )}
-                
-                {/* Dynamic Technical Specifications from AI */}
-                {technicalSpecs && technicalSpecs.length > 0 && (() => {
-                  console.log('[ProductComparison] Rendering dynamic specs for', technicalSpecs.length, 'products');
-                  
-                  // Extract all unique spec keys
-                  const allSpecKeys = new Set();
-                  technicalSpecs.forEach(product => {
-                    if (product.specs) {
-                      Object.keys(product.specs).forEach(key => allSpecKeys.add(key));
-                    }
-                  });
-                  
-                  // Map keys to German labels
-                  const specLabels = {
-                    'max_weight': 'Max. Benutzergewicht',
-                    'body_height': 'Körpergröße',
-                    'seat_height': 'Sitzhöhe',
-                    'total_height': 'Gesamthöhe',
-                    'width': 'Breite',
-                    'weight': 'Gewicht',
-                    'power_level': 'Leistungsstufe (AI)',
-                    'device_type': 'Bauform (AI)',
-                    'battery_type': 'Batterie/Akku',
-                    'bluetooth': 'Bluetooth (AI)',
-                    'telecoil': 'Telefonspule (AI)',
-                    'channels': 'Kanäle',
-                    'programs': 'Programme',
-                    'magnification': 'Vergrößerung',
-                    'light': 'Beleuchtung',
-                    'material': 'Material',
-                    'dimensions': 'Maße',
-                    'mounting': 'Montage',
-                    'foldable': 'Faltbar (AI)',
-                    'brakes': 'Bremsen (AI)',
-                    'wheels': 'Räder (AI)',
-                    'non_slip': 'Rutschfest',
-                    'battery': 'Batteriebetrieb',
-                    'size': 'Größe'
-                  };
-                  
-                  // Create rows for each spec
-                  const specRows = Array.from(allSpecKeys).map((specKey, idx) => {
-                    const label = specLabels[specKey] || specKey;
-                    const isEvenRow = idx % 2 === 0;
-                    
-                    return (
-                      <tr key={`spec-${specKey}`} className={isEvenRow ? "bg-blue-50" : "bg-white"}>
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          🔍 {label}
-                        </td>
-                        {technicalSpecs.map((productSpec, prodIdx) => {
-                          const value = productSpec.specs?.[specKey];
-                          const code = productSpec.code;
-                          
-                          return (
-                            <td key={prodIdx} className="px-6 py-4">
-                              {value && value !== "Nicht angegeben" ? (
-                                <span className="text-sm font-semibold text-gray-900">{value}</span>
-                              ) : (
-                                <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  });
-                  
-                  return specRows;
-                })()}
                 
                 {/* GKV Erstattung */}
                 <tr>

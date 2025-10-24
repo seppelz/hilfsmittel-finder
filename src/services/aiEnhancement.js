@@ -829,9 +829,16 @@ Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführu
 
 STIL: 
 - JSON MUSS VALIDE sein
-- Wenn ein Wert nicht gefunden wird: "Nicht angegeben"
+- Wenn ein Wert NICHT SICHER im Internet gefunden wird: "Nicht angegeben"
+- NIEMALS RATEN! Nur Werte eintragen, die du durch Google Search tatsächlich gefunden hast
+- Bei Zweifeln oder unklaren Informationen IMMER "Nicht angegeben" verwenden
 - Nutze die exakten key-Namen aus der Liste oben
-- Recommendation in einfacher, direkter Sprache für Senioren (max. 2-3 Sätze pro Feld)`;
+- Recommendation in einfacher, direkter Sprache für Senioren (max. 2-3 Sätze pro Feld)
+
+WICHTIG FÜR RÄDER:
+- NUR wenn du die genaue Anzahl im Internet findest: "2 Räder", "3 Räder" oder "4 Räder"
+- Wenn unklar, nicht erwähnt oder nicht gefunden: "Nicht angegeben"
+- NIEMALS aus dem Produkttyp raten (z.B. "Rollator" bedeutet NICHT automatisch "4 Räder")`;
 
   try {
     console.log('[AI] Generating structured comparison with specs for:', expertRole);
