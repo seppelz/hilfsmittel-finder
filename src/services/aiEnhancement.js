@@ -794,7 +794,8 @@ Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefund
       
       if (parsed.prices && Array.isArray(parsed.prices)) {
         parsed.prices.forEach(item => {
-          if (item.code && item.price && !item.price.toLowerCase().includes('nicht gefunden')) {
+          if (item.code && item.price) {
+            // Keep all entries, even "Preis nicht gefunden" - UI will handle display
             priceMap[item.code] = item.price;
           }
         });
