@@ -31,9 +31,9 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const typenAusfuehrungen = product?.typenAusfuehrungen;
   const technischeDaten = product?.technischeDaten;
   
-  // Debug: Log merkmale availability
-  if (!import.meta.env.PROD && code) {
-    console.log(`[ProductCard ${code}] Merkmale:`, merkmale, 'Produktart:', produktart, 'Available fields:', Object.keys(product || {}));
+  // Debug: Log merkmale availability (ALWAYS for now - only for mobility products)
+  if (code?.startsWith('10.')) {
+    console.log(`[ProductCard ${code}] Merkmale:`, merkmale, 'Produktart:', produktart, 'typenAusfuehrungen:', typenAusfuehrungen);
   }
   
   // AI-generated description state

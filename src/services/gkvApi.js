@@ -252,13 +252,11 @@ function normalizeProduct(product) {
         .filter(item => item.length > 3 && !item.match(/^Merkmale|^Komponenten/i));
     }
     
-    // Debug: Log successful extraction
-    if (!import.meta.env.PROD) {
-      console.log('[gkvApi] Extracted merkmale for', cleanCode, ':', normalizedProduct.merkmale?.length || 0, 'items');
-    }
+    // Debug: Log successful extraction (ALWAYS for now)
+    console.log('[gkvApi] Extracted merkmale for', cleanCode, ':', normalizedProduct.merkmale?.length || 0, 'items');
   } else {
-    // Debug: Log missing merkmale
-    if (!import.meta.env.PROD && cleanCode?.startsWith('10.46')) {
+    // Debug: Log missing merkmale (ALWAYS for now - especially for mobility products)
+    if (cleanCode?.startsWith('10.')) {
       console.log('[gkvApi] No merkmale found for', cleanCode, 'Available fields:', Object.keys(product).filter(k => k.toLowerCase().includes('merkmal') || k.toLowerCase().includes('komponente') || k.toLowerCase().includes('ausstattung')));
     }
   }
