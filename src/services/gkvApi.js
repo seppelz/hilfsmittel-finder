@@ -226,6 +226,36 @@ function normalizeProduct(product) {
     });
   }
 
+  // DEBUG: Log ALL fields for mobility products to see what API provides
+  if (cleanCode?.startsWith('10.46')) {
+    console.log(`[gkvApi DEBUG] Full API data for ${cleanCode}:`, {
+      allFields: Object.keys(product),
+      sampleData: {
+        name: product.bezeichnung,
+        description: product.beschreibung,
+        merkmale: product.merkmale,
+        Merkmale: product.Merkmale,
+        merkmaleKomponenten: product.merkmaleKomponenten,
+        komponenten: product.komponenten,
+        ausstattung: product.ausstattung,
+        features: product.features,
+        eigenschaften: product.eigenschaften,
+        produktart: product.produktart,
+        Produktart: product.Produktart,
+        typenAusfuehrungen: product.typenAusfuehrungen,
+        technischeDaten: product.technischeDaten,
+        // Show any field that might contain additional info
+        indikation: product.indikation,
+        anwendungsgebiet: product.anwendungsgebiet,
+      }
+    });
+    
+    // For the first Gemino product, log the COMPLETE raw object
+    if (cleanCode === '10.46.04.0002' || cleanCode === '10.46.04.0003') {
+      console.log(`[gkvApi DEBUG] COMPLETE RAW OBJECT for ${cleanCode}:`, product);
+    }
+  }
+
   // Extract Merkmale/Features (detailed product characteristics)
   const merkmaleFields = [
     product.merkmale,
