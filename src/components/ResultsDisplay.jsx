@@ -404,11 +404,11 @@ export function ResultsDisplay({
           
           <div className="space-y-4">
             {/* Power Level */}
-            {availableFeatures.power.length > 0 && (
+            {availableFeatures.power?.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Leistungsstufe</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.power.map(({ key, count }) => {
+                  {(availableFeatures.power || []).map(({ key, count }) => {
                     const featureInfo = {
                       'M': { label: 'M', tooltip: 'Mittlere Leistung - für leichten bis mittleren Hörverlust' },
                       'HP': { label: 'HP', tooltip: 'High Power - für starken Hörverlust' },
@@ -438,11 +438,11 @@ export function ResultsDisplay({
             )}
             
             {/* Charging */}
-            {availableFeatures.charging.length > 0 && (
+            {availableFeatures.charging?.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Stromversorgung</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.charging.map(({ key, count }) => {
+                  {(availableFeatures.charging || []).map(({ key, count }) => {
                     const featureInfo = {
                       'R': { label: '🔋 Wiederaufladbar', tooltip: 'Kein Batteriewechsel nötig - einfach aufladen wie ein Handy' },
                     };
@@ -469,11 +469,11 @@ export function ResultsDisplay({
             )}
             
             {/* Device Type */}
-            {availableFeatures.type.length > 0 && (
+            {availableFeatures.type?.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Bauform</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.type.map(({ key, count }) => {
+                  {(availableFeatures.type || []).map(({ key, count }) => {
                     const featureInfo = {
                       'IIC': { label: 'IIC', tooltip: 'Invisible-In-Canal - komplett unsichtbar im Gehörgang' },
                       'CIC': { label: 'CIC', tooltip: 'Completely-In-Canal - sehr diskret im Gehörgang' },
@@ -504,11 +504,11 @@ export function ResultsDisplay({
             )}
             
             {/* Connectivity */}
-            {availableFeatures.connectivity.length > 0 && (
+            {availableFeatures.connectivity?.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Konnektivität</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.connectivity.map(({ key, count }) => {
+                  {(availableFeatures.connectivity || []).map(({ key, count }) => {
                     const featureInfo = {
                       'BLUETOOTH': { label: '📱 Bluetooth', tooltip: 'Verbindung mit Smartphone, Tablet und TV' },
                       'T': { label: '☎️ T-Spule', tooltip: 'Telefonspule - ideal für Telefonate und Induktionsschleifen' },
