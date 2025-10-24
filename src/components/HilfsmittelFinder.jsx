@@ -216,6 +216,7 @@ export function HilfsmittelFinder() {
           }}
           userAnswers={answers}
           categories={searchResults.categories || []}
+          featureCounts={searchResults.featureCounts || {}}
           onCategoryFilterChange={handleCategoryFilterChange}
           selectedCategoryFilter={selectedCategoryFilter}
           onFeatureFilterChange={handleFeatureFilterChange}

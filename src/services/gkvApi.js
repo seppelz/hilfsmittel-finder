@@ -722,6 +722,60 @@ class GKVApiService {
       }
     });
 
+    // Extract feature counts from ALL sorted products (not just current page)
+    const featureCounts = {};
+    sortedProducts.forEach(product => {
+      const name = (product.bezeichnung || product.name || '').toUpperCase();
+      
+      // Power levels
+      if (name.includes(' M ') || name.includes('(M)') || name.includes(' M-')) {
+        featureCounts['M'] = (featureCounts['M'] || 0) + 1;
+      }
+      if (name.includes(' HP') || name.includes('(HP')) {
+        featureCounts['HP'] = (featureCounts['HP'] || 0) + 1;
+      }
+      if (name.includes(' UP') || name.includes('(UP')) {
+        featureCounts['UP'] = (featureCounts['UP'] || 0) + 1;
+      }
+      if (name.includes(' SP') || name.includes('(SP')) {
+        featureCounts['SP'] = (featureCounts['SP'] || 0) + 1;
+      }
+      
+      // Rechargeable
+      if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
+          name.includes('LITHIUM') || name.includes('AKKU') || name.includes('WIEDERAUFLADBAR')) {
+        featureCounts['R'] = (featureCounts['R'] || 0) + 1;
+      }
+      
+      // Device types
+      if (name.includes('IIC')) {
+        featureCounts['IIC'] = (featureCounts['IIC'] || 0) + 1;
+      }
+      if (name.includes('CIC') && !name.includes('IIC')) {
+        featureCounts['CIC'] = (featureCounts['CIC'] || 0) + 1;
+      }
+      if (name.includes('ITC')) {
+        featureCounts['ITC'] = (featureCounts['ITC'] || 0) + 1;
+      }
+      if (name.includes('RITE') || name.includes('RIC')) {
+        featureCounts['RIC'] = (featureCounts['RIC'] || 0) + 1;
+      }
+      if (name.includes('BTE') || name.includes('HDO') || name.includes('HdO')) {
+        featureCounts['BTE'] = (featureCounts['BTE'] || 0) + 1;
+      }
+      
+      // Connectivity
+      if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
+        featureCounts['BLUETOOTH'] = (featureCounts['BLUETOOTH'] || 0) + 1;
+      }
+      if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
+        featureCounts['T'] = (featureCounts['T'] || 0) + 1;
+      }
+      if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
+        featureCounts['AI'] = (featureCounts['AI'] || 0) + 1;
+      }
+    });
+
     console.log('[GKV] Returning', products.length, 'products for page', safePage);
 
     return {
@@ -731,6 +785,7 @@ class GKVApiService {
       pageSize,
       totalPages,
       categories: Array.from(categories.values()),
+      featureCounts, // Add feature counts from ALL products
     };
   }
 

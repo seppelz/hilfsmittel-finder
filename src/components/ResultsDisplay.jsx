@@ -28,6 +28,7 @@ export function ResultsDisplay({
   selectedCategoryFilter = null,
   onFeatureFilterChange,
   selectedFeatureFilters = [],
+  featureCounts = {},
 }) {
   const [selected, setSelected] = useState(selectedProducts);
   
@@ -75,65 +76,7 @@ export function ResultsDisplay({
     
     if (!isHearingAids) return { power: [], charging: [], type: [], connectivity: [] };
     
-    // Count products for each feature (before any filtering)
-    const featureCounts = {};
-    
-    // We need to count from ALL products, not just current page
-    // So we'll use totalResults as a proxy - if we have filters active, show filtered count
-    const allProductsForCounting = products; // This will be all products after smart filtering
-    
-    allProductsForCounting.forEach(product => {
-      const name = (product.bezeichnung || product.name || '').toUpperCase();
-      
-      // Power levels
-      if (name.includes(' M ') || name.includes('(M)') || name.includes(' M-')) {
-        featureCounts['M'] = (featureCounts['M'] || 0) + 1;
-      }
-      if (name.includes(' HP') || name.includes('(HP')) {
-        featureCounts['HP'] = (featureCounts['HP'] || 0) + 1;
-      }
-      if (name.includes(' UP') || name.includes('(UP')) {
-        featureCounts['UP'] = (featureCounts['UP'] || 0) + 1;
-      }
-      if (name.includes(' SP') || name.includes('(SP')) {
-        featureCounts['SP'] = (featureCounts['SP'] || 0) + 1;
-      }
-      
-      // Rechargeable
-      if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
-          name.includes('LITHIUM') || name.includes('AKKU') || name.includes('WIEDERAUFLADBAR')) {
-        featureCounts['R'] = (featureCounts['R'] || 0) + 1;
-      }
-      
-      // Device types
-      if (name.includes('IIC')) {
-        featureCounts['IIC'] = (featureCounts['IIC'] || 0) + 1;
-      }
-      if (name.includes('CIC') && !name.includes('IIC')) {
-        featureCounts['CIC'] = (featureCounts['CIC'] || 0) + 1;
-      }
-      if (name.includes('ITC')) {
-        featureCounts['ITC'] = (featureCounts['ITC'] || 0) + 1;
-      }
-      if (name.includes('RITE') || name.includes('RIC')) {
-        featureCounts['RIC'] = (featureCounts['RIC'] || 0) + 1;
-      }
-      if (name.includes('BTE') || name.includes('HDO') || name.includes('HdO')) {
-        featureCounts['BTE'] = (featureCounts['BTE'] || 0) + 1;
-      }
-      
-      // Connectivity
-      if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
-        featureCounts['BLUETOOTH'] = (featureCounts['BLUETOOTH'] || 0) + 1;
-      }
-      if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
-        featureCounts['T'] = (featureCounts['T'] || 0) + 1;
-      }
-      if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
-        featureCounts['AI'] = (featureCounts['AI'] || 0) + 1;
-      }
-    });
-    
+    // Use feature counts passed from backend (counted from ALL products, not just current page)
     // Group features by category
     return {
       power: [
@@ -158,7 +101,7 @@ export function ResultsDisplay({
         { key: 'AI', count: featureCounts['AI'] || 0 },
       ].filter(f => f.count > 0),
     };
-  }, [products, userAnswers, categories, totalResults]);
+  }, [featureCounts, userAnswers, categories]);
 
   const handleFeatureToggle = (feature) => {
     const newFeatures = selectedFeatureFilters.includes(feature) 
@@ -222,8 +165,8 @@ export function ResultsDisplay({
         </div>
       </header>
       
-      {/* Category Filter */}
-      {categories && categories.length > 1 && (
+      {/* Category Filter - Always show if we have categories OR if a filter is active */}
+      {categories && (categories.length > 1 || selectedCategoryFilter) && (
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <Filter className="h-5 w-5 text-gray-600" />
