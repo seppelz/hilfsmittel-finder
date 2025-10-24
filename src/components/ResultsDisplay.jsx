@@ -570,7 +570,7 @@ export function ResultsDisplay({
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Gehhilfen-Typ</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.deviceType.map(({ key, count }) => {
+                  {(availableFeatures.deviceType || []).map(({ key, count }) => {
                     const featureInfo = {
                       'GEHSTOCK': { label: '🦯 Gehstock', tooltip: 'Leichte Unterstützung beim Gehen' },
                       'ROLLATOR': { label: '🛒 Rollator', tooltip: 'Mit Rädern, Bremsen und oft Sitzfläche' },
@@ -604,7 +604,7 @@ export function ResultsDisplay({
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Eigenschaften</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.features.map(({ key, count }) => {
+                  {(availableFeatures.features || []).map(({ key, count }) => {
                     const featureInfo = {
                       'FALTBAR': { label: '📦 Faltbar', tooltip: 'Platzsparend für Transport und Lagerung' },
                       'HOEHENVERSTELLBAR': { label: '↕️ Höhenverstellbar', tooltip: 'Anpassbar an Ihre Körpergröße' },
@@ -639,7 +639,7 @@ export function ResultsDisplay({
               <div>
                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Räder</h4>
                 <div className="flex flex-wrap gap-2">
-                  {availableFeatures.wheels.map(({ key, count }) => {
+                  {(availableFeatures.wheels || []).map(({ key, count }) => {
                     const featureInfo = {
                       '4RAEDER': { label: '🛞 4 Räder', tooltip: 'Besonders stabil' },
                       '3RAEDER': { label: '🛞 3 Räder', tooltip: 'Wendiger und leichter' },
