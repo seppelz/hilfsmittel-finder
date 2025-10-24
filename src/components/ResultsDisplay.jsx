@@ -132,7 +132,8 @@ export function ResultsDisplay({
       };
     }
     
-    return {};
+    // Always return defined arrays to prevent undefined errors
+    return { deviceType: [], features: [], wheels: [], power: [], charging: [], type: [], connectivity: [] };
   }, [featureCounts, userAnswers, categories]);
 
   const handleFeatureToggle = (feature) => {

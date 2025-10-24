@@ -73,11 +73,38 @@ export const questionFlow = {
       question: 'Welche Eigenschaften sind Ihnen wichtig?',
       type: 'multiple-choice',
       options: [
-        { text: 'Faltbar (für Transport/Lagerung)', value: 'foldable', api_criteria: { foldable: true } },
-        { text: 'Höhenverstellbar', value: 'adjustable', api_criteria: { adjustable: true } },
-        { text: 'Mit Bremsen', value: 'brakes', api_criteria: { brakes: true } },
-        { text: 'Mit Sitzfläche (für Pausen)', value: 'seat', api_criteria: { seat: true } },
-        { text: 'Mit Korb/Einkaufstasche', value: 'basket', api_criteria: { basket: true } },
+        // Universal features (always show)
+        { 
+          text: 'Faltbar (für Transport/Lagerung)', 
+          value: 'foldable', 
+          api_criteria: { foldable: true },
+        },
+        { 
+          text: 'Höhenverstellbar', 
+          value: 'adjustable', 
+          api_criteria: { adjustable: true },
+        },
+        // Only for devices with wheels (Rollator, Gehwagen, or unsure)
+        { 
+          text: 'Mit Bremsen', 
+          value: 'brakes', 
+          api_criteria: { brakes: true },
+          condition: { previous: 'mobility_device_type', values: ['rollator', 'gehwagen', 'any'] }
+        },
+        // Only for Rollator (has space for a seat) or unsure
+        { 
+          text: 'Mit Sitzfläche (für Pausen)', 
+          value: 'seat', 
+          api_criteria: { seat: true },
+          condition: { previous: 'mobility_device_type', values: ['rollator', 'any'] }
+        },
+        // Only for devices with wheels (Rollator, Gehwagen, or unsure)
+        { 
+          text: 'Mit Korb/Einkaufstasche', 
+          value: 'basket', 
+          api_criteria: { basket: true },
+          condition: { previous: 'mobility_device_type', values: ['rollator', 'gehwagen', 'any'] }
+        },
       ],
     },
     {

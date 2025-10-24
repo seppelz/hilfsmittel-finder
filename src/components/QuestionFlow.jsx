@@ -115,6 +115,7 @@ export function QuestionFlow({
             value={answers[question.id]}
             onChange={(value) => handleAnswerChange(question.id, value)}
             showValidation={showValidation}
+            answers={answers}
           />
         ))}
       </div>
@@ -148,7 +149,7 @@ function getCategoryHeading(category) {
   }
 }
 
-function QuestionCard({ question, value, onChange, showValidation }) {
+function QuestionCard({ question, value, onChange, showValidation, answers }) {
   const isUnanswered = showValidation && (value === undefined || (Array.isArray(value) && value.length === 0));
 
   return (
@@ -156,10 +157,10 @@ function QuestionCard({ question, value, onChange, showValidation }) {
       <h3 className="text-2xl font-semibold text-text">{question.question}</h3>
       <div className="mt-4 space-y-3">
         {question.type === 'single-choice' && (
-          <SingleChoiceQuestion options={question.options} value={value} onChange={onChange} />
+          <SingleChoiceQuestion options={question.options} value={value} onChange={onChange} answers={answers} />
         )}
         {question.type === 'multiple-choice' && (
-          <MultipleChoiceQuestion options={question.options} value={value ?? []} onChange={onChange} />
+          <MultipleChoiceQuestion options={question.options} value={value ?? []} onChange={onChange} answers={answers} />
         )}
       </div>
       {isUnanswered && (
@@ -169,10 +170,28 @@ function QuestionCard({ question, value, onChange, showValidation }) {
   );
 }
 
-function SingleChoiceQuestion({ options, value, onChange }) {
+function SingleChoiceQuestion({ options, value, onChange, answers }) {
+  // Filter options based on conditions
+  const visibleOptions = options.filter(option => {
+    if (!option.condition) return true; // No condition = always visible
+    
+    const { previous, value: conditionValue, values: conditionValues } = option.condition;
+    const previousAnswer = answers[previous];
+    
+    // Support both single value and array of values
+    if (conditionValues) {
+      return conditionValues.includes(previousAnswer);
+    }
+    if (conditionValue !== undefined) {
+      return previousAnswer === conditionValue;
+    }
+    
+    return true;
+  });
+  
   return (
     <div className="space-y-3">
-      {options.map((option) => (
+      {visibleOptions.map((option) => (
         <button
           key={option.value}
           type="button"
@@ -190,7 +209,25 @@ function SingleChoiceQuestion({ options, value, onChange }) {
   );
 }
 
-function MultipleChoiceQuestion({ options, value, onChange }) {
+function MultipleChoiceQuestion({ options, value, onChange, answers }) {
+  // Filter options based on conditions
+  const visibleOptions = options.filter(option => {
+    if (!option.condition) return true; // No condition = always visible
+    
+    const { previous, value: conditionValue, values: conditionValues } = option.condition;
+    const previousAnswer = answers[previous];
+    
+    // Support both single value and array of values
+    if (conditionValues) {
+      return conditionValues.includes(previousAnswer);
+    }
+    if (conditionValue !== undefined) {
+      return previousAnswer === conditionValue;
+    }
+    
+    return true;
+  });
+  
   const handleToggle = (optionValue) => {
     const selection = new Set(value ?? []);
     if (selection.has(optionValue)) {
@@ -203,7 +240,7 @@ function MultipleChoiceQuestion({ options, value, onChange }) {
 
   return (
     <ul className="space-y-3">
-      {options.map((option) => {
+      {visibleOptions.map((option) => {
         const selected = value?.includes(option.value);
         return (
           <li key={option.value}>
