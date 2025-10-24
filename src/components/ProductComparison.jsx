@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Check, Minus, Sparkles, Scale, TrendingUp } from 'lucide-react';
+import { X, Check, Minus, Sparkles, Scale, TrendingUp, Info } from 'lucide-react';
 import { decodeProduct } from '../utils/productDecoder';
-import { generateComparisonAnalysis } from '../services/aiEnhancement';
+import { generateComparisonAnalysis, searchProductPrice } from '../services/aiEnhancement';
 
 export function ProductComparison({ 
   products, 
@@ -10,10 +10,13 @@ export function ProductComparison({
 }) {
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [productPrices, setProductPrices] = useState({});
+  const [loadingPrices, setLoadingPrices] = useState(true);
   
   useEffect(() => {
     if (products.length >= 2) {
       loadAIAnalysis();
+      loadProductPrices();
     }
   }, [products]);
   
@@ -29,24 +32,81 @@ export function ProductComparison({
     }
   };
   
+  // Load prices for all products using AI search
+  const loadProductPrices = async () => {
+    setLoadingPrices(true);
+    const prices = {};
+    
+    // Search prices sequentially (to avoid rate limits)
+    for (const product of products) {
+      const code = product?.produktartNummer || product?.code;
+      
+      // Skip if product already has price from API
+      if (product?.preis || product?.price) {
+        prices[code] = product.preis || product.price;
+        console.log('[ProductComparison] Using API price for:', code);
+        continue;
+      }
+      
+      // Search with AI
+      console.log('[ProductComparison] Searching AI price for:', code);
+      const aiPrice = await searchProductPrice(product);
+      if (aiPrice) {
+        prices[code] = aiPrice;
+      }
+      
+      // Small delay to respect rate limits (500 req/day)
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    setProductPrices(prices);
+    setLoadingPrices(false);
+    console.log('[ProductComparison] Price loading complete:', prices);
+  };
+  
   // Extract features for comparison
   const comparisonData = products.map(product => {
     const decoded = decodeProduct(product);
-    const name = (product?.bezeichnung || '').toUpperCase();
+    const code = product?.produktartNummer || product?.code;
+    
+    // Helper: Check if product has a specific feature
+    const hasFeature = (featureKey) => {
+      return decoded.features && decoded.features.some(f => f.key === featureKey);
+    };
+    
+    // Extract power level from features (not from string matching)
+    const powerFeature = decoded.features?.find(f => ['M', 'HP', 'UP', 'SP'].includes(f.key));
+    
+    // Determine price and source
+    const apiPrice = product?.preis || product?.price;
+    const aiPrice = productPrices[code];
+    const finalPrice = apiPrice || aiPrice;
+    const priceSource = apiPrice ? 'API' : (aiPrice ? 'AI' : null);
     
     return {
       product,
       decoded,
       name: product?.bezeichnung || 'Unbekannt',
-      code: product?.produktartNummer || product?.code,
+      code: code,
       manufacturer: product?.hersteller,
-      powerLevel: name.match(/(HP|UP|SP|M(?:\s|-))/)?.[1] || 'Standard',
-      deviceType: decoded?.deviceType?.de || 'Unbekannt',
-      rechargeable: name.includes(' R ') || name.includes('LITHIUM') || name.includes('AKKU'),
-      bluetooth: name.includes('BLUETOOTH') || name.includes('DIRECT'),
-      telecoil: name.includes(' T ') || name.includes('TELECOIL'),
-      // Price extraction (format: "ab 1234 EUR" or similar)
-      price: product?.preis || product?.price || 'Auf Anfrage',
+      
+      // Use decoded features (not manual string parsing)
+      powerLevel: powerFeature?.key || null,
+      powerDescription: powerFeature?.description || null,
+      deviceType: decoded?.deviceType?.de || null,
+      
+      // Features from decoded object
+      rechargeable: hasFeature('R'),
+      bluetooth: hasFeature('Direct'),
+      telecoil: hasFeature('T'),
+      ai: hasFeature('AI'),
+      
+      // All features for display
+      allFeatures: decoded.features || [],
+      
+      // Price with source tracking
+      price: finalPrice,
+      priceSource: priceSource,
     };
   });
   
@@ -131,35 +191,112 @@ export function ProductComparison({
                 
                 {/* Leistungsstufe */}
                 <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">Leistungsstufe</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2">
+                      Leistungsstufe
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                          <strong>Leistungsstufen:</strong><br/>
+                          • M = Mittlere Leistung (leichter Hörverlust)<br/>
+                          • HP = High Power (starker Hörverlust)<br/>
+                          • UP = Ultra Power (sehr starker Hörverlust)<br/>
+                          • SP = Super Power (schwerster Hörverlust)
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                   {comparisonData.map((item, idx) => (
                     <td key={idx} className="px-6 py-4 text-sm">
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800 font-medium">
-                        {item.powerLevel}
-                      </span>
+                      {item.powerLevel ? (
+                        <div className="group relative inline-block">
+                          <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800 font-medium cursor-help">
+                            {item.powerLevel}
+                          </span>
+                          {item.powerDescription && (
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              {item.powerDescription}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Nicht angegeben</span>
+                      )}
                     </td>
                   ))}
                 </tr>
                 
-                {/* Bauform */}
+                {/* Bauform - only show if at least one product has a device type */}
+                {comparisonData.some(item => item.deviceType) && (
+                  <tr>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-700">Bauform</td>
+                    {comparisonData.map((item, idx) => (
+                      <td key={idx} className="px-6 py-4 text-sm text-gray-900">
+                        {item.deviceType || (
+                          <span className="text-gray-400 text-sm">Nicht erkennbar</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )}
+                
+                {/* All Recognized Features */}
                 <tr>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">Bauform</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2">
+                      ✨ Erkannte Funktionen
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-56 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                          Alle automatisch erkannten Funktionen und Eigenschaften des Hörgeräts aus dem Produktnamen
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                   {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4 text-sm text-gray-900">
-                      {item.deviceType}
+                    <td key={idx} className="px-6 py-4">
+                      {item.allFeatures && item.allFeatures.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {item.allFeatures.map((feature, fIdx) => (
+                            <div key={fIdx} className="group relative">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-1 text-xs font-medium text-purple-800 cursor-help">
+                                {feature.icon && <span>{feature.icon}</span>}
+                                {feature.name}
+                              </span>
+                              {feature.description && (
+                                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                                  {feature.description}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Keine erkannt</span>
+                      )}
                     </td>
                   ))}
                 </tr>
                 
                 {/* Wiederaufladbar */}
                 <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">Wiederaufladbar</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2">
+                      🔋 Wiederaufladbar
+                    </div>
+                  </td>
                   {comparisonData.map((item, idx) => (
                     <td key={idx} className="px-6 py-4">
                       {item.rechargeable ? (
-                        <Check className="h-5 w-5 text-green-600" />
+                        <div className="flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">Ja</span>
+                        </div>
                       ) : (
-                        <Minus className="h-5 w-5 text-gray-300" />
+                        <div className="flex items-center gap-2">
+                          <Minus className="h-5 w-5 text-gray-300" />
+                          <span className="text-sm text-gray-500">Nein</span>
+                        </div>
                       )}
                     </td>
                   ))}
@@ -167,13 +304,23 @@ export function ProductComparison({
                 
                 {/* Bluetooth */}
                 <tr>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">Bluetooth</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2">
+                      📱 Bluetooth
+                    </div>
+                  </td>
                   {comparisonData.map((item, idx) => (
                     <td key={idx} className="px-6 py-4">
                       {item.bluetooth ? (
-                        <Check className="h-5 w-5 text-green-600" />
+                        <div className="flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">Ja</span>
+                        </div>
                       ) : (
-                        <Minus className="h-5 w-5 text-gray-300" />
+                        <div className="flex items-center gap-2">
+                          <Minus className="h-5 w-5 text-gray-300" />
+                          <span className="text-sm text-gray-500">Nein</span>
+                        </div>
                       )}
                     </td>
                   ))}
@@ -181,13 +328,23 @@ export function ProductComparison({
                 
                 {/* Telefonspule */}
                 <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">Telefonspule (T)</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2">
+                      📞 Telefonspule (T)
+                    </div>
+                  </td>
                   {comparisonData.map((item, idx) => (
                     <td key={idx} className="px-6 py-4">
                       {item.telecoil ? (
-                        <Check className="h-5 w-5 text-green-600" />
+                        <div className="flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          <span className="text-sm text-green-700 font-medium">Ja</span>
+                        </div>
                       ) : (
-                        <Minus className="h-5 w-5 text-gray-300" />
+                        <div className="flex items-center gap-2">
+                          <Minus className="h-5 w-5 text-gray-300" />
+                          <span className="text-sm text-gray-500">Nein</span>
+                        </div>
                       )}
                     </td>
                   ))}
@@ -202,8 +359,28 @@ export function ProductComparison({
                     </div>
                   </td>
                   {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {item.price}
+                    <td key={idx} className="px-6 py-4">
+                      {loadingPrices && !item.price ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Sparkles className="h-4 w-4 animate-pulse text-purple-500" />
+                          <span>Suche Preis...</span>
+                        </div>
+                      ) : item.price ? (
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{item.price}</div>
+                          {item.priceSource === 'AI' && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Sparkles className="h-3 w-3 text-purple-600" />
+                              <span className="text-xs text-purple-600">KI-Recherche</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          <div className="font-medium">GKV-Festbetrag</div>
+                          <div className="text-xs text-gray-400 mt-1">Zuzahlung: 5-10€</div>
+                        </div>
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -215,7 +392,11 @@ export function ProductComparison({
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-4">
             <p className="text-sm text-blue-800">
               ℹ️ <strong>Wichtig:</strong> Alle hier gezeigten Produkte sind von der GKV erstattungsfähig. 
-              Zuzahlung: 10% des Preises (mindestens 5€, maximal 10€ pro Hilfsmittel).
+              Die meisten Hörgeräte haben einen Festbetrag (Zuzahlung: 10% des Preises, min. 5€, max. 10€).
+              <br/><br/>
+              💡 <strong>Preisinformation:</strong> Preise wurden per KI-Websuche recherchiert und sind unverbindlich. 
+              Die GKV übernimmt die Kosten bis zum Festbetrag (~700-800€ pro Gerät). 
+              Genaue Preise und Beratung erhalten Sie beim Hörgeräteakustiker.
             </p>
           </div>
         </div>

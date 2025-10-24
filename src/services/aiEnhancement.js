@@ -590,3 +590,96 @@ STIL: Einfache Sprache, direkte Empfehlung, max. 100 Wörter. Nutze "Produkt 1",
   }
 }
 
+/**
+ * Search for approximate product price using Google Search Grounding
+ * @param {object} product - Product object
+ * @returns {Promise<string|null>} Price information or null
+ */
+export async function searchProductPrice(product) {
+  if (!isAIAvailable()) {
+    console.warn('[AI] Price search skipped: No API key');
+    return null;
+  }
+  
+  const productName = product?.bezeichnung || product?.name;
+  const manufacturer = product?.hersteller;
+  const code = product?.produktartNummer || product?.code;
+  
+  if (!productName) {
+    console.warn('[AI] Price search skipped: No product name');
+    return null;
+  }
+  
+  const prompt = `Suche den aktuellen Verkaufspreis für dieses Hörgerät in Deutschland:
+
+Produkt: ${productName}
+Hersteller: ${manufacturer || 'unbekannt'}
+GKV-Code: ${code}
+
+Finde den ungefähren Verkaufspreis bei Hörgeräteakustikern oder Online-Shops.
+Antworte NUR mit dem Preis im Format "ca. X.XXX €" ODER "Preis nicht gefunden".
+Keine weiteren Erklärungen oder Text.`;
+
+  try {
+    const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1,  // Low for factual pricing
+          maxOutputTokens: 50,  // Short response
+        },
+        // Enable Google Search Grounding
+        tools: [
+          {
+            googleSearchRetrieval: {
+              dynamicRetrievalConfig: {
+                mode: "MODE_DYNAMIC",
+                dynamicThreshold: 0.3
+              }
+            }
+          }
+        ]
+      })
+    });
+    
+    if (!response.ok) {
+      console.warn('[AI] Price search API failed:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    const priceText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!priceText || priceText.toLowerCase().includes('nicht gefunden')) {
+      console.log('[AI] Price not found for:', productName);
+      return null;
+    }
+    
+    trackEvent('ai_price_search_success', { 
+      product: code,
+      foundPrice: true 
+    });
+    
+    console.log('[AI] Price found for', productName, ':', priceText.trim());
+    return priceText.trim();
+  } catch (error) {
+    logError('ai_price_search_failed', error);
+    console.error('[AI] Price search error:', error);
+    return null;
+  }
+}
+
