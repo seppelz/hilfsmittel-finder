@@ -14,13 +14,17 @@ export const HEARING_AID_TYPES = {
 };
 
 export const HEARING_AID_FEATURES = {
-  'T': { name: 'Telefonspule', description: 'Für besseres Telefonieren', icon: '📞' },
-  'R': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋' },
-  'Direct': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱' },
-  'AI': { name: 'Künstliche Intelligenz', description: 'Lernt Ihre Vorlieben', icon: '🤖' },
-  'HP': { name: 'Hohe Leistung', description: 'Für starken Hörverlust', icon: '🔊' },
-  'SP': { name: 'Sehr hohe Leistung', description: 'Für sehr starken Hörverlust', icon: '🔊' },
-  'M': { name: 'Mittlere Leistung', description: 'Für mittleren Hörverlust', icon: '🔉' }
+  'T': { name: 'Telefonspule', description: 'Für besseres Telefonieren', icon: '📞', key: 'T' },
+  'R': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋', key: 'R' },
+  'Direct': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'Connect': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'Bluetooth': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'BT': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'AI': { name: 'Künstliche Intelligenz', description: 'Lernt Ihre Vorlieben', icon: '🤖', key: 'AI' },
+  'HP': { name: 'Hohe Leistung', description: 'Für starken Hörverlust', icon: '🔊', key: 'HP' },
+  'UP': { name: 'Ultra Power', description: 'Für sehr starken Hörverlust', icon: '🔊', key: 'UP' },
+  'SP': { name: 'Sehr hohe Leistung', description: 'Für sehr starken Hörverlust', icon: '🔊', key: 'SP' },
+  'M': { name: 'Mittlere Leistung', description: 'Für mittleren Hörverlust', icon: '🔉', key: 'M' }
 };
 
 export const MOBILITY_AID_TYPES = {
@@ -88,13 +92,16 @@ function decodeHearingAid(productName) {
     }
   }
   
-  // Find features
+  // Find features with deduplication by key
   const features = [];
-  for (const [key, value] of Object.entries(HEARING_AID_FEATURES)) {
+  const seenKeys = new Set();
+  
+  for (const [searchKey, value] of Object.entries(HEARING_AID_FEATURES)) {
     // Check for exact matches (avoid false positives)
-    const regex = new RegExp(`\\b${key}\\b|${key}(?=-)|${key}$`, 'i');
-    if (regex.test(productName)) {
-      features.push({ key, ...value });
+    const regex = new RegExp(`\\b${searchKey}\\b|${searchKey}(?=-)|${searchKey}$`, 'i');
+    if (regex.test(productName) && !seenKeys.has(value.key)) {
+      features.push({ key: value.key, ...value });
+      seenKeys.add(value.key);
     }
   }
   

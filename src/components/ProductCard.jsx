@@ -99,17 +99,22 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </p>
       )}
       
+      {/* Feature badges */}
       {decodedInfo?.features && decodedInfo.features.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {decodedInfo.features.map((feature, idx) => (
-            <span
-              key={idx}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700"
-              title={feature.description}
-            >
-              <span>{feature.icon}</span>
-              <span>{feature.name}</span>
-            </span>
+            <div key={idx} className="group relative">
+              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-purple-100 to-blue-100 px-3 py-1 text-xs font-semibold text-purple-800 shadow-sm border border-purple-200 cursor-help">
+                {feature.icon && <span>{feature.icon}</span>}
+                {feature.name}
+              </span>
+              {/* Tooltip on hover */}
+              {feature.description && (
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                  {feature.description}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

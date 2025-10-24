@@ -137,7 +137,7 @@ export function ResultsDisplay({
   };
 
   return (
-    <section className="mx-auto max-w-5xl space-y-10 px-4 py-10">
+    <section className={`mx-auto max-w-5xl space-y-10 px-4 ${comparisonProducts && comparisonProducts.length > 0 ? 'py-10 pb-48' : 'py-10'}`}>
       <header className="rounded-3xl bg-white p-6 shadow">
         <div className="flex flex-col gap-3">
           <button
