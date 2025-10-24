@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Minus, Sparkles, Scale, TrendingUp, Info } from 'lucide-react';
 import { decodeProduct } from '../utils/productDecoder';
-import { generateComparisonAnalysis, searchProductPrice } from '../services/aiEnhancement';
+import { generateComparisonAnalysis, searchMultipleProductPrices } from '../services/aiEnhancement';
 
 export function ProductComparison({ 
   products, 
@@ -32,12 +32,14 @@ export function ProductComparison({
     }
   };
   
-  // Load prices for all products using AI search
+  // Load prices for all products using batched AI search
   const loadProductPrices = async () => {
     setLoadingPrices(true);
+    
+    // Separate products into those with API prices and those needing search
+    const productsNeedingSearch = [];
     const prices = {};
     
-    // Search prices sequentially (to avoid rate limits)
     for (const product of products) {
       const code = product?.produktartNummer || product?.code;
       
@@ -45,23 +47,23 @@ export function ProductComparison({
       if (product?.preis || product?.price) {
         prices[code] = product.preis || product.price;
         console.log('[ProductComparison] Using API price for:', code);
-        continue;
+      } else {
+        productsNeedingSearch.push(product);
       }
+    }
+    
+    // Batch search for products without API prices
+    if (productsNeedingSearch.length > 0) {
+      console.log('[ProductComparison] Batch searching AI prices for', productsNeedingSearch.length, 'products');
+      const aiPrices = await searchMultipleProductPrices(productsNeedingSearch);
       
-      // Search with AI
-      console.log('[ProductComparison] Searching AI price for:', code);
-      const aiPrice = await searchProductPrice(product);
-      if (aiPrice) {
-        prices[code] = aiPrice;
-      }
-      
-      // Small delay to respect rate limits (500 req/day)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Merge AI prices into prices object
+      Object.assign(prices, aiPrices);
     }
     
     setProductPrices(prices);
     setLoadingPrices(false);
-    console.log('[ProductComparison] Price loading complete:', prices);
+    console.log('[ProductComparison] Price loading complete:', Object.keys(prices).length, 'prices available');
   };
   
   // Extract features for comparison

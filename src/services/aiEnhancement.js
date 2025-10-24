@@ -683,3 +683,131 @@ Keine weiteren Erklärungen oder Text.`;
   }
 }
 
+/**
+ * Search for prices of multiple products in a single AI request (batch processing)
+ * @param {Array} products - Array of product objects
+ * @returns {Promise<Object>} Map of product codes to prices { code: price }
+ */
+export async function searchMultipleProductPrices(products) {
+  if (!isAIAvailable()) {
+    console.warn('[AI] Batch price search skipped: No API key');
+    return {};
+  }
+  
+  if (!products || products.length === 0) {
+    return {};
+  }
+  
+  // Build list of products for the prompt
+  const productList = products.map((p, idx) => {
+    const name = p?.bezeichnung || p?.name || 'Unbekannt';
+    const manufacturer = p?.hersteller || 'unbekannt';
+    const code = p?.produktartNummer || p?.code || '';
+    return `${idx + 1}. Code: ${code} | Produkt: ${name} | Hersteller: ${manufacturer}`;
+  }).join('\n');
+  
+  const prompt = `Suche die aktuellen Verkaufspreise für diese Hörgeräte in Deutschland:
+
+${productList}
+
+Antworte NUR mit JSON im folgenden Format (keine weiteren Erklärungen):
+{
+  "prices": [
+    {"code": "13.20.10.0671", "price": "ca. 1.200 €"},
+    {"code": "13.20.10.0672", "price": "ca. 1.500 €"},
+    {"code": "13.20.10.0670", "price": "Preis nicht gefunden"}
+  ]
+}
+
+Wichtig: Für jeden Code MUSS ein Eintrag vorhanden sein. Wenn kein Preis gefunden: "Preis nicht gefunden"`;
+
+  try {
+    const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`;
+    
+    console.log('[AI] Batch price search for', products.length, 'products');
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 500,  // More tokens for multiple products
+        },
+        // Enable Google Search Grounding
+        tools: [
+          {
+            googleSearchRetrieval: {
+              dynamicRetrievalConfig: {
+                mode: "MODE_DYNAMIC",
+                dynamicThreshold: 0.3
+              }
+            }
+          }
+        ]
+      })
+    });
+    
+    if (!response.ok) {
+      console.warn('[AI] Batch price search API failed:', response.status);
+      return {};
+    }
+    
+    const data = await response.json();
+    const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!responseText) {
+      console.warn('[AI] No response text from batch price search');
+      return {};
+    }
+    
+    // Parse JSON response
+    try {
+      // Extract JSON from response (may have markdown code blocks)
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.warn('[AI] No JSON found in response');
+        return {};
+      }
+      
+      const parsed = JSON.parse(jsonMatch[0]);
+      const priceMap = {};
+      
+      if (parsed.prices && Array.isArray(parsed.prices)) {
+        parsed.prices.forEach(item => {
+          if (item.code && item.price && !item.price.toLowerCase().includes('nicht gefunden')) {
+            priceMap[item.code] = item.price;
+          }
+        });
+      }
+      
+      console.log('[AI] Batch price search complete:', Object.keys(priceMap).length, 'prices found');
+      trackEvent('ai_batch_price_search_success', { 
+        productsRequested: products.length,
+        pricesFound: Object.keys(priceMap).length
+      });
+      
+      return priceMap;
+    } catch (parseError) {
+      console.error('[AI] Failed to parse batch price response:', parseError);
+      console.log('[AI] Raw response:', responseText);
+      return {};
+    }
+  } catch (error) {
+    logError('ai_batch_price_search_failed', error);
+    console.error('[AI] Batch price search error:', error);
+    return {};
+  }
+}
+
