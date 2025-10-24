@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Check, Info, Sparkles, Award } from 'lucide-react';
+import { Check, Info, Sparkles, Award, Scale, TrendingUp } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
 import { getCategoryIcon, getCategoryName } from '../data/productContexts';
 import { generateProductDescription, isAIAvailable, isHighlyRecommended } from '../services/aiEnhancement';
 
-export function ProductCard({ product, selected = false, onSelect, userContext = null }) {
+export function ProductCard({ product, selected = false, onSelect, userContext = null, onAddToComparison = null, inComparison = false }) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
   const name = product?.bezeichnung || product?.name || 'Hilfsmittel';
   const description = product?.beschreibung || product?.description;
@@ -170,6 +170,13 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
 
       {hersteller && <p className="mt-4 text-sm text-gray-500">Hersteller: {hersteller}</p>}
       
+      {product?.preis && (
+        <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+          <TrendingUp className="h-4 w-4" />
+          <span>ca. {product.preis}</span>
+        </div>
+      )}
+      
       {name !== simplifiedName && (
         <details className="mt-3">
           <summary className="cursor-pointer text-xs text-gray-400 hover:text-gray-600">
@@ -184,6 +191,36 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         <div className="mt-4 inline-flex items-center gap-2 text-primary">
           <Check className="h-5 w-5" />
           <span className="text-sm font-semibold">Für Antrag ausgewählt</span>
+        </div>
+      )}
+
+      {/* Comparison Action */}
+      {onAddToComparison && (
+        <div 
+          className="mt-3 pt-3 border-t border-gray-200"
+          onClick={(e) => e.stopPropagation()} // Prevent card selection
+        >
+          <button
+            type="button"
+            onClick={() => onAddToComparison(product)}
+            className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition ${
+              inComparison 
+                ? 'bg-purple-100 text-purple-700 border-2 border-purple-300' 
+                : 'bg-gray-100 text-gray-700 hover:bg-purple-50 hover:text-purple-600 border-2 border-gray-200'
+            }`}
+          >
+            {inComparison ? (
+              <>
+                <Check className="inline h-4 w-4 mr-1" />
+                Im Vergleich
+              </>
+            ) : (
+              <>
+                <Scale className="inline h-4 w-4 mr-1" />
+                Zum Vergleich hinzufügen
+              </>
+            )}
+          </button>
         </div>
       )}
     </button>

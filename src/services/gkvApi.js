@@ -226,6 +226,18 @@ function normalizeProduct(product) {
     });
   }
 
+  // Add price normalization
+  const price = normalizeString(
+    product.preis ?? 
+    product.price ?? 
+    product.festbetrag ?? 
+    product.hoechstbetrag
+  );
+
+  if (price) {
+    normalizedProduct.preis = price;
+  }
+
   return normalizedProduct;
 }
 

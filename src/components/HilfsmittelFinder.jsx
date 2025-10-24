@@ -27,6 +27,8 @@ export function HilfsmittelFinder() {
   const [page, setPage] = useState(1);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
   const [selectedFeatureFilters, setSelectedFeatureFilters] = useState([]);
+  const [comparisonProducts, setComparisonProducts] = useState([]); // Max 3 products
+  const [showComparison, setShowComparison] = useState(false);
 
   // Clear old cached answers if questionnaire version changed
   useEffect(() => {
@@ -145,6 +147,30 @@ export function HilfsmittelFinder() {
     trackEvent('feature_filter_applied', { features });
   };
 
+  const handleAddToComparison = (product) => {
+    const productCode = product?.produktartNummer || product?.code;
+    if (comparisonProducts.find(p => (p?.produktartNummer || p?.code) === productCode)) {
+      // Remove if already in comparison
+      setComparisonProducts(prev => prev.filter(p => (p?.produktartNummer || p?.code) !== productCode));
+    } else if (comparisonProducts.length < 3) {
+      // Add to comparison (max 3)
+      setComparisonProducts(prev => [...prev, product]);
+      trackEvent('product_added_to_comparison', { code: productCode });
+    }
+  };
+
+  const handleRemoveFromComparison = (product) => {
+    const productCode = product?.produktartNummer || product?.code;
+    setComparisonProducts(prev => prev.filter(p => (p?.produktartNummer || p?.code) !== productCode));
+  };
+
+  const handleShowComparison = () => {
+    if (comparisonProducts.length >= 2) {
+      setShowComparison(true);
+      trackEvent('comparison_opened', { count: comparisonProducts.length });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {stage === 'welcome' && (
@@ -221,6 +247,12 @@ export function HilfsmittelFinder() {
           selectedCategoryFilter={selectedCategoryFilter}
           onFeatureFilterChange={handleFeatureFilterChange}
           selectedFeatureFilters={selectedFeatureFilters}
+          comparisonProducts={comparisonProducts}
+          onAddToComparison={handleAddToComparison}
+          onRemoveFromComparison={handleRemoveFromComparison}
+          onShowComparison={handleShowComparison}
+          showComparison={showComparison}
+          onCloseComparison={() => setShowComparison(false)}
         />
       )}
 

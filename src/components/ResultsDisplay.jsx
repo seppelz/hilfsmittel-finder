@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Filter } from 'lucide-react';
+import { Filter, Scale } from 'lucide-react';
 import { trackEvent } from '../utils/analytics';
 import { ProductList } from './ProductList';
 import { getCategoryContext } from '../data/productContexts';
+import { ProductComparison } from './ProductComparison';
 
 const getProductId = (product) =>
   product?.id ??
@@ -29,6 +30,12 @@ export function ResultsDisplay({
   onFeatureFilterChange,
   selectedFeatureFilters = [],
   featureCounts = {},
+  comparisonProducts = [],
+  onAddToComparison,
+  onRemoveFromComparison,
+  onShowComparison,
+  showComparison = false,
+  onCloseComparison,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
   
@@ -532,6 +539,8 @@ export function ResultsDisplay({
           onToggleProduct={handleSelect}
           pagination={selectedCategoryFilter || selectedFeatureFilters.length > 0 ? null : pagination}
           userContext={userAnswers}
+          comparisonProducts={comparisonProducts}
+          onAddToComparison={onAddToComparison}
         />
       )}
 
@@ -548,6 +557,48 @@ export function ResultsDisplay({
           Antragsschreiben erstellen
         </button>
       </footer>
+
+      {/* Floating Comparison Indicator */}
+      {comparisonProducts && comparisonProducts.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="rounded-2xl border-2 border-purple-300 bg-purple-50 shadow-xl px-6 py-4 flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Scale className="h-5 w-5 text-purple-600" />
+              <span className="font-semibold text-purple-900">
+                {comparisonProducts.length} {comparisonProducts.length === 1 ? 'Produkt' : 'Produkte'} ausgewählt
+              </span>
+            </div>
+            
+            <button
+              onClick={onShowComparison}
+              disabled={comparisonProducts.length < 2}
+              className={`rounded-xl px-6 py-2 font-medium transition ${
+                comparisonProducts.length >= 2
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Vergleichen {comparisonProducts.length < 2 && `(min. 2)`}
+            </button>
+            
+            <button
+              onClick={() => comparisonProducts.forEach(p => onRemoveFromComparison(p))}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              Alle entfernen
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Comparison Modal */}
+      {showComparison && comparisonProducts.length >= 2 && (
+        <ProductComparison
+          products={comparisonProducts}
+          userContext={userAnswers}
+          onClose={onCloseComparison}
+        />
+      )}
     </section>
   );
 }

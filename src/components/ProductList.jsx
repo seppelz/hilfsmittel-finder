@@ -2,10 +2,14 @@ import { useMemo } from 'react';
 import { ProductCard } from './ProductCard';
 import { getProductId } from '../utils/productUtils';
 
-export function ProductList({ products = [], selectedProducts = [], onToggleProduct, pagination, userContext = null }) {
+export function ProductList({ products = [], selectedProducts = [], onToggleProduct, pagination, userContext = null, comparisonProducts = [], onAddToComparison }) {
   const selectedIds = useMemo(() => {
     return new Set((selectedProducts ?? []).map((item) => getProductId(item)));
   }, [selectedProducts]);
+
+  const comparisonIds = useMemo(() => {
+    return new Set((comparisonProducts ?? []).map((item) => getProductId(item)));
+  }, [comparisonProducts]);
 
   if (!products.length) {
     return null;
@@ -23,6 +27,8 @@ export function ProductList({ products = [], selectedProducts = [], onToggleProd
               selected={selectedIds.has(id)}
               onSelect={() => onToggleProduct?.(product)}
               userContext={userContext}
+              inComparison={comparisonIds.has(id)}
+              onAddToComparison={onAddToComparison}
             />
           );
         })}

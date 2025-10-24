@@ -68,6 +68,120 @@ function cacheDescription(productCode, description) {
 }
 
 /**
+ * Extract structured user needs from questionnaire
+ * @param {object} userContext - User context from questionnaire
+ * @returns {string} Formatted user needs string
+ */
+function extractUserNeeds(userContext) {
+  const needs = [];
+  
+  if (!userContext) return 'Keine spezifischen Angaben';
+  
+  // Hearing-related needs
+  if (userContext.hearing_level === 'severe' || userContext.hearing_level === 'profound') {
+    needs.push('Starker Hörverlust (braucht hohe Verstärkung)');
+  } else if (userContext.hearing_level === 'moderate') {
+    needs.push('Mittlerer Hörverlust');
+  } else if (userContext.hearing_level === 'mild') {
+    needs.push('Leichter Hörverlust');
+  }
+  
+  if (userContext.hearing_device_type === 'ite' || userContext.hearing_device_type === 'ido') {
+    needs.push('Bevorzugt: Im-Ohr-Gerät (unauffällig)');
+  } else if (userContext.hearing_device_type === 'bte' || userContext.hearing_device_type === 'hdo') {
+    needs.push('Bevorzugt: Hinter-dem-Ohr-Gerät');
+  } else if (userContext.hearing_device_type === 'ric') {
+    needs.push('Bevorzugt: RIC-Gerät (Receiver-in-Canal)');
+  }
+  
+  if (Array.isArray(userContext.hearing_features)) {
+    if (userContext.hearing_features.includes('rechargeable')) {
+      needs.push('Wiederaufladbar gewünscht');
+    }
+    if (userContext.hearing_features.includes('bluetooth')) {
+      needs.push('Bluetooth-Verbindung wichtig');
+    }
+    if (userContext.hearing_features.includes('discreet')) {
+      needs.push('Unauffälliges Gerät bevorzugt');
+    }
+  }
+  
+  if (Array.isArray(userContext.hearing_situations)) {
+    if (userContext.hearing_situations.includes('noise')) {
+      needs.push('Geräuschvolle Umgebungen (Restaurant, Straße)');
+    }
+    if (userContext.hearing_situations.includes('tv')) {
+      needs.push('Fernsehen');
+    }
+    if (userContext.hearing_situations.includes('phone')) {
+      needs.push('Telefonieren');
+    }
+    if (userContext.hearing_situations.includes('music')) {
+      needs.push('Musik hören');
+    }
+  }
+  
+  // Mobility-related needs
+  if (userContext.mobility_ability) {
+    const mobilityMap = {
+      'limited_walking': 'Kann kurze Strecken gehen, braucht Unterstützung',
+      'very_limited': 'Kann nur mit Mühe einige Schritte gehen',
+      'no_walking': 'Kann nicht mehr selbstständig gehen'
+    };
+    const mobility = mobilityMap[userContext.mobility_ability];
+    if (mobility) needs.push(mobility);
+  }
+  
+  return needs.length > 0 ? '- ' + needs.join('\n- ') : 'Keine spezifischen Angaben';
+}
+
+/**
+ * Extract device capabilities from product data
+ * @param {object} product - Product object
+ * @param {object} decodedInfo - Decoded product information
+ * @returns {string} Formatted device capabilities string
+ */
+function extractDeviceCapabilities(product, decodedInfo) {
+  const caps = [];
+  const name = (product?.bezeichnung || '').toUpperCase();
+  
+  // Power level
+  if (name.includes(' HP') || name.includes('(HP')) {
+    caps.push('Leistung: HP (High Power - für starken Hörverlust)');
+  } else if (name.includes(' UP') || name.includes('(UP')) {
+    caps.push('Leistung: UP (Ultra Power - für sehr starken Hörverlust)');
+  } else if (name.includes(' SP') || name.includes('(SP')) {
+    caps.push('Leistung: SP (Super Power)');
+  } else if (name.includes(' M ') || name.includes(' M-') || name.includes('(M)')) {
+    caps.push('Leistung: M (Medium - für leichten bis mittleren Hörverlust)');
+  }
+  
+  // Device type
+  if (decodedInfo?.deviceType?.de) {
+    caps.push(`Bauform: ${decodedInfo.deviceType.de}`);
+  }
+  
+  // Charging
+  if (name.includes(' R ') || name.includes(' R-') || name.includes('-R ') || 
+      name.includes('LITHIUM') || name.includes('AKKU')) {
+    caps.push('Wiederaufladbar (kein Batteriewechsel nötig)');
+  }
+  
+  // Connectivity
+  if (name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT')) {
+    caps.push('Bluetooth (direkte Verbindung zu TV, Handy)');
+  }
+  if (name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL')) {
+    caps.push('Telefonspule (für Induktionsschleifen in öffentlichen Gebäuden)');
+  }
+  if (name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)')) {
+    caps.push('KI-gestützte Anpassung');
+  }
+  
+  return caps.length > 0 ? '- ' + caps.join('\n- ') : 'Standardgerät';
+}
+
+/**
  * Build prompt for product description
  * @param {object} product - Product object
  * @param {object} userContext - User context from questionnaire
@@ -76,55 +190,30 @@ function cacheDescription(productCode, description) {
  */
 function buildPrompt(product, userContext, decodedInfo) {
   const productName = product?.bezeichnung || product?.name || 'Produkt';
-  const category = decodedInfo?.category || 'Hilfsmittel';
   const manufacturer = product?.hersteller || 'Hersteller unbekannt';
   const deviceType = decodedInfo?.deviceType?.de || '';
   
-  // Build user context string
-  let contextStr = '';
-  if (userContext) {
-    if (userContext.mobility_ability) {
-      const mobilityMap = {
-        'limited_walking': 'kann kurze Strecken gehen, braucht Unterstützung',
-        'very_limited': 'kann nur mit Mühe einige Schritte gehen',
-        'no_walking': 'kann nicht mehr selbstständig gehen'
-      };
-      contextStr += `Mobilität: ${mobilityMap[userContext.mobility_ability] || userContext.mobility_ability}. `;
-    }
-    if (userContext.hearing_level) {
-      const hearingMap = {
-        'mild': 'leichter Hörverlust',
-        'moderate': 'mittlerer Hörverlust',
-        'severe': 'starker Hörverlust'
-      };
-      contextStr += `Hörvermögen: ${hearingMap[userContext.hearing_level] || userContext.hearing_level}. `;
-    }
-  }
+  // Extract structured user needs and device capabilities
+  const userNeeds = extractUserNeeds(userContext);
+  const deviceCapabilities = extractDeviceCapabilities(product, decodedInfo);
   
-  const prompt = `Du bist ein erfahrener Berater für medizinische Hilfsmittel. Erkläre dieses Produkt in einfacher, freundlicher Sprache für Senioren (65+).
+  const prompt = `Du bist Experte für Hörgeräte. Vergleiche die Bedürfnisse des Nutzers mit diesem Gerät.
 
-PRODUKT:
+NUTZER-BEDÜRFNISSE:
+${userNeeds}
+
+GERÄTE-EIGENSCHAFTEN:
 Name: ${productName}
-Kategorie: ${category}
 ${deviceType ? `Typ: ${deviceType}` : ''}
+${deviceCapabilities}
 Hersteller: ${manufacturer}
-${contextStr ? `\nNUTZER-SITUATION:\n${contextStr}` : ''}
 
 AUFGABE:
-Schreibe 2-3 kurze, klare Sätze, die erklären:
-• Was ist das konkret?
-• Wie hilft es im Alltag?
-${contextStr ? '• Warum passt es besonders gut zur Situation?' : '• Für wen ist es ideal?'}
+1. Bewertung (1 Satz): Wie gut passt das Gerät? (Perfekt geeignet / Gut geeignet / Eingeschränkt geeignet)
+2. Wichtigste Vorteile (1-2 Stichpunkte): Was passt besonders gut zu den Bedürfnissen?
+3. Eventuelle Einschränkungen (optional, 1 Stichpunkt): Falls etwas nicht optimal passt
 
-STIL:
-- Direkt starten (KEIN "Guten Tag" oder Begrüßung)
-- Einfache Sprache, keine Fachbegriffe
-- Alltagsvergleiche nutzen ("wie ein...", "ähnlich wie...")
-- Direkte Ansprache: "Sie können...", "Das hilft Ihnen..."
-- Positive, ermutigende Formulierung
-- Maximal 3 Sätze (ca. 40-60 Wörter)
-
-Beginne direkt mit der Erklärung des Produkts.`;
+STIL: Einfache Sprache, direkte Ansprache ("Sie können...", "Das hilft Ihnen..."), max. 80 Wörter. KEINE Begrüßung.`;
 
   return prompt;
 }
@@ -159,7 +248,7 @@ async function callGeminiAPI(prompt) {
       ],
       generationConfig: {
         temperature: 0.6,  // Slightly lower for more consistent, factual output
-        maxOutputTokens: 150,  // Shorter for more concise descriptions
+        maxOutputTokens: 200,  // Increased for comparison-style descriptions
         topP: 0.85,
         topK: 40
       },
@@ -439,6 +528,65 @@ export function getCacheStats() {
   } catch (error) {
     logError('ai_cache_stats_error', error);
     return null;
+  }
+}
+
+/**
+ * Generate AI-powered comparison analysis for multiple products
+ * @param {Array} products - Array of 2-3 products to compare
+ * @param {Object} userContext - User context from questionnaire
+ * @returns {Promise<string>} Comparison analysis
+ */
+export async function generateComparisonAnalysis(products, userContext) {
+  if (!isAIAvailable() || products.length < 2) {
+    return null;
+  }
+  
+  // Import here to avoid circular dependency
+  const { decodeProduct } = await import('../utils/productDecoder');
+  
+  // Build comparison prompt
+  const userNeeds = extractUserNeeds(userContext);
+  
+  const productsInfo = products.map((product, idx) => {
+    const name = product?.bezeichnung || 'Produkt';
+    const code = product?.produktartNummer || product?.code;
+    const decoded = decodeProduct(product);
+    const capabilities = extractDeviceCapabilities(product, decoded);
+    
+    return `
+PRODUKT ${idx + 1}: ${name}
+Code: ${code}
+Hersteller: ${product?.hersteller || 'Unbekannt'}
+Eigenschaften:
+${capabilities}`;
+  }).join('\n\n');
+  
+  const prompt = `Du bist Experte für Hörgeräte. Vergleiche diese ${products.length} Produkte für den Nutzer.
+
+NUTZER-BEDÜRFNISSE:
+${userNeeds}
+
+ZU VERGLEICHENDE PRODUKTE:
+${productsInfo}
+
+AUFGABE:
+1. Beste Wahl (1 Satz): Welches Produkt passt am besten und warum?
+2. Alternative (1 Satz): Wann wäre das andere Produkt besser?
+3. Wichtigster Unterschied (1 Satz): Was ist der Hauptunterschied für den Nutzer?
+
+STIL: Einfache Sprache, direkte Empfehlung, max. 100 Wörter. Nutze "Produkt 1", "Produkt 2" etc. zur Referenz.`;
+
+  try {
+    const analysis = await callGeminiAPI(prompt);
+    trackEvent('ai_comparison_generated', { 
+      productCount: products.length,
+      success: true 
+    });
+    return analysis;
+  } catch (error) {
+    logError('ai_comparison_failed', error);
+    return 'Vergleich konnte nicht erstellt werden. Bitte vergleichen Sie die Eigenschaften in der Tabelle.';
   }
 }
 
