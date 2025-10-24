@@ -29,18 +29,37 @@ export function ProductComparison({
     }
   };
   
+  // Detect category from first product
+  const detectCategory = (code) => {
+    if (code.startsWith('13.')) return 'hearing';
+    if (code.startsWith('10.') || code.startsWith('09.')) return 'mobility';
+    if (code.startsWith('25.') || code.startsWith('07.')) return 'vision';
+    if (code.startsWith('04.')) return 'bathroom';
+    return 'general';
+  };
+  
   // Extract features for comparison
   const comparisonData = products.map(product => {
     const decoded = decodeProduct(product);
     const code = product?.produktartNummer || product?.code;
+    const name = product?.bezeichnung || '';
     
     // Helper: Check if product has a specific feature
     const hasFeature = (featureKey) => {
       return decoded.features && decoded.features.some(f => f.key === featureKey);
     };
     
-    // Extract power level from features (not from string matching)
+    // Hearing aids features
     const powerFeature = decoded.features?.find(f => ['M', 'HP', 'UP', 'SP'].includes(f.key));
+    
+    // Mobility aids features (from product name)
+    const isFoldable = name.toUpperCase().includes('FALTBAR') || name.toUpperCase().includes('KLAPPBAR');
+    const isHeightAdjustable = name.toUpperCase().includes('HÖHENVERSTELLBAR') || name.toUpperCase().includes('VERSTELLBAR');
+    const hasBrakes = name.toUpperCase().includes('BREMSE');
+    const hasSeat = name.toUpperCase().includes('SITZ') || name.toUpperCase().includes('SITZFLÄCHE');
+    const hasBasket = name.toUpperCase().includes('KORB') || name.toUpperCase().includes('TASCHE');
+    const has4Wheels = name.toUpperCase().includes('4 RÄDER') || name.toUpperCase().includes('4-RÄDER') || name.toUpperCase().includes('VIERRÄD');
+    const has3Wheels = name.toUpperCase().includes('3 RÄDER') || name.toUpperCase().includes('3-RÄDER') || name.toUpperCase().includes('DREIRÄD');
     
     return {
       product,
@@ -49,21 +68,31 @@ export function ProductComparison({
       code: code,
       manufacturer: product?.hersteller,
       
-      // Use decoded features (not manual string parsing)
+      // Hearing aids features
       powerLevel: powerFeature?.key || null,
       powerDescription: powerFeature?.description || null,
       deviceType: decoded?.deviceType?.de || null,
-      
-      // Features from decoded object
       rechargeable: hasFeature('R'),
       bluetooth: hasFeature('Direct'),
       telecoil: hasFeature('T'),
       ai: hasFeature('AI'),
       
+      // Mobility aids features
+      foldable: isFoldable,
+      heightAdjustable: isHeightAdjustable,
+      brakes: hasBrakes,
+      seat: hasSeat,
+      basket: hasBasket,
+      wheels: has4Wheels ? '4 Räder' : (has3Wheels ? '3 Räder' : 'Keine Angabe'),
+      
       // All features for display
       allFeatures: decoded.features || [],
     };
   });
+  
+  const productCategory = comparisonData.length > 0 
+    ? detectCategory(comparisonData[0].code) 
+    : 'general';
   
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -144,42 +173,49 @@ export function ProductComparison({
                   ))}
                 </tr>
                 
-                {/* Leistungsstufe */}
-                <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    <div className="flex items-center gap-2">
-                      Leistungsstufe
-                      <div className="group relative">
-                        <Info className="h-4 w-4 text-gray-400 cursor-help" />
-                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                          <strong>Leistungsstufen:</strong><br/>
-                          • M = Mittlere Leistung (leichter Hörverlust)<br/>
-                          • HP = High Power (starker Hörverlust)<br/>
-                          • UP = Ultra Power (sehr starker Hörverlust)<br/>
-                          • SP = Super Power (schwerster Hörverlust)
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4 text-sm">
-                      {item.powerLevel ? (
-                        <div className="group relative inline-block">
-                          <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800 font-medium cursor-help">
-                            {item.powerLevel}
-                          </span>
-                          {item.powerDescription && (
-                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
-                              {item.powerDescription}
+                {/* Category-Specific Features */}
+                
+                {/* HÖRGERÄTE FEATURES */}
+                {productCategory === 'hearing' && (
+                  <>
+                    {/* Leistungsstufe */}
+                    <tr className="bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        <div className="flex items-center gap-2">
+                          Leistungsstufe
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              <strong>Leistungsstufen:</strong><br/>
+                              • M = Mittlere Leistung (leichter Hörverlust)<br/>
+                              • HP = High Power (starker Hörverlust)<br/>
+                              • UP = Ultra Power (sehr starker Hörverlust)<br/>
+                              • SP = Super Power (schwerster Hörverlust)
                             </div>
-                          )}
+                          </div>
                         </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Nicht angegeben</span>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4 text-sm">
+                          {item.powerLevel ? (
+                            <div className="group relative inline-block">
+                              <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-800 font-medium cursor-help">
+                                {item.powerLevel}
+                              </span>
+                              {item.powerDescription && (
+                                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                                  {item.powerDescription}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Nicht angegeben</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
                 
                 {/* Bauform - only show if at least one product has a device type */}
                 {comparisonData.some(item => item.deviceType) && (
@@ -233,77 +269,250 @@ export function ProductComparison({
                   ))}
                 </tr>
                 
-                {/* Wiederaufladbar */}
-                <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    <div className="flex items-center gap-2">
-                      🔋 Wiederaufladbar
-                    </div>
-                  </td>
-                  {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4">
-                      {item.rechargeable ? (
-                        <div className="flex items-center gap-2">
-                          <Check className="h-5 w-5 text-green-600" />
-                          <span className="text-sm text-green-700 font-medium">Ja</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <Minus className="h-5 w-5 text-gray-300" />
-                          <span className="text-sm text-gray-500">Nein</span>
-                        </div>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                {productCategory === 'hearing' && (
+                  <>
+                    {/* Wiederaufladbar */}
+                    <tr>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        🔋 Wiederaufladbar
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.rechargeable ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Bluetooth */}
+                    <tr className="bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        📱 Bluetooth
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.bluetooth ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Telefonspule */}
+                    <tr>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        📞 Telefonspule (T)
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.telecoil ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
                 
-                {/* Bluetooth */}
-                <tr>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    <div className="flex items-center gap-2">
-                      📱 Bluetooth
-                    </div>
-                  </td>
-                  {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4">
-                      {item.bluetooth ? (
+                {/* GEHHILFEN FEATURES */}
+                {productCategory === 'mobility' && (
+                  <>
+                    {/* Faltbar */}
+                    <tr className="bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
                         <div className="flex items-center gap-2">
-                          <Check className="h-5 w-5 text-green-600" />
-                          <span className="text-sm text-green-700 font-medium">Ja</span>
+                          🚪 Faltbar
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Kann zusammengeklappt werden für einfachen Transport und Lagerung
+                            </div>
+                          </div>
                         </div>
-                      ) : (
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.foldable ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Höhenverstellbar */}
+                    <tr>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
                         <div className="flex items-center gap-2">
-                          <Minus className="h-5 w-5 text-gray-300" />
-                          <span className="text-sm text-gray-500">Nein</span>
+                          📏 Höhenverstellbar
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Kann an die Körpergröße angepasst werden
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                
-                {/* Telefonspule */}
-                <tr className="bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                    <div className="flex items-center gap-2">
-                      📞 Telefonspule (T)
-                    </div>
-                  </td>
-                  {comparisonData.map((item, idx) => (
-                    <td key={idx} className="px-6 py-4">
-                      {item.telecoil ? (
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.heightAdjustable ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Bremsen */}
+                    <tr className="bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
                         <div className="flex items-center gap-2">
-                          <Check className="h-5 w-5 text-green-600" />
-                          <span className="text-sm text-green-700 font-medium">Ja</span>
+                          🛑 Bremsen
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Bremssystem für sicheres Anhalten (typisch bei Rollatoren)
+                            </div>
+                          </div>
                         </div>
-                      ) : (
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.brakes ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Sitzfläche */}
+                    <tr>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
                         <div className="flex items-center gap-2">
-                          <Minus className="h-5 w-5 text-gray-300" />
-                          <span className="text-sm text-gray-500">Nein</span>
+                          💺 Sitzfläche
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Eingebaute Sitzfläche für Pausen unterwegs (typisch bei Rollatoren)
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </td>
-                  ))}
-                </tr>
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.seat ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Korb/Tasche */}
+                    <tr className="bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        <div className="flex items-center gap-2">
+                          🛒 Korb/Tasche
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Einkaufskorb oder Tasche für Transport von Gegenständen
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          {item.basket ? (
+                            <div className="flex items-center gap-2">
+                              <Check className="h-5 w-5 text-green-600" />
+                              <span className="text-sm text-green-700 font-medium">Ja</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Minus className="h-5 w-5 text-gray-300" />
+                              <span className="text-sm text-gray-500">Nein / Nicht erkennbar</span>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                    
+                    {/* Räder */}
+                    <tr>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
+                        <div className="flex items-center gap-2">
+                          🔘 Räder
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-400 cursor-help" />
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-10">
+                              Anzahl der Räder (4 Räder = mehr Stabilität, 3 Räder = wendiger)
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      {comparisonData.map((item, idx) => (
+                        <td key={idx} className="px-6 py-4">
+                          <span className="text-sm text-gray-900">{item.wheels}</span>
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                )}
                 
                 {/* GKV Erstattung */}
                 <tr>
@@ -331,9 +540,32 @@ export function ProductComparison({
             <p className="text-sm text-blue-800">
               ℹ️ <strong>Wichtig:</strong> Alle hier gezeigten Produkte sind von der GKV erstattungsfähig.
               <br/><br/>
-              💡 <strong>Kostenübernahme:</strong> Die GKV übernimmt die Kosten bis zum Festbetrag (ca. 700-800€ pro Gerät). 
-              Ihre Zuzahlung beträgt 10% des Preises (mind. 5€, max. 10€). 
-              Genaue Beratung zu Kosten und Auswahl erhalten Sie beim Fachakustiker mit Ihrem Rezept.
+              {productCategory === 'hearing' && (
+                <>
+                  💡 <strong>Kostenübernahme:</strong> Die GKV übernimmt die Kosten bis zum Festbetrag (ca. 700-800€ pro Gerät). 
+                  Ihre Zuzahlung beträgt 10% des Preises (mind. 5€, max. 10€). 
+                  Genaue Beratung zu Kosten und Auswahl erhalten Sie beim Fachakustiker mit Ihrem Rezept.
+                </>
+              )}
+              {productCategory === 'mobility' && (
+                <>
+                  💡 <strong>Nächster Schritt:</strong> Holen Sie sich ein Rezept von Ihrem Hausarzt oder Orthopäden. 
+                  Lassen Sie sich dann im Sanitätshaus ausführlich beraten und probieren Sie die Gehhilfen aus. 
+                  Die GKV übernimmt in der Regel die vollen Kosten. Ihre Zuzahlung: 5-10€.
+                </>
+              )}
+              {productCategory === 'vision' && (
+                <>
+                  💡 <strong>Nächster Schritt:</strong> Rezept vom Augenarzt holen und im Fachgeschäft beraten lassen. 
+                  Die GKV übernimmt die Kosten für erstattungsfähige Sehhilfen. Ihre Zuzahlung: 5-10€.
+                </>
+              )}
+              {productCategory === 'bathroom' && (
+                <>
+                  💡 <strong>Nächster Schritt:</strong> Rezept vom Hausarzt holen und im Sanitätshaus beraten lassen. 
+                  Die GKV übernimmt die Kosten für erstattungsfähige Badehilfen. Ihre Zuzahlung: 5-10€.
+                </>
+              )}
             </p>
           </div>
         </div>

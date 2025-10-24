@@ -641,6 +641,16 @@ export async function generateComparisonAnalysis(products, userContext) {
   // Import here to avoid circular dependency
   const { decodeProduct } = await import('../utils/productDecoder');
   
+  // Detect category from first product
+  const category = detectProductCategory(products[0]);
+  const expertRole = {
+    'hearing': 'Hörgeräte',
+    'mobility': 'Gehhilfen und Mobilitätshilfen',
+    'vision': 'Sehhilfen',
+    'bathroom': 'Badehilfen',
+    'general': 'Hilfsmittel'
+  }[category];
+  
   // Build comparison prompt
   const userNeeds = extractUserNeeds(userContext);
   
@@ -648,17 +658,25 @@ export async function generateComparisonAnalysis(products, userContext) {
     const name = product?.bezeichnung || 'Produkt';
     const code = product?.produktartNummer || product?.code;
     const decoded = decodeProduct(product);
-    const capabilities = extractDeviceCapabilities(product, decoded);
+    const capabilities = extractDeviceCapabilities(product, decoded, category);
     
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
 Hersteller: ${product?.hersteller || 'Unbekannt'}
-Eigenschaften:
+Erkannte Eigenschaften:
 ${capabilities}`;
   }).join('\n\n');
   
-  const prompt = `Du bist Experte für Hörgeräte. Vergleiche diese ${products.length} Produkte für den Nutzer.
+  // Category-specific comparison focus
+  const comparisonFocus = {
+    'hearing': 'Leistungsstufen, Bauform, Wiederaufladbarkeit, Bluetooth',
+    'mobility': 'Belastbarkeit, Körpergröße, Sitzhöhe, Maße, Gewicht, Faltbarkeit, Bremsen',
+    'vision': 'Vergrößerung, Beleuchtung, Größe',
+    'bathroom': 'Belastbarkeit, Maße, Rutschfestigkeit, Montage'
+  }[category] || 'Technische Spezifikationen';
+  
+  const prompt = `Du bist Experte für ${expertRole}. Vergleiche diese ${products.length} Produkte für den Nutzer.
 
 NUTZER-BEDÜRFNISSE:
 ${userNeeds}
@@ -666,22 +684,81 @@ ${userNeeds}
 ZU VERGLEICHENDE PRODUKTE:
 ${productsInfo}
 
+WICHTIG: Suche im Internet nach den genauen technischen Unterschieden zwischen diesen Produkten anhand ihrer Hilfsmittelnummern (Codes).
+Relevante technische Daten: ${comparisonFocus}
+
 AUFGABE:
-1. Beste Wahl (1 Satz): Welches Produkt passt am besten und warum?
-2. Alternative (1 Satz): Wann wäre das andere Produkt besser?
+1. Beste Wahl (1-2 Sätze): Welches Produkt passt am besten zu den Bedürfnissen und warum? Nenne konkrete technische Unterschiede (z.B. Belastbarkeit, Körpergröße, Maße).
+2. Alternative (1 Satz): Wann wäre das andere Produkt besser? (z.B. "Produkt 2 ist für kleinere/größere Personen geeignet")
 3. Wichtigster Unterschied (1 Satz): Was ist der Hauptunterschied für den Nutzer?
 
-STIL: Einfache Sprache, direkte Empfehlung, max. 100 Wörter. Nutze "Produkt 1", "Produkt 2" etc. zur Referenz.`;
+STIL: Einfache Sprache, direkte Empfehlung mit konkreten technischen Daten, max. 120 Wörter. Nutze "Produkt 1", "Produkt 2" etc. zur Referenz.`;
 
   try {
-    const analysis = await callGeminiAPI(prompt);
+    // Use Google Search Grounding for technical specs research
+    const response = await fetch(GEMINI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.4,  // Balanced for factual comparison
+          maxOutputTokens: 1000,
+          topP: 0.85,
+          topK: 40,
+          thinkingConfig: {
+            thinkingBudget: 0  // Disable thinking mode
+          }
+        },
+        tools: [
+          {
+            googleSearch: {}  // Enable Google Search Grounding
+          }
+        ],
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_ONLY_HIGH"
+          }
+        ]
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[AI] Comparison API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const analysis = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!analysis) {
+      console.error('[AI] No comparison text in response:', data);
+      throw new Error('No comparison text generated');
+    }
+    
     trackEvent('ai_comparison_generated', { 
       productCount: products.length,
+      category: category,
       success: true 
     });
+    
     return analysis;
   } catch (error) {
     logError('ai_comparison_failed', error);
+    console.error('[AI] Comparison error:', error);
     return 'Vergleich konnte nicht erstellt werden. Bitte vergleichen Sie die Eigenschaften in der Tabelle.';
   }
 }
