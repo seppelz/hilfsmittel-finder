@@ -327,6 +327,35 @@ function filterByFeatures(products, criteria) {
           if (criteria.severity === 'mild' && (searchText.includes('basic') || searchText.includes('standard'))) score += 5;
         }
 
+        // Gehhilfen / Mobility aid matching (category 10.xx)
+        const productCode = product.zehnSteller || product.produktartNummer || product.code || '';
+        const isGehhilfen = productCode.startsWith('10.');
+
+        if (isGehhilfen && criteria.device_type) {
+          const targetType = criteria.device_type.toLowerCase();
+          
+          // Device type matching (+20 points)
+          if (targetType === 'gehstock' && (productName.includes('stock') || productName.includes('stab'))) score += 20;
+          if (targetType === 'rollator' && productName.includes('rollator')) score += 20;
+          if (targetType === 'gehwagen' && (productName.includes('wagen') || productName.includes('walker'))) score += 20;
+          if (targetType === 'unterarmgehstuetzen' && (productName.includes('gehstütze') || productName.includes('krücke'))) score += 20;
+          if (targetType === 'gehgestell' && (productName.includes('gestell') || productName.includes('gehbock'))) score += 20;
+        }
+
+        if (isGehhilfen) {
+          // Feature matching (+10 points each)
+          if (criteria.foldable && (productName.includes('faltbar') || productName.includes('klappbar'))) score += 10;
+          if (criteria.adjustable && (productName.includes('höhenverstellbar') || productName.includes('verstellbar'))) score += 10;
+          if (criteria.brakes && productName.includes('bremse')) score += 10;
+          if (criteria.seat && (productName.includes('sitz') || productName.includes('sitzfläche'))) score += 10;
+          if (criteria.basket && (productName.includes('korb') || productName.includes('tasche'))) score += 10;
+          
+          // Usage scenarios (+5 points each)
+          if (criteria.indoor && (productName.includes('innen') || productName.includes('wohnung'))) score += 5;
+          if (criteria.outdoor && (productName.includes('außen') || productName.includes('outdoor'))) score += 5;
+          if (criteria.robust && (productName.includes('robust') || productName.includes('gelände'))) score += 5;
+        }
+
         // Bonus for products with more features overall
         if (decoded.features && decoded.features.length >= 3) score += 5;
 
@@ -695,6 +724,19 @@ class GKVApiService {
             case 'BLUETOOTH': return name.includes('BLUETOOTH') || name.includes('DIRECT') || name.includes('CONNECT');
             case 'T': return name.includes(' T ') || name.includes('-T ') || name.includes('(T)') || name.includes('TELECOIL');
             case 'AI': return name.includes(' AI ') || name.includes('-AI ') || name.includes('(AI)');
+            // Gehhilfen device types
+            case 'GEHSTOCK': return name.includes('STOCK') || name.includes('STAB');
+            case 'ROLLATOR': return name.includes('ROLLATOR');
+            case 'GEHWAGEN': return name.includes('WAGEN') || name.includes('WALKER');
+            case 'GEHSTUETZEN': return name.includes('GEHSTÜTZE') || name.includes('KRÜCKE');
+            // Gehhilfen features
+            case 'FALTBAR': return name.includes('FALTBAR') || name.includes('KLAPPBAR');
+            case 'HOEHENVERSTELLBAR': return name.includes('HÖHENVERSTELLBAR') || name.includes('VERSTELLBAR');
+            case 'BREMSEN': return name.includes('BREMSE');
+            case 'SITZFLAECHE': return name.includes('SITZ') || name.includes('SITZFLÄCHE');
+            case 'KORB': return name.includes('KORB') || name.includes('TASCHE');
+            case '4RAEDER': return name.includes('4 RÄDER') || name.includes('4-RÄDER');
+            case '3RAEDER': return name.includes('3 RÄDER') || name.includes('3-RÄDER');
             default: return true;
           }
         });

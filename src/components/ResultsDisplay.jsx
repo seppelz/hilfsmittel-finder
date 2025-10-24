@@ -75,39 +75,64 @@ export function ResultsDisplay({
     trackEvent('category_filter_applied', { category: categoryCode });
   };
 
-  // Extract available features from products for Hörgeräte with counts
+  // Extract available features from products for Hörgeräte and Gehhilfen with counts
   const availableFeatures = useMemo(() => {
-    // Only show feature filters for hearing aids
     const isHearingAids = userAnswers?._selectedCategory === 'hearing' || 
                          categories.some(c => c.code.startsWith('13'));
+    const isGehhilfen = userAnswers?._selectedCategory === 'mobility' ||
+                       categories.some(c => c.code.startsWith('10'));
     
-    if (!isHearingAids) return { power: [], charging: [], type: [], connectivity: [] };
+    // Gehhilfen feature structure
+    if (isGehhilfen) {
+      return {
+        deviceType: [
+          { key: 'GEHSTOCK', count: featureCounts['GEHSTOCK'] || 0 },
+          { key: 'ROLLATOR', count: featureCounts['ROLLATOR'] || 0 },
+          { key: 'GEHWAGEN', count: featureCounts['GEHWAGEN'] || 0 },
+          { key: 'GEHSTUETZEN', count: featureCounts['GEHSTUETZEN'] || 0 },
+        ].filter(f => f.count > 0),
+        features: [
+          { key: 'FALTBAR', count: featureCounts['FALTBAR'] || 0 },
+          { key: 'HOEHENVERSTELLBAR', count: featureCounts['HOEHENVERSTELLBAR'] || 0 },
+          { key: 'BREMSEN', count: featureCounts['BREMSEN'] || 0 },
+          { key: 'SITZFLAECHE', count: featureCounts['SITZFLAECHE'] || 0 },
+          { key: 'KORB', count: featureCounts['KORB'] || 0 },
+        ].filter(f => f.count > 0),
+        wheels: [
+          { key: '4RAEDER', count: featureCounts['4RAEDER'] || 0 },
+          { key: '3RAEDER', count: featureCounts['3RAEDER'] || 0 },
+        ].filter(f => f.count > 0),
+      };
+    }
     
-    // Use feature counts passed from backend (counted from ALL products, not just current page)
-    // Group features by category
-    return {
-      power: [
-        { key: 'M', count: featureCounts['M'] || 0 },
-        { key: 'HP', count: featureCounts['HP'] || 0 },
-        { key: 'UP', count: featureCounts['UP'] || 0 },
-        { key: 'SP', count: featureCounts['SP'] || 0 },
-      ].filter(f => f.count > 0),
-      charging: [
-        { key: 'R', count: featureCounts['R'] || 0 },
-      ].filter(f => f.count > 0),
-      type: [
-        { key: 'IIC', count: featureCounts['IIC'] || 0 },
-        { key: 'CIC', count: featureCounts['CIC'] || 0 },
-        { key: 'ITC', count: featureCounts['ITC'] || 0 },
-        { key: 'RIC', count: featureCounts['RIC'] || 0 },
-        { key: 'BTE', count: featureCounts['BTE'] || 0 },
-      ].filter(f => f.count > 0),
-      connectivity: [
-        { key: 'BLUETOOTH', count: featureCounts['BLUETOOTH'] || 0 },
-        { key: 'T', count: featureCounts['T'] || 0 },
-        { key: 'AI', count: featureCounts['AI'] || 0 },
-      ].filter(f => f.count > 0),
-    };
+    // Hörgeräte feature structure
+    if (isHearingAids) {
+      return {
+        power: [
+          { key: 'M', count: featureCounts['M'] || 0 },
+          { key: 'HP', count: featureCounts['HP'] || 0 },
+          { key: 'UP', count: featureCounts['UP'] || 0 },
+          { key: 'SP', count: featureCounts['SP'] || 0 },
+        ].filter(f => f.count > 0),
+        charging: [
+          { key: 'R', count: featureCounts['R'] || 0 },
+        ].filter(f => f.count > 0),
+        type: [
+          { key: 'IIC', count: featureCounts['IIC'] || 0 },
+          { key: 'CIC', count: featureCounts['CIC'] || 0 },
+          { key: 'ITC', count: featureCounts['ITC'] || 0 },
+          { key: 'RIC', count: featureCounts['RIC'] || 0 },
+          { key: 'BTE', count: featureCounts['BTE'] || 0 },
+        ].filter(f => f.count > 0),
+        connectivity: [
+          { key: 'BLUETOOTH', count: featureCounts['BLUETOOTH'] || 0 },
+          { key: 'T', count: featureCounts['T'] || 0 },
+          { key: 'AI', count: featureCounts['AI'] || 0 },
+        ].filter(f => f.count > 0),
+      };
+    }
+    
+    return {};
   }, [featureCounts, userAnswers, categories]);
 
   const handleFeatureToggle = (feature) => {
@@ -266,13 +291,58 @@ export function ResultsDisplay({
           });
         }
         
-        // Mobility criteria
-        if (userAnswers.walker_needed) displayedCriteria.push('Gehhilfe benötigt');
-        if (userAnswers.mobility_support_type === 'rollator') displayedCriteria.push('Rollator bevorzugt');
-        if (userAnswers.mobility_support_type === 'walker') displayedCriteria.push('Gehstock bevorzugt');
-        if (userAnswers.stairs) displayedCriteria.push('Treppen im Alltag');
-        if (userAnswers.indoor) displayedCriteria.push('Für drinnen');
-        if (userAnswers.outdoor) displayedCriteria.push('Für draußen');
+        // Mobility criteria (Gehhilfen)
+        if (userAnswers.mobility_level) {
+          const mobilityLabels = {
+            'needs_light_support': 'Leichte Gehunterstützung',
+            'needs_moderate_support': 'Mittlere Gehunterstützung',
+            'needs_strong_support': 'Starke Gehunterstützung',
+          };
+          if (mobilityLabels[userAnswers.mobility_level]) {
+            displayedCriteria.push(mobilityLabels[userAnswers.mobility_level]);
+          }
+        }
+        
+        if (userAnswers.mobility_device_type) {
+          const deviceLabels = {
+            'gehstock': 'Gehstock',
+            'rollator': 'Rollator',
+            'gehwagen': 'Gehwagen',
+            'unterarmgehstuetzen': 'Unterarmgehstützen',
+            'gehgestell': 'Gehgestell/Gehbock',
+            'any': 'Beliebiger Typ'
+          };
+          if (deviceLabels[userAnswers.mobility_device_type]) {
+            displayedCriteria.push(`Gerätetyp: ${deviceLabels[userAnswers.mobility_device_type]}`);
+          }
+        }
+        
+        // Mobility features (stored as array)
+        if (Array.isArray(userAnswers.mobility_features)) {
+          userAnswers.mobility_features.forEach(feature => {
+            const featureLabels = {
+              'foldable': 'Faltbar bevorzugt',
+              'adjustable': 'Höhenverstellbar',
+              'brakes': 'Mit Bremsen',
+              'seat': 'Mit Sitzfläche',
+              'basket': 'Mit Korb',
+            };
+            if (featureLabels[feature]) displayedCriteria.push(featureLabels[feature]);
+          });
+        }
+        
+        // Mobility usage (stored as array)
+        if (Array.isArray(userAnswers.mobility_usage)) {
+          userAnswers.mobility_usage.forEach(usage => {
+            const usageLabels = {
+              'indoor': 'Für drinnen',
+              'outdoor': 'Für draußen',
+              'terrain': 'Für unebenes Gelände',
+              'longdistance': 'Für längere Strecken',
+            };
+            if (usageLabels[usage]) displayedCriteria.push(usageLabels[usage]);
+          });
+        }
         
         // Bathroom criteria
         if (userAnswers.shower_chair) displayedCriteria.push('Duschhocker benötigt');
@@ -468,6 +538,136 @@ export function ResultsDisplay({
           
           {selectedFeatureFilters.length > 0 && (
             <div className="mt-4 pt-4 border-t border-purple-200 text-sm text-purple-700">
+              <span className="font-medium">{products.length}</span> von <span className="font-medium">{totalResults}</span> Produkten entsprechen den Kriterien
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Feature Filter for Gehhilfen */}
+      {(availableFeatures.deviceType?.length > 0 || availableFeatures.features?.length > 0 || 
+        availableFeatures.wheels?.length > 0) && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Filter className="h-5 w-5 text-green-600" />
+              <span className="font-semibold text-gray-900">Nach Eigenschaften filtern:</span>
+            </div>
+            {selectedFeatureFilters.length > 0 && (
+              <button
+                onClick={() => onFeatureFilterChange?.([])}
+                className="text-sm text-green-600 hover:text-green-800 font-medium underline"
+              >
+                Alle Filter zurücksetzen
+              </button>
+            )}
+          </div>
+          
+          <div className="space-y-4">
+            {/* Device Type */}
+            {availableFeatures.deviceType?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Gehhilfen-Typ</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.deviceType.map(({ key, count }) => {
+                    const featureInfo = {
+                      'GEHSTOCK': { label: '🦯 Gehstock', tooltip: 'Leichte Unterstützung beim Gehen' },
+                      'ROLLATOR': { label: '🛒 Rollator', tooltip: 'Mit Rädern, Bremsen und oft Sitzfläche' },
+                      'GEHWAGEN': { label: '🚶 Gehwagen', tooltip: 'Sehr stabil, mit Rädern' },
+                      'GEHSTUETZEN': { label: '🦽 Unterarmgehstützen', tooltip: 'Stärkere Unterstützung' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-green-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-green-100 border border-green-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Features */}
+            {availableFeatures.features?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Eigenschaften</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.features.map(({ key, count }) => {
+                    const featureInfo = {
+                      'FALTBAR': { label: '📦 Faltbar', tooltip: 'Platzsparend für Transport und Lagerung' },
+                      'HOEHENVERSTELLBAR': { label: '↕️ Höhenverstellbar', tooltip: 'Anpassbar an Ihre Körpergröße' },
+                      'BREMSEN': { label: '🛑 Mit Bremsen', tooltip: 'Sicher bremsen beim Gehen' },
+                      'SITZFLAECHE': { label: '💺 Mit Sitzfläche', tooltip: 'Zum Ausruhen unterwegs' },
+                      'KORB': { label: '🧺 Mit Korb', tooltip: 'Für Einkäufe oder persönliche Gegenstände' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-green-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-green-100 border border-green-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Wheels */}
+            {availableFeatures.wheels?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Räder</h4>
+                <div className="flex flex-wrap gap-2">
+                  {availableFeatures.wheels.map(({ key, count }) => {
+                    const featureInfo = {
+                      '4RAEDER': { label: '🛞 4 Räder', tooltip: 'Besonders stabil' },
+                      '3RAEDER': { label: '🛞 3 Räder', tooltip: 'Wendiger und leichter' },
+                    };
+                    const info = featureInfo[key];
+                    const isSelected = selectedFeatureFilters.includes(key);
+                    
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleFeatureToggle(key)}
+                        title={info?.tooltip}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'bg-green-600 text-white shadow'
+                            : 'bg-white text-gray-700 hover:bg-green-100 border border-green-200'
+                        }`}
+                      >
+                        {info?.label} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {selectedFeatureFilters.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-green-200 text-sm text-green-700">
               <span className="font-medium">{products.length}</span> von <span className="font-medium">{totalResults}</span> Produkten entsprechen den Kriterien
             </div>
           )}

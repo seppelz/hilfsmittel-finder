@@ -28,10 +28,29 @@ export const HEARING_AID_FEATURES = {
 };
 
 export const MOBILITY_AID_TYPES = {
-  'Rollator': { de: 'Gehhilfe mit Rädern', icon: '🚶', features: ['Sitzfläche', 'Bremsen'] },
-  'Gehstock': { de: 'Einfacher Gehstock', icon: '🦯', features: ['Leicht', 'Höhenverstellbar'] },
-  'Rollstuhl': { de: 'Rollstuhl', icon: '♿', features: ['Selbstfahrend', 'Faltbar'] },
-  'Walker': { de: 'Gehwagen', icon: '🚶', features: ['Stabil', 'Mit Rädern'] }
+  'Gehstock': { de: 'Gehstock', icon: '🦯', features: ['Leicht', 'Höhenverstellbar'] },
+  'Stock': { de: 'Gehstock', icon: '🦯', features: ['Leicht', 'Höhenverstellbar'] },
+  'Rollator': { de: 'Rollator', icon: '🛒', features: ['Mit Rädern', 'Mit Bremsen', 'Mit Sitzfläche'] },
+  'Gehwagen': { de: 'Gehwagen', icon: '🚶', features: ['Sehr stabil', 'Mit Rädern'] },
+  'Walker': { de: 'Gehwagen', icon: '🚶', features: ['Sehr stabil', 'Mit Rädern'] },
+  'Gehstütze': { de: 'Unterarmgehstütze', icon: '🦽', features: ['Starke Unterstützung'] },
+  'Krücke': { de: 'Unterarmgehstütze', icon: '🦽', features: ['Starke Unterstützung'] },
+  'Gehgestell': { de: 'Gehgestell', icon: '⬜', features: ['Sehr stabil', 'Ohne Räder'] },
+  'Gehbock': { de: 'Gehbock', icon: '⬜', features: ['Sehr stabil', 'Ohne Räder'] },
+  'Rollstuhl': { de: 'Rollstuhl', icon: '♿', features: ['Selbstfahrend', 'Faltbar'] }
+};
+
+export const MOBILITY_AID_FEATURES = {
+  'faltbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
+  'klappbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
+  'höhenverstellbar': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'verstellbar': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'bremse': { name: 'Mit Bremsen', description: 'Sicheres Bremsen', icon: '🛑', key: 'brakes' },
+  'sitz': { name: 'Mit Sitzfläche', description: 'Zum Ausruhen', icon: '💺', key: 'seat' },
+  'sitzfläche': { name: 'Mit Sitzfläche', description: 'Zum Ausruhen', icon: '💺', key: 'seat' },
+  'korb': { name: 'Mit Korb', description: 'Für Einkäufe', icon: '🧺', key: 'basket' },
+  '4 räder': { name: '4 Räder', description: 'Besonders stabil', icon: '🛞', key: '4wheels' },
+  '3 räder': { name: '3 Räder', description: 'Wendiger', icon: '🛞', key: '3wheels' }
 };
 
 export const BATHROOM_AID_TYPES = {
@@ -123,29 +142,33 @@ function decodeHearingAid(productName) {
  */
 function decodeMobilityAid(productName, productCode) {
   const upperName = productName.toUpperCase();
-  const groupCode = productCode ? productCode.substring(0, 5) : '';
+  const lowerName = productName.toLowerCase();
   
+  // Detect device type
   let deviceType = null;
-  let category = 'Mobilitätshilfe';
-  
-  // Detect from product code
-  if (groupCode === '09.12') {
-    category = 'Gehhilfe';
-    if (upperName.includes('ROLLATOR')) {
-      deviceType = { key: 'Rollator', ...MOBILITY_AID_TYPES.Rollator };
-    } else if (upperName.includes('STOCK')) {
-      deviceType = { key: 'Gehstock', ...MOBILITY_AID_TYPES.Gehstock };
+  for (const [key, value] of Object.entries(MOBILITY_AID_TYPES)) {
+    if (upperName.includes(key.toUpperCase())) {
+      deviceType = { key, ...value };
+      break;
     }
-  } else if (groupCode === '09.24') {
-    category = 'Rollstuhl';
-    deviceType = { key: 'Rollstuhl', ...MOBILITY_AID_TYPES.Rollstuhl };
+  }
+  
+  // Detect features with deduplication
+  const features = [];
+  const seenKeys = new Set();
+  
+  for (const [searchKey, value] of Object.entries(MOBILITY_AID_FEATURES)) {
+    if (lowerName.includes(searchKey) && !seenKeys.has(value.key)) {
+      features.push({ key: value.key, ...value });
+      seenKeys.add(value.key);
+    }
   }
   
   return {
     deviceType,
-    features: deviceType?.features || [],
+    features,
     brandModel: extractBrandModel(productName),
-    category
+    category: 'Gehhilfe'
   };
 }
 
@@ -365,8 +388,8 @@ export function decodeProduct(product, categoryHint = null) {
     return decodeHearingAid(productName);
   }
   
-  // Mobility aids: 09.12.x, 09.24.x, 09.40.x
-  if (groupPrefix.startsWith('09.') || categoryHint === 'mobility') {
+  // Mobility aids / Gehhilfen: 10.xx (primary), 09.xx (legacy)
+  if (groupPrefix.startsWith('10.') || groupPrefix.startsWith('09.') || categoryHint === 'mobility') {
     return decodeMobilityAid(productName, productCode);
   }
   
