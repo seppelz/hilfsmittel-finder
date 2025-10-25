@@ -52,7 +52,21 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
     
     setLoadingAI(true);
     try {
-      const generated = await generateProductDescription(product, userContext, decodedInfo);
+      // Ensure we have full product details before generating AI description
+      let details = fullProductDetails;
+      if (!details) {
+        console.log('[ProductCard] Loading full details for AI...');
+        details = await loadFullProductDetails();
+      }
+      
+      // Merge konstruktionsmerkmale with product for AI
+      const enrichedProduct = details?.konstruktionsmerkmale
+        ? { ...product, konstruktionsmerkmale: details.konstruktionsmerkmale }
+        : product;
+      
+      console.log('[ProductCard] Generating AI with konstruktionsmerkmale:', enrichedProduct.konstruktionsmerkmale?.length || 0, 'fields');
+      
+      const generated = await generateProductDescription(enrichedProduct, userContext, decodedInfo);
       if (generated) {
         setAiDescription(generated);
         setShowAI(true);
@@ -66,12 +80,12 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
 
   // Function to fetch full product details (konstruktionsmerkmale)
   const loadFullProductDetails = async () => {
-    if (loadingDetails || fullProductDetails) return;
+    if (loadingDetails || fullProductDetails) return fullProductDetails;
     
     const productId = product?.id;
     if (!productId) {
       console.warn('[ProductCard] No product ID available for fetching details');
-      return;
+      return null;
     }
     
     setLoadingDetails(true);
@@ -80,8 +94,10 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
       const details = await gkvApi.getProductDetails(productId);
       console.log('[ProductCard] Full details received:', details);
       setFullProductDetails(details);
+      return details; // Return the fetched details
     } catch (error) {
       console.error('[ProductCard] Failed to fetch full product details:', error);
+      return null;
     } finally {
       setLoadingDetails(false);
     }
