@@ -59,15 +59,23 @@
   <p>Test fetching a single product by its UUID to find where "Merkmale" data comes from</p>
 
   <div class="section">
-    <h2>Test Product by UUID</h2>
+    <h2>Test Product Search</h2>
     <div>
       <label>
-        <strong>Product UUID:</strong><br>
-        <input type="text" id="productId" value="069e00ed-ce41-4279-ab9f-fe9bf563e8fb" placeholder="Enter UUID">
+        <strong>Product Number (zehnSteller):</strong><br>
+        <input type="text" id="productNumber" value="10.46.01.1014" placeholder="e.g., 10.46.01.1014">
       </label>
-      <button onclick="testProductById()">Fetch Product</button>
+      <button onclick="testProductByNumber()">Search by Number</button>
     </div>
     <p><small>Default: 10.46.01.1014 (Gehgestell mit Merkmale)</small></p>
+    <hr style="margin: 20px 0;">
+    <div>
+      <label>
+        <strong>Or try Product UUID (probably won't work):</strong><br>
+        <input type="text" id="productId" value="069e00ed-ce41-4279-ab9f-fe9bf563e8fb" placeholder="Enter UUID">
+      </label>
+      <button onclick="testProductById()">Fetch by UUID</button>
+    </div>
   </div>
 
   <div class="section">
@@ -81,6 +89,57 @@
     
     function encodeProxyPath(apiPath) {
       return `${PROXY_BASE}?path=${encodeURIComponent(apiPath)}`;
+    }
+
+    async function testProductByNumber() {
+      const productNumber = document.getElementById('productNumber').value.trim();
+      const resultsDiv = document.getElementById('results');
+      
+      resultsDiv.innerHTML = '<p class="info">⏳ Searching for product...</p>';
+
+      try {
+        // Search in the product list by zehnSteller
+        const apiPath = `api/verzeichnis/Produkt?produktgruppennummer=${productNumber.substring(0, 5)}&take=1000`;
+        const endpoint = encodeProxyPath(apiPath);
+        
+        console.log('Searching with API path:', apiPath, '→', endpoint);
+        const res = await fetch(endpoint);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        console.log('API response:', data);
+        
+        // Extract products array
+        const products = Array.isArray(data) ? data : data.value || [];
+        console.log('Total products returned:', products.length);
+        
+        // Find the product with matching zehnSteller or nummer
+        const product = products.find(p => 
+          p.zehnSteller === productNumber || 
+          p.nummer === productNumber ||
+          p.nummer === productNumber.replace(/\./g, '')
+        );
+        
+        if (product) {
+          console.log('Found product:', product);
+          displayProductDetails({ value: [product] }, `Found in product list (${products.length} searched)`);
+        } else {
+          resultsDiv.innerHTML = `
+            <p class="error">❌ Product ${productNumber} not found</p>
+            <p>Searched ${products.length} products in category ${productNumber.substring(0, 5)}</p>
+            <p>💡 Try checking the product number or searching a broader category.</p>
+          `;
+        }
+        
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <p class="error">❌ Error: ${error.message}</p>
+          <pre>${error.stack}</pre>
+        `;
+      }
     }
 
     async function testProductById() {
