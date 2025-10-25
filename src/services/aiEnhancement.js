@@ -271,7 +271,37 @@ function extractUserNeeds(userContext) {
     }
   }
   
-  // Vision-related needs
+  // Vision-related needs (new questionnaire)
+  if (userContext.vision_type) {
+    const visionTypeMap = {
+      'reading_only': 'Braucht Brille nur zum Lesen / für die Nähe (Zeitung, Handy, Medikamente)',
+      'distance_only': 'Braucht Brille nur für die Ferne (Autofahren, Fernsehen, Gesichter erkennen)',
+      'both': 'Braucht Brille für Nah und Fern (Gleitsichtbrille / Bifokalbrille)'
+    };
+    const type = visionTypeMap[userContext.vision_type];
+    if (type) needs.push(type);
+  }
+  
+  if (userContext.vision_strength) {
+    const strengthMap = {
+      'low': 'Leichte Sehschwäche (bis ±6 Dioptrien)',
+      'medium': 'Mittlere Sehschwäche (±6 bis ±10 Dioptrien)',
+      'high': 'Starke Sehschwäche (über ±10 Dioptrien, benötigt hochbrechende Gläser)'
+    };
+    const strength = strengthMap[userContext.vision_strength];
+    if (strength && userContext.vision_strength !== 'any') needs.push(strength);
+  }
+  
+  if (userContext.vision_astigmatism) {
+    const astigmatismMap = {
+      'mild': 'Hat leichte Hornhautverkrümmung (Zylinder bis 2 Dioptrien)',
+      'moderate': 'Hat stärkere Hornhautverkrümmung (Zylinder über 2 Dioptrien)'
+    };
+    const astigmatism = astigmatismMap[userContext.vision_astigmatism];
+    if (astigmatism && userContext.vision_astigmatism !== 'none') needs.push(astigmatism);
+  }
+  
+  // Legacy vision needs (old questionnaire - fallback)
   if (Array.isArray(userContext.vision_issue)) {
     if (userContext.vision_issue.includes('reading')) {
       needs.push('Kann kleine Schrift nicht mehr lesen (Zeitung, Medikamente)');

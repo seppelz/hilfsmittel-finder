@@ -408,7 +408,42 @@ export function ResultsDisplay({
         if (userAnswers.toilet_seat) displayedCriteria.push('Toilettensitzerhöhung benötigt');
         if (userAnswers.grab_bars) displayedCriteria.push('Haltegriffe benötigt');
         
-        // Vision criteria
+        // Vision criteria (new questionnaire)
+        if (userAnswers.vision_type) {
+          const visionTypeLabels = {
+            'reading_only': 'Nur zum Lesen (Nahsicht)',
+            'distance_only': 'Nur für die Ferne',
+            'both': 'Für Nah und Fern (Gleitsicht/Bifokal)'
+          };
+          if (visionTypeLabels[userAnswers.vision_type]) {
+            displayedCriteria.push(visionTypeLabels[userAnswers.vision_type]);
+          }
+        }
+        
+        if (userAnswers.vision_strength) {
+          const strengthLabels = {
+            'low': 'Leichte Sehschwäche (bis ±6 dpt)',
+            'medium': 'Mittlere Sehschwäche (±6 bis ±10 dpt)',
+            'high': 'Starke Sehschwäche (über ±10 dpt)',
+            'any': 'Beliebige Stärke'
+          };
+          if (strengthLabels[userAnswers.vision_strength] && userAnswers.vision_strength !== 'any') {
+            displayedCriteria.push(strengthLabels[userAnswers.vision_strength]);
+          }
+        }
+        
+        if (userAnswers.vision_astigmatism) {
+          const astigmatismLabels = {
+            'mild': 'Leichte Hornhautverkrümmung',
+            'moderate': 'Stärkere Hornhautverkrümmung',
+            'none': 'Keine Hornhautverkrümmung'
+          };
+          if (astigmatismLabels[userAnswers.vision_astigmatism] && userAnswers.vision_astigmatism !== 'none') {
+            displayedCriteria.push(astigmatismLabels[userAnswers.vision_astigmatism]);
+          }
+        }
+        
+        // Legacy vision criteria (fallback for old questionnaire)
         if (userAnswers.magnifier) displayedCriteria.push('Lupe benötigt');
         if (userAnswers.lighting) displayedCriteria.push('Mit Beleuchtung');
         
