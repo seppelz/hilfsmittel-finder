@@ -3,6 +3,7 @@ import { Check, Info, Sparkles, Award, Scale } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
 import { getCategoryIcon, getCategoryName } from '../data/productContexts';
 import { generateProductDescription, isAIAvailable, isHighlyRecommended } from '../services/aiEnhancement';
+import { gkvApi } from '../services/gkvApi';
 
 export function ProductCard({ product, selected = false, onSelect, userContext = null, onAddToComparison = null, inComparison = false }) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
@@ -25,17 +26,10 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const indikation = product?.indikation;
   const anwendungsgebiet = product?.anwendungsgebiet;
   
-  // Extract Merkmale (detailed features from API - from erleuterungstext)
-  const merkmale = product?.merkmale;
+  // Extract basic metadata from API (produktart, typenAusfuehrungen, nutzungsdauer)
   const produktart = product?.produktart;
   const typenAusfuehrungen = product?.typenAusfuehrungen;
   const nutzungsdauer = product?.nutzungsdauer;
-  const technischeDaten = product?.technischeDaten;
-  
-  // Debug: Log merkmale availability (ALWAYS for now - only for mobility products)
-  if (code?.startsWith('10.')) {
-    console.log(`[ProductCard ${code}] Merkmale:`, merkmale?.length || 0, 'items | typenAusfuehrungen:', typenAusfuehrungen?.length || 0, 'items | nutzungsdauer:', nutzungsdauer);
-  }
   
   // AI-generated description state
   const [aiDescription, setAiDescription] = useState(null);
@@ -44,6 +38,8 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   
   // State for collapsible Merkmale section
   const [showMerkmale, setShowMerkmale] = useState(false);
+  const [fullProductDetails, setFullProductDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   
   // Auto-generate AI description when card becomes visible (for selected products)
   useEffect(() => {
@@ -68,6 +64,37 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
       setLoadingAI(false);
     }
   };
+
+  // Function to fetch full product details (konstruktionsmerkmale)
+  const loadFullProductDetails = async () => {
+    if (loadingDetails || fullProductDetails) return;
+    
+    const productId = product?.id;
+    if (!productId) {
+      console.warn('[ProductCard] No product ID available for fetching details');
+      return;
+    }
+    
+    setLoadingDetails(true);
+    try {
+      console.log('[ProductCard] Fetching full details for product ID:', productId);
+      const details = await gkvApi.getProductDetails(productId);
+      console.log('[ProductCard] Full details received:', details);
+      setFullProductDetails(details);
+    } catch (error) {
+      console.error('[ProductCard] Failed to fetch full product details:', error);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // Auto-load details when Merkmale section is expanded
+  useEffect(() => {
+    if (showMerkmale && !fullProductDetails && !loadingDetails) {
+      loadFullProductDetails();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showMerkmale]);
 
   const handleClick = () => {
     onSelect?.(product);
@@ -155,56 +182,73 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
       )}
 
       {/* Merkmale & Technische Details - Collapsible - PRIORITY: Show API data first! */}
-      {(merkmale && merkmale.length > 0) && (
-        <div className="mt-4 border-t border-gray-200 pt-4">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMerkmale(!showMerkmale);
-            }}
-            className="flex w-full items-center justify-between text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition"
-          >
-            <span className="text-sm font-semibold text-gray-900">
-              📋 Merkmale & Details ({merkmale.length})
-            </span>
-            <span className="text-gray-500 text-lg">
-              {showMerkmale ? '▼' : '▶'}
-            </span>
-          </button>
-          
-          {showMerkmale && (
-            <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-4">
-              <ul className="list-none space-y-1.5 text-sm text-gray-700">
-                {merkmale.map((merkmal, idx) => (
-                  <li key={idx} className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold mt-0.5">✓</span>
-                    <span>{merkmal}</span>
-                  </li>
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMerkmale(!showMerkmale);
+          }}
+          className="flex w-full items-center justify-between text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition"
+        >
+          <span className="text-sm font-semibold text-gray-900">
+            📋 Merkmale & Details
+          </span>
+          <span className="text-gray-500 text-lg">
+            {showMerkmale ? '▼' : '▶'}
+          </span>
+        </button>
+        
+        {showMerkmale && (
+          <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-4">
+            {loadingDetails && (
+              <p className="text-sm text-gray-600 text-center py-4">
+                ⏳ Lade Details...
+              </p>
+            )}
+            
+            {!loadingDetails && fullProductDetails?.konstruktionsmerkmale && fullProductDetails.konstruktionsmerkmale.length > 0 && (
+              <div className="space-y-2">
+                {fullProductDetails.konstruktionsmerkmale.map((merkmal, idx) => (
+                  <div key={idx} className="text-sm">
+                    <span className="font-semibold text-gray-700">{merkmal.label}:</span>{' '}
+                    <span className="text-gray-600">{merkmal.value}</span>
+                  </div>
                 ))}
-              </ul>
-              
-              {produktart && (
-                <p className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-                  <strong>Produktart:</strong> {produktart}
-                </p>
-              )}
-              
-              {typenAusfuehrungen && typenAusfuehrungen.length > 0 && (
-                <p className="mt-2 text-xs text-gray-600">
-                  <strong>Verfügbare Ausführungen:</strong> {typenAusfuehrungen.join(', ')}
-                </p>
-              )}
-              
-              {nutzungsdauer && (
-                <p className="mt-2 text-xs text-gray-600">
-                  <strong>Nutzungsdauer:</strong> {nutzungsdauer}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+            
+            {!loadingDetails && fullProductDetails && (!fullProductDetails.konstruktionsmerkmale || fullProductDetails.konstruktionsmerkmale.length === 0) && (
+              <p className="text-sm text-gray-500 text-center py-2">
+                Keine detaillierten Merkmale verfügbar
+              </p>
+            )}
+            
+            {/* Show existing basic info if available */}
+            {(produktart || typenAusfuehrungen?.length > 0 || nutzungsdauer) && (
+              <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                {produktart && (
+                  <p className="text-xs text-gray-600">
+                    <strong>Produktart:</strong> {produktart}
+                  </p>
+                )}
+                
+                {typenAusfuehrungen && typenAusfuehrungen.length > 0 && (
+                  <p className="text-xs text-gray-600">
+                    <strong>Verfügbare Ausführungen:</strong> {typenAusfuehrungen.join(', ')}
+                  </p>
+                )}
+                
+                {nutzungsdauer && (
+                  <p className="text-xs text-gray-600">
+                    <strong>Nutzungsdauer:</strong> {nutzungsdauer}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* AI-Generated Description - Show AFTER API data */}
       {showAI && aiDescription && (
