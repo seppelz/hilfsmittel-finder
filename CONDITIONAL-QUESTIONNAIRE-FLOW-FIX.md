@@ -266,7 +266,68 @@ Notice how `bathroom_bathtub_features` is **never** in the sequence for shower s
 
 1. `src/components/QuestionFlow.jsx` - Implemented conditional question flow
 
+## Known Issue: Flickering When Changing First Answer
+
+**Problem**: When changing the first answer, the UI would flicker rapidly due to an infinite render loop.
+
+**Root Cause**: A useEffect that watched both `questions` and `answers` created a circular dependency:
+1. User changes answer → `answers` updates
+2. `questions` recalculates (depends on `answers`)
+3. useEffect sees `questions` changed → updates `answers` 
+4. Back to step 2 → infinite loop
+
+**Solution**: 
+- Removed the problematic useEffect
+- Moved initialization and cleanup logic into `handleAnswerChange`
+- All state updates now happen in a single `setAnswers` call
+- Clear irrelevant answers when the question path changes
+- Initialize multiple-choice questions only when they enter the sequence
+
+**Code Fix** (lines 94-126):
+```javascript
+const handleAnswerChange = (questionId, value) => {
+  const newAnswers = { ...answers, [questionId]: value };
+  
+  // Build new sequence based on the updated answer
+  const newSequence = buildQuestionSequence(activeCategory, newAnswers);
+  const newQuestionIds = new Set(newSequence.map(q => q.id));
+  
+  // Get all question IDs from the current category (for cleanup)
+  const allCategoryQuestions = getQuestionsForCategory(activeCategory);
+  const allCategoryQuestionIds = new Set(allCategoryQuestions.map(q => q.id));
+  
+  // Clear answers for questions in this category that are no longer in the sequence
+  Object.keys(newAnswers).forEach(key => {
+    if (allCategoryQuestionIds.has(key) && !newQuestionIds.has(key)) {
+      console.log('[QuestionFlow] Clearing irrelevant answer:', key);
+      delete newAnswers[key];
+    }
+  });
+  
+  // Initialize multiple-choice questions that appear in the new sequence
+  newSequence.forEach(q => {
+    if (q.type === 'multiple-choice' && newAnswers[q.id] === undefined) {
+      newAnswers[q.id] = [];
+    }
+  });
+  
+  console.log('[QuestionFlow] Answer changed:', questionId, '=', value);
+  console.log('[QuestionFlow] New question sequence:', newSequence.map(q => q.id));
+  
+  // Single state update - no cascading re-renders!
+  setAnswers(newAnswers);
+  setShowValidation(false);
+};
+```
+
+**Benefits**:
+- ✅ No more flickering
+- ✅ Clean answer state (irrelevant answers removed)
+- ✅ Single render per user action
+- ✅ Better performance
+
 ## Status
 
 ✅ **FIXED** - Questionnaire now dynamically shows/hides questions based on `leads_to` logic
+✅ **FIXED** - Flickering issue resolved by removing circular dependency
 

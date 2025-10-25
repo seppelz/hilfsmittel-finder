@@ -86,23 +86,6 @@ export function QuestionFlow({
   const categories = getInitialCategoryOrder(selectedCategory);
   const activeCategory = categories[categoryIndex];
   const questions = buildQuestionSequence(activeCategory, answers);
-  
-  // Initialize multiple-choice questions with empty arrays if they appear in the sequence
-  useEffect(() => {
-    const needsInitialization = questions.some(q => 
-      q.type === 'multiple-choice' && answers[q.id] === undefined
-    );
-    
-    if (needsInitialization) {
-      const newAnswers = { ...answers };
-      questions.forEach(q => {
-        if (q.type === 'multiple-choice' && newAnswers[q.id] === undefined) {
-          newAnswers[q.id] = [];
-        }
-      });
-      setAnswers(newAnswers);
-    }
-  }, [questions, answers]);
 
   useEffect(() => {
     setAnswers(initialAnswers);
@@ -110,14 +93,36 @@ export function QuestionFlow({
 
   const handleAnswerChange = (questionId, value) => {
     const newAnswers = { ...answers, [questionId]: value };
+    
+    // Build new sequence based on the updated answer
+    const newSequence = buildQuestionSequence(activeCategory, newAnswers);
+    const newQuestionIds = new Set(newSequence.map(q => q.id));
+    
+    // Get all question IDs from the current category (for cleanup)
+    const allCategoryQuestions = getQuestionsForCategory(activeCategory);
+    const allCategoryQuestionIds = new Set(allCategoryQuestions.map(q => q.id));
+    
+    // Clear answers for questions in this category that are no longer in the sequence
+    Object.keys(newAnswers).forEach(key => {
+      // Only clear if it's a question from this category and not in the new sequence
+      if (allCategoryQuestionIds.has(key) && !newQuestionIds.has(key)) {
+        console.log('[QuestionFlow] Clearing irrelevant answer:', key);
+        delete newAnswers[key];
+      }
+    });
+    
+    // Initialize multiple-choice questions that appear in the new sequence
+    newSequence.forEach(q => {
+      if (q.type === 'multiple-choice' && newAnswers[q.id] === undefined) {
+        newAnswers[q.id] = [];
+      }
+    });
+    
+    console.log('[QuestionFlow] Answer changed:', questionId, '=', value);
+    console.log('[QuestionFlow] New question sequence:', newSequence.map(q => q.id));
+    
     setAnswers(newAnswers);
     setShowValidation(false);
-    
-    // Log the question sequence for debugging
-    console.log('[QuestionFlow] Answer changed:', questionId, '=', value);
-    console.log('[QuestionFlow] Building new sequence for category:', activeCategory);
-    const newSequence = buildQuestionSequence(activeCategory, newAnswers);
-    console.log('[QuestionFlow] New question sequence:', newSequence.map(q => q.id));
   };
 
   const handleNext = () => {
