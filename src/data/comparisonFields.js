@@ -124,10 +124,11 @@ export function detectSubcategory(productCode) {
   if (!productCode) return null;
   
   // Gehhilfen detection - using zehnSteller prefixes
-  if (productCode.startsWith('10.50')) return 'Gehstock';
-  if (productCode.startsWith('10.46.02')) return 'Unterarmgehstuetzen';
+  if (productCode.startsWith('10.50.01')) return 'Gehstock'; // Specific for Gehstock
+  if (productCode.startsWith('10.50.02')) return 'Unterarmgehstuetzen'; // Fixed: was 10.46.02 (Gehwagen)
   if (productCode.startsWith('10.46.04') || productCode.startsWith('10.46.03')) return 'Rollator';
   if (productCode.startsWith('10.46.01')) return 'Gehgestell';
+  if (productCode.startsWith('10.46.02')) return 'Gehwagen'; // Fixed: Gehwagen is 10.46.02, not Unterarmgehstützen
   if (productCode.startsWith('10.46.05') || productCode.startsWith('10.46.06')) return 'Gehwagen';
   
   // Hearing aids - all use same fields

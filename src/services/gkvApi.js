@@ -807,6 +807,7 @@ class GKVApiService {
     const featureCounts = {};
     sortedProducts.forEach(product => {
       const name = (product.bezeichnung || product.name || '').toUpperCase();
+      const productCode = product.produktartNummer || product.zehnSteller || product.code || '';
       
       // Power levels
       if (name.includes(' M ') || name.includes('(M)') || name.includes(' M-')) {
@@ -856,21 +857,18 @@ class GKVApiService {
         featureCounts['AI'] = (featureCounts['AI'] || 0) + 1;
       }
       
-      // Gehhilfen device types
-      if (name.includes('STOCK') || name.includes('STAB')) {
+      // Gehhilfen device types - USE PRODUCT CODE for accurate detection
+      // Import detectSubcategory is at top of file
+      if (productCode.startsWith('10.50.01')) {
         featureCounts['GEHSTOCK'] = (featureCounts['GEHSTOCK'] || 0) + 1;
-      }
-      if (name.includes('ROLLATOR')) {
-        featureCounts['ROLLATOR'] = (featureCounts['ROLLATOR'] || 0) + 1;
-      }
-      if (name.includes('WAGEN') || name.includes('WALKER')) {
-        featureCounts['GEHWAGEN'] = (featureCounts['GEHWAGEN'] || 0) + 1;
-      }
-      if (name.includes('GEHSTÜTZE') || name.includes('KRÜCKE') || name.includes('UNTERARM')) {
+      } else if (productCode.startsWith('10.50.02')) {
         featureCounts['GEHSTUETZEN'] = (featureCounts['GEHSTUETZEN'] || 0) + 1;
-      }
-      if (name.includes('GESTELL') || name.includes('GEHBOCK')) {
+      } else if (productCode.startsWith('10.46.04') || productCode.startsWith('10.46.03')) {
+        featureCounts['ROLLATOR'] = (featureCounts['ROLLATOR'] || 0) + 1;
+      } else if (productCode.startsWith('10.46.01')) {
         featureCounts['GEHGESTELL'] = (featureCounts['GEHGESTELL'] || 0) + 1;
+      } else if (productCode.startsWith('10.46.02') || productCode.startsWith('10.46.05') || productCode.startsWith('10.46.06')) {
+        featureCounts['GEHWAGEN'] = (featureCounts['GEHWAGEN'] || 0) + 1;
       }
       
       // Gehhilfen features

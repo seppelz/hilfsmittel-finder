@@ -833,7 +833,7 @@ export async function generateComparisonAnalysis(products, userContext) {
   }
   
   // Import here to avoid circular dependency
-  const { decodeProduct } = await import('../utils/productDecoder');
+  const { extractAllFields } = await import('../utils/fieldExtractor');
   
   // Detect both category AND subcategory
   const { category, subcategory } = detectProductDetails(products);
@@ -852,117 +852,84 @@ export async function generateComparisonAnalysis(products, userContext) {
   
   // Get subcategory-specific technical specs to request
   // This uses the dynamic field detection based on subcategory (e.g., Gehstock vs Rollator)
-  const specsToRequest = getComparisonFieldsForProducts(products, category);
-  const specsDescription = specsToRequest.map(s => 
-    `- ${s.label} (${s.key}): z.B. "Wert hier"`
-  ).join('\n');
+  const comparisonFields = getComparisonFieldsForProducts(products, category);
   
-  // Build comparison prompt
+  // STEP 1: Extract directly from konstruktionsmerkmale
+  console.log('[AI] Step 1: Extracting fields directly from konstruktionsmerkmale');
+  const directlyExtracted = products.map(product => ({
+    code: product.produktartNummer || product.zehnSteller,
+    name: product.bezeichnung || product.name,
+    specs: extractAllFields(product, comparisonFields, category)
+  }));
+  
+  console.log('[AI] Directly extracted specs:', directlyExtracted);
+  
+  // STEP 2: Identify missing fields (where all products have "Nicht angegeben")
+  const missingFields = comparisonFields.filter(field => {
+    return directlyExtracted.every(p => 
+      p.specs[field.key] === 'Nicht angegeben' || !p.specs[field.key]
+    );
+  });
+  
+  console.log('[AI] Missing fields that need AI search:', missingFields.map(f => f.label));
+  
+  // STEP 3: Build comparison prompt for missing fields OR just generate recommendation
   const userNeeds = extractUserNeeds(userContext);
   
+  // Build product info for AI prompt (only if we need AI for missing fields or recommendation)
   const productsInfo = products.map((product, idx) => {
     const name = product?.bezeichnung || 'Produkt';
     const code = product?.produktartNummer || product?.code;
+    const extractedSpecs = directlyExtracted[idx].specs;
     
-    // Get konstruktionsmerkmale from preloaded details if available
-    const konstruktionsmerkmale = product._preloadedDetails?.konstruktionsmerkmale || 
-                                  product.konstruktionsmerkmale || 
-                                  null;
-    
-    const decoded = decodeProduct(product, null, konstruktionsmerkmale);
-    const capabilities = extractDeviceCapabilities(product, decoded, category);
-    
-    // Build Konstruktionsmerkmale section (technical details from API)
-    let konstruktionsmerkmaleText = '';
-    if (konstruktionsmerkmale && konstruktionsmerkmale.length > 0) {
-      const freitextField = konstruktionsmerkmale.find(m => m.label === 'Freitext');
-      const otherFields = konstruktionsmerkmale.filter(m => m.label !== 'Freitext');
-      
-      if (freitextField) {
-        konstruktionsmerkmaleText += `\n\nTECHNISCHE BESCHREIBUNG:\n${freitextField.value}`;
-      }
-      if (otherFields.length > 0) {
-        konstruktionsmerkmaleText += `\n\nSPEZIFIKATIONEN:\n${otherFields.map(m => `- ${m.label}: ${m.value}`).join('\n')}`;
-      }
-    }
-    
-    // Build Merkmale section if available
-    let merkmaleText = '';
-    if (product.merkmale && product.merkmale.length > 0) {
-      merkmaleText = `\n\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
-    }
-    
-    // Add Produktart if available
-    const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
-    
-    // Add typenAusfuehrungen if available
-    const ausfuehrungenText = product.typenAusfuehrungen && product.typenAusfuehrungen.length > 0
-      ? `\nVerfügbare Ausführungen: ${product.typenAusfuehrungen.join(', ')}`
-      : '';
-    
-    // Add Nutzungsdauer if available
-    const nutzungsdauerText = product.nutzungsdauer
-      ? `\nNutzungsdauer: ${product.nutzungsdauer}`
-      : '';
+    // Show what we already extracted
+    const extractedText = Object.entries(extractedSpecs)
+      .filter(([, value]) => value !== 'Nicht angegeben')
+      .map(([key, value]) => {
+        const field = comparisonFields.find(f => f.key === key);
+        return `- ${field?.label || key}: ${value}`;
+      })
+      .join('\n');
     
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
-Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${konstruktionsmerkmaleText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
+Hersteller: ${product?.hersteller || 'Unbekannt'}
 
-Erkannte Eigenschaften:
-${capabilities}`;
+BEREITS EXTRAHIERTE DATEN:
+${extractedText || 'Keine Daten direkt verfügbar'}
+${missingFields.length > 0 ? `\nNOCH FEHLENDE DATEN (bitte im Internet suchen):\n${missingFields.map(f => `- ${f.label}`).join('\n')}` : ''}`;
   }).join('\n\n');
   
-  const prompt = `Du bist Experte für ${expertRole}. Vergleiche diese ${products.length} Produkte anhand ihrer technischen Spezifikationen.
+  // Build AI prompt - simplified since we already have most data
+  const prompt = `Du bist Experte für ${expertRole}. 
 
 NUTZER-BEDÜRFNISSE:
 ${userNeeds}
 
-ZU VERGLEICHENDE PRODUKTE:
+PRODUKTE ZUM VERGLEICHEN:
 ${productsInfo}
 
-WICHTIG: 
-1. EXTRAHIERE ZUERST ALLE Daten aus der "TECHNISCHE BESCHREIBUNG" und "SPEZIFIKATIONEN" oben - diese enthalten bereits viele Details!
-2. Suche im Internet nach fehlenden technischen Spezifikationen für jedes Produkt anhand der Hilfsmittelnummern (Codes).
-3. Finde und vergleiche ALLE relevanten technischen Daten:
-${specsDescription}
-
-WICHTIGE FELD-MAPPINGS (Wie die Daten in den SPEZIFIKATIONEN heißen):
-- "Max. Belastbarkeit: 150 kg" → max_weight: "150 kg"
-- "Eigengewicht: 10,9 kg" → weight: "10,9 kg"
-- "Empf. Körpergröße: 150 cm - 200 cm" → body_height: "150 cm - 200 cm"
-- "Sitzbreite: k.A." → seat_width: "Nicht angegeben" (bei k.A. oder leer)
-- "Sitzhöhe: 62 cm" → seat_height: "62 cm"
-- "Verstellbare Höhe der Unterarmauflage: 78 cm - 100 cm" → armrest_height: "78 cm - 100 cm"
-- "Breite zwischen den Unterarmauflagen:" (leer) → armrest_width: "Nicht angegeben"
-- "Gesamtbreite: 61 cm" → total_width: "61 cm"
-- "Gesamtlänge: 65 cm" → total_length: "65 cm"
-- "Gesamthöhe: 98 cm - 115 cm" → total_height: "98 cm - 115 cm"
-- "Faltmaße (BxLxH): 36 cm x 65 cm x 97 cm" → folded_dimensions: "36 cm x 65 cm x 97 cm"
-- "Wendekreis: 84 cm" → turning_radius: "84 cm"
-- "Bereifung: 20 cm x 3,6 cm" → tires: "20 cm x 3,6 cm"
-- "Max. Zuladung Korb: 5,0 kg" → basket_capacity: "5,0 kg"
-- "Material: eloxierter Aluminiumrahmen" → material: "eloxierter Aluminiumrahmen"
-- "Rohrdurchmesser: 17 / 20 mm" → tube_diameter: "17 / 20 mm"
-- "Handgriffhöhe: 825 bis 925 mm" → handle_height: "825 bis 925 mm"
-- "5-fach höhenverstellbar mittels Druckknopf" → adjustment_levels: "5-fach mittels Druckknopf"
-
 AUFGABE:
-Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführungszeichen):
+${missingFields.length > 0 ? 
+  `1. Suche im Internet nach den NOCH FEHLENDEN DATEN für jedes Produkt anhand der Hilfsmittelnummern (Codes).
+2. Erstelle eine Empfehlung basierend auf den vorhandenen und gefundenen Daten.` :
+  `Erstelle eine Empfehlung basierend auf den bereits vorhandenen Daten.`}
+
+Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT:
 
 {
   "products": [
     {
       "code": "${products[0]?.produktartNummer || products[0]?.code}",
       "specs": {
-        ${specsToRequest.map(s => `"${s.key}": "Wert hier"`).join(',\n        ')}
+        ${missingFields.map(s => `"${s.key}": "Wert hier oder 'Nicht angegeben'"`).join(',\n        ')}
       }
     },
     {
       "code": "${products[1]?.produktartNummer || products[1]?.code}",
       "specs": {
-        ${specsToRequest.map(s => `"${s.key}": "Wert hier"`).join(',\n        ')}
+        ${missingFields.map(s => `"${s.key}": "Wert hier oder 'Nicht angegeben'"`).join(',\n        ')}
       }
     }
   ],
@@ -973,23 +940,13 @@ Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführu
   }
 }
 
-STIL: 
+WICHTIG:
 - JSON MUSS VALIDE sein
-- NUTZE VORRANGIG die "TECHNISCHE BESCHREIBUNG" und "SPEZIFIKATIONEN" aus den Produktdaten oben
-- Wenn ein Wert NICHT in den technischen Daten steht UND NICHT im Internet gefunden wird: "Nicht angegeben"
-- NIEMALS RATEN oder ANNAHMEN TREFFEN! 
-  * FALSCH: "faltbar (da Aluminiumrohr)" - Material bedeutet NICHT automatisch faltbar!
-  * FALSCH: "höhenverstellbar" wenn nur "ablängen" oder "durch Ablängen" erwähnt wird - das ist NICHT verstellbar!
-  * RICHTIG: Nur eindeutig dokumentierte Features angeben
-- Bei Zweifeln oder unklaren Informationen IMMER "Nicht angegeben" verwenden
-- Nutze die exakten key-Namen aus der Liste oben
-- Recommendation in einfacher, direkter Sprache für Senioren (max. 2-3 Sätze pro Feld)
-- Erwähne wichtige Unterschiede wie "durch Ablängen" vs "9-fach verstellbar" in der Recommendation
-
-WICHTIG FÜR RÄDER:
-- NUR wenn du die genaue Anzahl im Internet findest: "2 Räder", "3 Räder" oder "4 Räder"
-- Wenn unklar, nicht erwähnt oder nicht gefunden: "Nicht angegeben"
-- NIEMALS aus dem Produkttyp raten (z.B. "Rollator" bedeutet NICHT automatisch "4 Räder")`;
+- Für fehlende Daten: Suche im Internet nach den Hilfsmittelnummern
+- Wenn NICHT gefunden: "Nicht angegeben"
+- NIEMALS RATEN! Nur eindeutig dokumentierte Werte angeben
+- Recommendation in einfacher Sprache für Senioren (max. 2-3 Sätze pro Feld)
+- Nutze die BEREITS EXTRAHIERTEN DATEN aus der Produktbeschreibung oben für den Vergleich`;
 
   try {
     console.log('[AI] Generating structured comparison with specs for:', expertRole);
@@ -1041,26 +998,84 @@ WICHTIG FÜR RÄDER:
     }
     
     const data = await response.json();
-    const analysis = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const analysisText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    if (!analysis) {
+    if (!analysisText) {
       console.error('[AI] No comparison text in response:', data);
       throw new Error('No comparison text generated');
     }
     
-    console.log('[AI] Comparison response received, length:', analysis.length);
+    console.log('[AI] Comparison response received, length:', analysisText.length);
+    
+    // STEP 4: Parse AI response and merge with direct extraction
+    let aiParsed = null;
+    try {
+      // Extract JSON from response (it might have markdown code blocks)
+      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        aiParsed = JSON.parse(jsonMatch[0]);
+        console.log('[AI] Successfully parsed JSON response');
+      }
+    } catch (parseError) {
+      console.error('[AI] Failed to parse JSON response:', parseError);
+    }
+    
+    // STEP 5: Merge direct extraction (priority) with AI results (fallback)
+    const finalProducts = directlyExtracted.map((extracted, idx) => {
+      const aiProduct = aiParsed?.products?.[idx];
+      const mergedSpecs = { ...extracted.specs }; // Start with direct extraction
+      
+      // Add AI-found values for missing fields
+      if (aiProduct?.specs) {
+        for (const field of missingFields) {
+          if (aiProduct.specs[field.key] && aiProduct.specs[field.key] !== 'Nicht angegeben') {
+            mergedSpecs[field.key] = aiProduct.specs[field.key];
+            console.log(`[AI] Filled missing field "${field.label}" for product ${extracted.code}: ${aiProduct.specs[field.key]}`);
+          }
+        }
+      }
+      
+      return {
+        code: extracted.code,
+        name: extracted.name,
+        specs: mergedSpecs
+      };
+    });
+    
+    // Build final result object
+    const result = {
+      products: finalProducts,
+      recommendation: aiParsed?.recommendation || {
+        best_choice: 'Beide Produkte sind von der GKV erstattungsfähig. Vergleichen Sie die technischen Daten in der Tabelle.',
+        alternative: 'Sprechen Sie mit Ihrem Arzt oder Sanitätshaus über Ihre spezifischen Bedürfnisse.',
+        key_difference: 'Siehe Vergleichstabelle unten für Details.'
+      }
+    };
+    
+    console.log('[AI] Final merged result:', result);
     
     trackEvent('ai_comparison_generated', { 
       productCount: products.length,
       category: category,
       subcategory: subcategory,
+      directlyExtractedFields: comparisonFields.length - missingFields.length,
+      aiSearchedFields: missingFields.length,
       success: true 
     });
     
-    return analysis;
+    return result;
   } catch (error) {
     logError('ai_comparison_failed', error);
     console.error('[AI] Comparison error:', error);
-    return 'Vergleich konnte nicht erstellt werden. Bitte vergleichen Sie die Eigenschaften in der Tabelle.';
+    
+    // Return direct extraction only if AI fails
+    return {
+      products: directlyExtracted,
+      recommendation: {
+        best_choice: 'Beide Produkte sind von der GKV erstattungsfähig.',
+        alternative: 'Vergleichen Sie die technischen Daten in der Tabelle unten.',
+        key_difference: 'Sprechen Sie mit Ihrem Arzt für eine persönliche Empfehlung.'
+      }
+    };
   }
 }

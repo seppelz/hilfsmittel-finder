@@ -40,7 +40,7 @@ export const questionFlow = {
           text: 'Unterarmgehstützen - Für stärkere Unterstützung',
           value: 'unterarmgehstuetzen',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'unterarmgehstuetzen', productGroup: '10.46.02' }, // 109 products
+          api_criteria: { device_type: 'unterarmgehstuetzen', productGroup: '10.50.02' }, // Changed from 10.46.02 (Gehwagen) to 10.50.02
         },
         {
           text: 'Rollator - Mit Rädern und Bremsen zum Schieben',

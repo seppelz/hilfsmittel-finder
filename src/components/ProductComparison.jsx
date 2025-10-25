@@ -22,41 +22,33 @@ export function ProductComparison({
   const loadAIAnalysis = async () => {
     setLoadingAI(true);
     try {
-      const analysis = await generateComparisonAnalysis(products, userContext);
+      const result = await generateComparisonAnalysis(products, userContext);
       
-      // Try to parse JSON from response
-      try {
-        // Extract JSON from response (might have markdown code blocks)
-        const jsonMatch = analysis.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          console.log('[ProductComparison] Parsed JSON:', parsed);
-          
-          // Separate specs and recommendation
-          if (parsed.products) {
-            setTechnicalSpecs(parsed.products);
-            console.log('[ProductComparison] Technical specs loaded:', parsed.products.length, 'products');
-          }
-          
-          // Build recommendation text
-          if (parsed.recommendation) {
-            const recText = `**Beste Wahl:** ${parsed.recommendation.best_choice}\n\n**Alternative:** ${parsed.recommendation.alternative}\n\n**Wichtigster Unterschied:** ${parsed.recommendation.key_difference}`;
-            setAiAnalysis(recText);
-          } else {
-            // Fallback to raw text if no recommendation structure
-            setAiAnalysis(analysis);
-          }
-        } else {
-          // Fallback: use raw text if no JSON
-          console.log('[ProductComparison] No JSON found, using raw text');
-          setAiAnalysis(analysis);
+      console.log('[ProductComparison] Received result:', result);
+      
+      // Result is now already a parsed object with {products, recommendation}
+      if (result && typeof result === 'object') {
+        // Set technical specs directly
+        if (result.products) {
+          setTechnicalSpecs(result.products);
+          console.log('[ProductComparison] Technical specs loaded:', result.products.length, 'products');
         }
-      } catch (parseError) {
-        console.error('[ProductComparison] JSON parse failed, using raw text:', parseError);
-        setAiAnalysis(analysis);
+        
+        // Build recommendation text
+        if (result.recommendation) {
+          const recText = `**Beste Wahl:** ${result.recommendation.best_choice}\n\n**Alternative:** ${result.recommendation.alternative}\n\n**Wichtigster Unterschied:** ${result.recommendation.key_difference}`;
+          setAiAnalysis(recText);
+        } else {
+          setAiAnalysis('Vergleichen Sie die technischen Daten in der Tabelle.');
+        }
+      } else {
+        // Legacy fallback for old format (string)
+        console.log('[ProductComparison] Legacy format detected, using raw text');
+        setAiAnalysis(result || 'Vergleich konnte nicht erstellt werden.');
       }
     } catch (error) {
       console.error('AI comparison failed:', error);
+      setAiAnalysis('Fehler beim Laden des Vergleichs.');
     } finally {
       setLoadingAI(false);
     }
