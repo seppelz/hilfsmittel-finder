@@ -144,9 +144,16 @@ async function fetchAllProducts() {
   }
 }
 
-// Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchAllProducts();
+// Run if called directly (check if this is the main module)
+// On Windows, process.argv[1] needs path normalization
+import { fileURLToPath as urlToPath } from 'url';
+const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMainModule || !process.argv[1]) {
+  fetchAllProducts().catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
 }
 
 export { fetchAllProducts };
