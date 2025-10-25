@@ -115,12 +115,29 @@
         const products = Array.isArray(listData) ? listData : listData.value || [];
         console.log('Found', products.length, 'products in list');
         
-        // Find the product with matching zehnSteller or nummer
+        // DEBUG: Show first product's structure
+        if (products.length > 0) {
+          console.log('Sample product fields:', Object.keys(products[0]));
+          console.log('Sample product:', products[0]);
+        }
+        
+        // Find the product with matching zehnSteller or nummer (try all field name variants)
         const listProduct = products.find(p => 
           p.zehnSteller === productNumber || 
+          p.zehn_steller === productNumber ||
+          p.ZehnSteller === productNumber ||
           p.nummer === productNumber ||
-          p.nummer === productNumber.replace(/\./g, '')
+          p.nummer === productNumber.replace(/\./g, '') ||
+          p.displayName?.includes(productNumber)
         );
+        
+        // DEBUG: If not found, show what zehnSteller values we DO have
+        if (!listProduct && products.length > 0) {
+          const zehnStellerSamples = products.slice(0, 5).map(p => 
+            p.zehnSteller || p.zehn_steller || p.ZehnSteller || 'N/A'
+          );
+          console.log('Sample zehnSteller values from products:', zehnStellerSamples);
+        }
         
         if (!listProduct) {
           resultsDiv.innerHTML = `
