@@ -175,6 +175,18 @@ export function mergeFieldDefinitions(staticFields, discoveredFields) {
   const staticKeys = new Set(staticFields.map(f => f.key));
   const staticLabels = new Set(staticFields.map(f => f.label?.toLowerCase()));
   
+  // Also track similar/related labels to avoid semantic duplicates
+  const relatedLabels = new Map();
+  staticFields.forEach(field => {
+    const label = field.label?.toLowerCase();
+    // Map common variations
+    if (label?.includes('bluetooth')) relatedLabels.set('bluetooth', true);
+    if (label?.includes('telefonspule') || label?.includes('telecoil')) relatedLabels.set('telefonspule', true);
+    if (label?.includes('batterie') || label?.includes('battery')) relatedLabels.set('batterie', true);
+    if (label?.includes('kanal') || label?.includes('channel')) relatedLabels.set('kanal', true);
+    if (label?.includes('programm') || label?.includes('program')) relatedLabels.set('programm', true);
+  });
+  
   // Start with all static fields (preserve order and icons)
   const merged = [...staticFields];
   
@@ -182,9 +194,22 @@ export function mergeFieldDefinitions(staticFields, discoveredFields) {
   for (const discovered of discoveredFields) {
     const labelLower = discovered.label?.toLowerCase();
     
+    // Check for semantic duplicates
+    let isDuplicate = staticKeys.has(discovered.key) || staticLabels.has(labelLower);
+    
+    // Check related labels to avoid semantic duplicates
+    if (!isDuplicate) {
+      for (const [relatedKey] of relatedLabels) {
+        if (labelLower?.includes(relatedKey)) {
+          isDuplicate = true;
+          console.log(`[mergeFieldDefinitions] Skipping duplicate: ${discovered.label} (matches related: ${relatedKey})`);
+          break;
+        }
+      }
+    }
+    
     // Skip if this field is already covered by static definitions
-    // Check both key and label to avoid duplicates
-    if (!staticKeys.has(discovered.key) && !staticLabels.has(labelLower)) {
+    if (!isDuplicate) {
       merged.push(discovered);
       console.log(`[mergeFieldDefinitions] Added dynamic field: ${discovered.label}`);
     }

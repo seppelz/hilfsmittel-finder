@@ -418,8 +418,20 @@ export function ProductComparison({
                   // Merge static definitions with discovered fields
                   const allFields = mergeFieldDefinitions(relevantFields, discoveredFields);
                   
+                  // For hearing aids, exclude fields already shown in the manual detection section above
+                  const hearingAidManualFields = ['wiederaufladbar', 'rechargeable', 'bluetooth', 'telecoil', 'telefonspule'];
+                  
                   // Filter out fields where ALL products have "Nicht angegeben"
                   const visibleFields = allFields.filter(field => {
+                    // Skip fields already shown in manual detection (for hearing aids)
+                    if (productCategory === 'hearing') {
+                      const fieldLower = field.label?.toLowerCase() || '';
+                      if (hearingAidManualFields.some(manual => fieldLower.includes(manual))) {
+                        console.log(`[ProductComparison] Skipping already-shown field: ${field.label}`);
+                        return false;
+                      }
+                    }
+                    
                     // Check if at least one product has a value from AI specs
                     const hasValueInAI = mergedComparisonData.some(item => {
                       const value = item[field.key];

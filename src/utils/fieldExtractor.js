@@ -269,14 +269,24 @@ export function discoverAllFields(products, category) {
   products.forEach(product => {
     const km = product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || [];
     km.forEach(merkmal => {
-      if (merkmal.label && merkmal.label !== 'Freitext') {
-        if (!allFields.has(merkmal.label)) {
-          allFields.set(merkmal.label, {
-            key: normalizeFieldKey(merkmal.label),
-            label: merkmal.label,
-            icon: getIconForField(merkmal.label, category)
-          });
-        }
+      // Skip Freitext fields (all variations)
+      if (!merkmal.label || 
+          merkmal.label.toLowerCase().includes('freitext') || 
+          merkmal.label.toLowerCase().includes('sonstige merkmale')) {
+        return;
+      }
+      
+      // Skip fields with empty values across all products (noise reduction)
+      if (!merkmal.value || merkmal.value.trim() === '' || merkmal.value === '-' || merkmal.value === 'k.A.') {
+        return;
+      }
+      
+      if (!allFields.has(merkmal.label)) {
+        allFields.set(merkmal.label, {
+          key: normalizeFieldKey(merkmal.label),
+          label: merkmal.label,
+          icon: getIconForField(merkmal.label, category)
+        });
       }
     });
   });
