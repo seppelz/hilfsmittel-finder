@@ -256,24 +256,75 @@ export const questionFlow = {
   ],
   vision: [
     {
-      id: 'vision_issue',
-      question: 'Welche Seh-Schwierigkeiten haben Sie?',
-      type: 'multiple-choice',
+      id: 'vision_type',
+      question: 'Wofür brauchen Sie die Sehhilfe?',
+      type: 'single-choice',
       options: [
         {
-          text: 'Ich kann kleine Schrift nicht mehr lesen (Zeitung, Medikamente)',
-          value: 'reading',
-          api_criteria: { productGroup: '25.21', magnifier: true },
+          text: 'Nur zum Lesen / Nahsicht (z.B. Zeitung, Handy)',
+          value: 'reading_only',
+          api_criteria: { productGroup: '25.21.01', lens_type: 'single_vision_near' },
         },
         {
-          text: 'Ich brauche mehr Licht zum Lesen',
-          value: 'lighting',
-          api_criteria: { productGroup: '25.21', lighting: true },
+          text: 'Nur für die Ferne (z.B. Autofahren, Fernsehen)',
+          value: 'distance_only',
+          api_criteria: { productGroup: '25.21.01', lens_type: 'single_vision_far' },
         },
         {
-          text: 'Ich sehe verschwommen',
-          value: 'blurry',
-          api_criteria: { productGroup: '25.21', vision_aids: true },
+          text: 'Für Nah und Fern (Gleitsicht / Bifokal)',
+          value: 'both',
+          api_criteria: { productGroup: '25.21.02', lens_type: 'multifocal' },
+        },
+      ],
+    },
+    {
+      id: 'vision_strength',
+      question: 'Wie stark ist Ihre Sehschwäche?',
+      type: 'single-choice',
+      info: 'Falls Sie Ihre Dioptrienwerte kennen, wählen Sie die passende Stärke. Ansonsten wählen Sie "Leicht" für schwache Brillen oder "Stark" für dicke Brillen.',
+      options: [
+        {
+          text: 'Leichte Sehschwäche (bis ±6 Dioptrien)',
+          value: 'low',
+          api_criteria: { diopter_range: 'low' },
+        },
+        {
+          text: 'Mittlere Sehschwäche (±6 bis ±10 Dioptrien)',
+          value: 'medium',
+          api_criteria: { diopter_range: 'medium' },
+        },
+        {
+          text: 'Starke Sehschwäche (über ±10 Dioptrien)',
+          value: 'high',
+          api_criteria: { diopter_range: 'high', high_index: true },
+        },
+        {
+          text: 'Weiß ich nicht / Egal',
+          value: 'any',
+          api_criteria: {},
+        },
+      ],
+    },
+    {
+      id: 'vision_astigmatism',
+      question: 'Haben Sie eine Hornhautverkrümmung (Astigmatismus)?',
+      type: 'single-choice',
+      info: 'Falls Ihr Rezept einen "Zylinder"-Wert (cyl) hat, wählen Sie "Ja". Ansonsten "Weiß nicht".',
+      options: [
+        {
+          text: 'Ja, leichte Verkrümmung (bis 2 Dioptrien Zylinder)',
+          value: 'mild',
+          api_criteria: { cylinder_range: 'low' },
+        },
+        {
+          text: 'Ja, stärkere Verkrümmung (über 2 Dioptrien Zylinder)',
+          value: 'moderate',
+          api_criteria: { cylinder_range: 'high' },
+        },
+        {
+          text: 'Nein / Weiß ich nicht',
+          value: 'none',
+          api_criteria: {},
         },
       ],
     },

@@ -396,6 +396,35 @@ function filterByFeatures(products, criteria) {
           if (criteria.robust && (productName.includes('robust') || productName.includes('gelände'))) score += 5;
         }
 
+        // Vision aids / Sehhilfen matching (category 25.xx)
+        const isVisionAids = productCode.startsWith('25.');
+        
+        if (isVisionAids) {
+          // Lens type matching (+20 points for exact match)
+          if (criteria.lens_type) {
+            const targetType = criteria.lens_type.toLowerCase();
+            if (targetType.includes('single_vision') && productName.includes('einstärkengläser')) score += 20;
+            if (targetType.includes('multifocal') && productName.includes('mehrstärkengläser')) score += 20;
+            if (targetType.includes('lenticular') && productName.includes('lentikular')) score += 20;
+          }
+          
+          // Diopter range matching (+15 points)
+          if (criteria.diopter_range) {
+            if (criteria.diopter_range === 'low' && (productName.includes('≤ ±6,0 dpt') || productName.includes('<= ±6,0 dpt'))) score += 15;
+            if (criteria.diopter_range === 'medium' && productName.includes('> ±6,0 dpt') && productName.includes('< ±10,0 dpt')) score += 15;
+            if (criteria.diopter_range === 'high' && (productName.includes('≥ ±10,0 dpt') || productName.includes('hochbrechend'))) score += 15;
+          }
+          
+          // Cylinder range matching (+10 points)
+          if (criteria.cylinder_range) {
+            if (criteria.cylinder_range === 'low' && productName.includes('cyl ≤ +2,0 dpt')) score += 10;
+            if (criteria.cylinder_range === 'high' && productName.includes('cyl > 2,0 dpt')) score += 10;
+          }
+          
+          // High index (for strong prescriptions) (+5 points)
+          if (criteria.high_index && productName.includes('hochbrechend')) score += 5;
+        }
+
         // Bonus for products with more features overall
         if (decoded.features && decoded.features.length >= 3) score += 5;
 
@@ -782,6 +811,19 @@ class GKVApiService {
             case 'KORB': return name.includes('KORB') || name.includes('TASCHE');
             case '4RAEDER': return name.includes('4 RÄDER') || name.includes('4-RÄDER');
             case '3RAEDER': return name.includes('3 RÄDER') || name.includes('3-RÄDER');
+            // Vision aids - lens types
+            case 'EINSTAERKEN': return name.includes('EINSTÄRKENGLÄSER') || name.includes('EINSTÄRKEN');
+            case 'MEHRSTAERKEN': return name.includes('MEHRSTÄRKENGLÄSER') || name.includes('MEHRST');
+            case 'LENTIKULAR': return name.includes('LENTIKULAR');
+            // Vision aids - diopter strength
+            case 'DIOPTER_LOW': return name.includes('≤ ±6,0 DPT') || name.includes('<= ±6,0 DPT');
+            case 'DIOPTER_MEDIUM': return (name.includes('> ±6,0 DPT') || name.includes('≥ ±6,0 DPT')) && 
+                                          (name.includes('< ±10,0 DPT') || name.includes('≤ ±10,0 DPT'));
+            case 'DIOPTER_HIGH': return (name.includes('≥ ±10,0 DPT') || name.includes('>= ±10,0 DPT')) ||
+                                         name.includes('HOCHBRECHEND');
+            // Vision aids - cylinder (astigmatism)
+            case 'CYL_LOW': return name.includes('CYL ≤ +2,0 DPT') || name.includes('CYL <= +2,0 DPT');
+            case 'CYL_HIGH': return name.includes('CYL > 2,0 DPT') || name.includes('CYL > +2,0 DPT');
             default: return true;
           }
         });
