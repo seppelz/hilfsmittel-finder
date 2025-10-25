@@ -111,21 +111,34 @@ async function fetchAllProducts() {
       throw new Error(`No products found in response! Response: ${JSON.stringify(data).substring(0, 200)}`);
     }
     
-    console.log(`✅ Fetched ${products.length} products`);
+    console.log(`✅ Fetched ${products.length} products (including removed)`);
+    
+    // Filter out removed products (istHerausgenommen: true)
+    const activeProducts = products.filter(product => {
+      // Keep only products that are NOT removed
+      return !product.istHerausgenommen;
+    });
+    
+    const removedCount = products.length - activeProducts.length;
+    console.log(`🗑️  Filtered out ${removedCount} removed products (istHerausgenommen: true)`);
+    console.log(`✅ Keeping ${activeProducts.length} active products`);
     
     // Calculate metadata
     const metadata = {
-      totalProducts: products.length,
+      totalProducts: activeProducts.length,
+      totalFetched: products.length,
+      removedProducts: removedCount,
       lastUpdated: new Date().toISOString(),
       version: '1.0',
       source: 'GKV-Spitzenverband API',
       fetchDurationMs: Date.now() - startTime,
+      note: 'Products with istHerausgenommen=true are excluded (not eligible for GKV reimbursement)',
     };
     
-    // Prepare final data structure
+    // Prepare final data structure (only active products)
     const output = {
       metadata,
-      products,
+      products: activeProducts,
     };
     
     // Write to public folder

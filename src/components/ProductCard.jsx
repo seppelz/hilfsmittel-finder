@@ -19,6 +19,9 @@ export function ProductCard({
   const description = product?.beschreibung || product?.description;
   const hersteller = product?.hersteller || product?.manufacturer;
   
+  // Safety check: Product should not be removed from directory
+  const isRemoved = product?.istHerausgenommen === true;
+  
   // Extract basic metadata from API (produktart, typenAusfuehrungen, nutzungsdauer)
   const produktart = product?.produktart;
   const typenAusfuehrungen = product?.typenAusfuehrungen;
@@ -155,6 +158,22 @@ export function ProductCard({
       </div>
 
       <h3 className="text-xl font-bold text-text">{simplifiedName}</h3>
+      
+      {/* Warning: Product removed from directory (should not happen due to filtering) */}
+      {isRemoved && (
+        <div className="mt-3 rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="text-sm font-bold text-red-900">Produkt nicht mehr verfügbar</p>
+              <p className="text-xs text-red-700">
+                Dieses Produkt wurde aus dem GKV-Hilfsmittelverzeichnis entfernt und ist nicht mehr für die 
+                Erstattung zugelassen. Bitte wählen Sie ein anderes Produkt.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Besonders empfohlen Badge */}
       {isRecommended && (

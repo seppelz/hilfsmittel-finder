@@ -157,9 +157,23 @@ async function fetchAllProducts() {
   }
 }
 
+/**
+ * Normalize product data from GKV API
+ * @param {Object} product - Raw product from API
+ * @returns {Object|null} Normalized product or null if invalid/removed
+ * 
+ * IMPORTANT: Products with istHerausgenommen=true are EXCLUDED
+ * These products have been officially removed from the GKV directory
+ * and are no longer eligible for standard health insurance reimbursement.
+ */
 function normalizeProduct(product) {
   if (!product || typeof product !== 'object') return null;
-  if (product.istHerausgenommen) return null;
+  
+  // Filter out removed products (not eligible for GKV reimbursement)
+  if (product.istHerausgenommen === true) {
+    console.log(`[GKV] Filtered out removed product: ${product.produktartNummer || product.zehnSteller}`);
+    return null;
+  }
 
   const displayParts = splitDisplayValue(product.displayName);
   const nameCandidates = [
@@ -662,8 +676,12 @@ class GKVApiService {
     
     // Filter products by category
     const relevantProducts = allProducts.filter(product => {
-      // Skip placeholders (already filtered in normalize, but double-check)
-      if (product.istHerausgenommen) return false;
+      // Safety check: Skip removed products (should already be filtered in normalize, but double-check)
+      // istHerausgenommen=true means product is no longer in active GKV directory
+      if (product.istHerausgenommen === true) {
+        console.warn(`[GKV] Removed product found in database: ${product.zehnSteller} (should have been filtered)`);
+        return false;
+      }
       
       const code = product.zehnSteller || '';
       if (!code) return false;
