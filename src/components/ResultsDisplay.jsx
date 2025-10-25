@@ -431,7 +431,10 @@ export function ResultsDisplay({
           if (label) displayedCriteria.push(label);
         }
         
-        if (userAnswers.bathroom_bathtub_features) {
+        // Only show bathtub features if location is bathtub-related
+        if (userAnswers.bathroom_bathtub_features && 
+            (userAnswers.bathroom_location === 'bathtub_entry' || 
+             userAnswers.bathroom_location === 'bathtub_lift')) {
           const featMap = {
             'electric': 'Elektrisch betrieben',
             'manual': 'Ohne Strom'

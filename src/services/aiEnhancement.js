@@ -341,7 +341,10 @@ function extractUserNeeds(userContext) {
     if (type) needs.push(type);
   }
   
-  if (userContext.bathroom_bathtub_features) {
+  // Only include bathtub power features if location is bathtub-related
+  if (userContext.bathroom_bathtub_features && 
+      (userContext.bathroom_location === 'bathtub_entry' || 
+       userContext.bathroom_location === 'bathtub_lift')) {
     const featMap = {
       'electric': 'Bevorzugt: Elektrisch betrieben (einfache Bedienung per Knopfdruck)',
       'manual': 'Bevorzugt: Ohne Stromanschluss (wasserbetrieben oder manuell)'
