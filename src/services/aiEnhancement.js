@@ -833,7 +833,7 @@ export async function generateComparisonAnalysis(products, userContext) {
   }
   
   // Import here to avoid circular dependency
-  const { extractAllFields } = await import('../utils/fieldExtractor');
+  const { extractAllFields, discoverAllFields } = await import('../utils/fieldExtractor');
   
   // Detect both category AND subcategory
   const { category, subcategory } = detectProductDetails(products);
@@ -850,22 +850,31 @@ export async function generateComparisonAnalysis(products, userContext) {
     expertRole = subcategory ? `Badehilfen (speziell ${subcategory})` : 'Badehilfen';
   }
   
-  // Get subcategory-specific technical specs to request
-  // This uses the dynamic field detection based on subcategory (e.g., Gehstock vs Rollator)
-  const comparisonFields = getComparisonFieldsForProducts(products, category);
+  // STEP 1: Discover ALL available fields from products
+  console.log('[AI] Step 1: Discovering all available fields from konstruktionsmerkmale');
+  const discoveredFields = discoverAllFields(products, category);
   
-  // STEP 1: Extract directly from konstruktionsmerkmale
-  console.log('[AI] Step 1: Extracting fields directly from konstruktionsmerkmale');
+  // Get subcategory-specific static fields
+  const staticFields = getComparisonFieldsForProducts(products, category);
+  
+  // Use discovered fields (which includes everything) for extraction
+  const allFields = discoveredFields.length > staticFields.length ? discoveredFields : staticFields;
+  
+  console.log(`[AI] Using ${allFields.length} fields for extraction (${staticFields.length} static, ${discoveredFields.length} discovered)`);
+  
+  // STEP 2: Extract directly from konstruktionsmerkmale
+  console.log('[AI] Step 2: Extracting fields directly from konstruktionsmerkmale');
   const directlyExtracted = products.map(product => ({
     code: product.produktartNummer || product.zehnSteller,
     name: product.bezeichnung || product.name,
-    specs: extractAllFields(product, comparisonFields, category)
+    specs: extractAllFields(product, allFields, category),
+    konstruktionsmerkmale: product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || []
   }));
   
   console.log('[AI] Directly extracted specs:', directlyExtracted);
   
-  // STEP 2: Identify missing fields (where all products have "Nicht angegeben")
-  const missingFields = comparisonFields.filter(field => {
+  // STEP 3: Identify missing fields (where all products have "Nicht angegeben")
+  const missingFields = allFields.filter(field => {
     return directlyExtracted.every(p => 
       p.specs[field.key] === 'Nicht angegeben' || !p.specs[field.key]
     );
@@ -873,7 +882,7 @@ export async function generateComparisonAnalysis(products, userContext) {
   
   console.log('[AI] Missing fields that need AI search:', missingFields.map(f => f.label));
   
-  // STEP 3: Build comparison prompt for missing fields OR just generate recommendation
+  // STEP 4: Build comparison prompt for missing fields OR just generate recommendation
   const userNeeds = extractUserNeeds(userContext);
   
   // Build product info for AI prompt (only if we need AI for missing fields or recommendation)
@@ -881,20 +890,30 @@ export async function generateComparisonAnalysis(products, userContext) {
     const name = product?.bezeichnung || 'Produkt';
     const code = product?.produktartNummer || product?.code;
     const extractedSpecs = directlyExtracted[idx].specs;
+    const konstruktionsmerkmale = directlyExtracted[idx].konstruktionsmerkmale || [];
     
     // Show what we already extracted
     const extractedText = Object.entries(extractedSpecs)
       .filter(([, value]) => value !== 'Nicht angegeben')
       .map(([key, value]) => {
-        const field = comparisonFields.find(f => f.key === key);
+        const field = allFields.find(f => f.key === key);
         return `- ${field?.label || key}: ${value}`;
       })
+      .join('\n');
+    
+    // Include FULL konstruktionsmerkmale for AI context
+    const kmText = konstruktionsmerkmale
+      .filter(m => m.label && m.value)
+      .map(m => `- ${m.label}: ${m.value}`)
       .join('\n');
     
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
 Hersteller: ${product?.hersteller || 'Unbekannt'}
+
+KONSTRUKTIONSMERKMALE (Vollständig):
+${kmText || 'Keine verfügbar'}
 
 BEREITS EXTRAHIERTE DATEN:
 ${extractedText || 'Keine Daten direkt verfügbar'}
@@ -1058,7 +1077,7 @@ WICHTIG:
       productCount: products.length,
       category: category,
       subcategory: subcategory,
-      directlyExtractedFields: comparisonFields.length - missingFields.length,
+      directlyExtractedFields: allFields.length - missingFields.length,
       aiSearchedFields: missingFields.length,
       success: true 
     });

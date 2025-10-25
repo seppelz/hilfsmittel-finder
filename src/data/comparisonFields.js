@@ -164,3 +164,34 @@ export function getComparisonFieldsForProducts(products, category) {
   return categoryFields[subcategory] || categoryFields.default || [];
 }
 
+/**
+ * Merge static field definitions with dynamically discovered fields
+ * @param {Array} staticFields - Pre-defined fields from COMPARISON_FIELDS
+ * @param {Array} discoveredFields - Fields discovered from konstruktionsmerkmale
+ * @returns {Array} Merged field definitions (static first, then new discovered fields)
+ */
+export function mergeFieldDefinitions(staticFields, discoveredFields) {
+  // Create a map of static field keys for quick lookup
+  const staticKeys = new Set(staticFields.map(f => f.key));
+  const staticLabels = new Set(staticFields.map(f => f.label?.toLowerCase()));
+  
+  // Start with all static fields (preserve order and icons)
+  const merged = [...staticFields];
+  
+  // Add discovered fields that aren't already in static definitions
+  for (const discovered of discoveredFields) {
+    const labelLower = discovered.label?.toLowerCase();
+    
+    // Skip if this field is already covered by static definitions
+    // Check both key and label to avoid duplicates
+    if (!staticKeys.has(discovered.key) && !staticLabels.has(labelLower)) {
+      merged.push(discovered);
+      console.log(`[mergeFieldDefinitions] Added dynamic field: ${discovered.label}`);
+    }
+  }
+  
+  console.log(`[mergeFieldDefinitions] Merged ${staticFields.length} static + ${merged.length - staticFields.length} dynamic = ${merged.length} total fields`);
+  
+  return merged;
+}
+

@@ -132,9 +132,181 @@ function cleanValue(value, fieldKey) {
 }
 
 /**
+ * Normalize field label to consistent key format
+ * @param {string} label - Field label from konstruktionsmerkmale
+ * @returns {string} Normalized key
+ */
+export function normalizeFieldKey(label) {
+  if (!label) return 'unknown';
+  
+  return label
+    .toLowerCase()
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * Get appropriate icon for a field based on its label
+ * @param {string} label - Field label
+ * @param {string} category - Category for context
+ * @returns {string} Emoji icon
+ */
+export function getIconForField(label, category) {
+  const lowerLabel = label.toLowerCase();
+  
+  // Weight/Load related
+  if (lowerLabel.includes('belast') || lowerLabel.includes('gewicht') || lowerLabel.includes('zuladung')) {
+    return '⚖️';
+  }
+  
+  // Height/Length/Dimensions
+  if (lowerLabel.includes('höhe') || lowerLabel.includes('länge') || lowerLabel.includes('maß') || 
+      lowerLabel.includes('körpergröße') || lowerLabel.includes('abmessung')) {
+    return '📏';
+  }
+  
+  // Width
+  if (lowerLabel.includes('breite')) {
+    return '↔️';
+  }
+  
+  // Material
+  if (lowerLabel.includes('material')) {
+    return '🔩';
+  }
+  
+  // Wheels/Tires
+  if (lowerLabel.includes('rad') || lowerLabel.includes('räder') || lowerLabel.includes('bereifung')) {
+    return '🛞';
+  }
+  
+  // Brakes
+  if (lowerLabel.includes('brems')) {
+    return '🛑';
+  }
+  
+  // Seat related
+  if (lowerLabel.includes('sitz')) {
+    return '💺';
+  }
+  
+  // Basket/Storage
+  if (lowerLabel.includes('korb') || lowerLabel.includes('ablage') || lowerLabel.includes('tasche')) {
+    return '🧺';
+  }
+  
+  // Folding/Compact
+  if (lowerLabel.includes('falt') || lowerLabel.includes('klapp')) {
+    return '📦';
+  }
+  
+  // Turning/Radius
+  if (lowerLabel.includes('wende') || lowerLabel.includes('radius')) {
+    return '🔄';
+  }
+  
+  // Armrest
+  if (lowerLabel.includes('unterarm') || lowerLabel.includes('armauflage')) {
+    return '📐';
+  }
+  
+  // Handle/Grip
+  if (lowerLabel.includes('griff') || lowerLabel.includes('handgriff')) {
+    return '✋';
+  }
+  
+  // Diameter
+  if (lowerLabel.includes('durchmesser')) {
+    return '⭕';
+  }
+  
+  // Adjustment/Levels
+  if (lowerLabel.includes('verstell') || lowerLabel.includes('stufe')) {
+    return '↕️';
+  }
+  
+  // Hearing aids specific
+  if (category === 'hearing') {
+    if (lowerLabel.includes('kanal') || lowerLabel.includes('channel')) return '🎚️';
+    if (lowerLabel.includes('programm')) return '⚙️';
+    if (lowerLabel.includes('batterie') || lowerLabel.includes('akku')) return '🔋';
+    if (lowerLabel.includes('bluetooth')) return '📱';
+    if (lowerLabel.includes('telefon') || lowerLabel.includes('spule')) return '📞';
+    if (lowerLabel.includes('verstärk') || lowerLabel.includes('leistung')) return '🔊';
+    if (lowerLabel.includes('bauform')) return '📱';
+    if (lowerLabel.includes('mikrofon')) return '🎤';
+  }
+  
+  // Vision aids specific
+  if (category === 'vision') {
+    if (lowerLabel.includes('vergrößer') || lowerLabel.includes('lupe')) return '🔍';
+    if (lowerLabel.includes('licht') || lowerLabel.includes('beleucht')) return '💡';
+  }
+  
+  // Bathroom aids specific
+  if (category === 'bathroom') {
+    if (lowerLabel.includes('rutsch')) return '🛡️';
+    if (lowerLabel.includes('montag') || lowerLabel.includes('befestig')) return '🔧';
+  }
+  
+  // Default
+  return '📋';
+}
+
+/**
+ * Discover all available fields from products' konstruktionsmerkmale
+ * @param {Array} products - Products to analyze
+ * @param {string} category - Category for icon selection
+ * @returns {Array} Array of field definitions
+ */
+export function discoverAllFields(products, category) {
+  const allFields = new Map();
+  
+  products.forEach(product => {
+    const km = product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || [];
+    km.forEach(merkmal => {
+      if (merkmal.label && merkmal.label !== 'Freitext') {
+        if (!allFields.has(merkmal.label)) {
+          allFields.set(merkmal.label, {
+            key: normalizeFieldKey(merkmal.label),
+            label: merkmal.label,
+            icon: getIconForField(merkmal.label, category)
+          });
+        }
+      }
+    });
+  });
+  
+  console.log(`[FieldExtractor] Discovered ${allFields.size} unique fields from ${products.length} products`);
+  
+  return Array.from(allFields.values());
+}
+
+/**
+ * Extract field value by direct label lookup
+ * @param {Array} konstruktionsmerkmale - Array of {label, value} objects
+ * @param {string} fieldLabel - Exact field label to look for
+ * @returns {string|null} Extracted value or null
+ */
+export function extractFieldByLabel(konstruktionsmerkmale, fieldLabel) {
+  if (!konstruktionsmerkmale || konstruktionsmerkmale.length === 0) return null;
+  
+  const merkmal = konstruktionsmerkmale.find(m => m.label === fieldLabel);
+  if (merkmal && merkmal.value) {
+    return cleanValue(merkmal.value, '');
+  }
+  
+  return null;
+}
+
+/**
  * Extract all fields for a product
  * @param {Object} product - Product with konstruktionsmerkmale
- * @param {Array} fieldDefinitions - Field definitions from comparisonFields.js
+ * @param {Array} fieldDefinitions - Field definitions from comparisonFields.js or dynamic discovery
  * @param {string} category - Category name
  * @returns {Object} Map of fieldKey -> value
  */
@@ -146,7 +318,14 @@ export function extractAllFields(product, fieldDefinitions, category) {
   console.log(`[FieldExtractor] Available konstruktionsmerkmale:`, konstruktionsmerkmale.length);
   
   for (const field of fieldDefinitions) {
-    const value = extractField(konstruktionsmerkmale, field.key, category);
+    // Try pattern matching first (for static fields)
+    let value = extractField(konstruktionsmerkmale, field.key, category);
+    
+    // If no match via pattern, try direct label lookup (for dynamic fields)
+    if (!value && field.label) {
+      value = extractFieldByLabel(konstruktionsmerkmale, field.label);
+    }
+    
     extracted[field.key] = value || 'Nicht angegeben';
   }
   

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Check, Minus, Sparkles, Scale, Info } from 'lucide-react';
 import { decodeProduct } from '../utils/productDecoder';
 import { generateComparisonAnalysis } from '../services/aiEnhancement';
-import { getComparisonFieldsForProducts } from '../data/comparisonFields';
+import { getComparisonFieldsForProducts, mergeFieldDefinitions } from '../data/comparisonFields';
+import { discoverAllFields, extractFieldByLabel } from '../utils/fieldExtractor';
 
 export function ProductComparison({ 
   products, 
@@ -411,17 +412,32 @@ export function ProductComparison({
                   // Get subcategory-specific fields for these products
                   const relevantFields = getComparisonFieldsForProducts(products, productCategory);
                   
+                  // Discover ALL available fields from products' konstruktionsmerkmale
+                  const discoveredFields = discoverAllFields(products, productCategory);
+                  
+                  // Merge static definitions with discovered fields
+                  const allFields = mergeFieldDefinitions(relevantFields, discoveredFields);
+                  
                   // Filter out fields where ALL products have "Nicht angegeben"
-                  const visibleFields = relevantFields.filter(field => {
-                    const hasValue = mergedComparisonData.some(item => {
+                  const visibleFields = allFields.filter(field => {
+                    // Check if at least one product has a value from AI specs
+                    const hasValueInAI = mergedComparisonData.some(item => {
                       const value = item[field.key];
                       return value && value !== 'Nicht angegeben' && value !== 'Keine Angabe';
                     });
-                    return hasValue;
+                    
+                    // Also check if at least one product has this field in konstruktionsmerkmale
+                    const hasValueInKM = products.some(product => {
+                      const km = product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || [];
+                      const value = extractFieldByLabel(km, field.label);
+                      return value && value !== 'Nicht angegeben';
+                    });
+                    
+                    return hasValueInAI || hasValueInKM;
                   });
                   
                   // Boolean fields (need special rendering with checkmarks)
-                  const booleanFields = ['foldable', 'brakes', 'basket'];
+                  const booleanFields = ['foldable', 'brakes', 'basket', 'bluetooth', 'telecoil', 'non_slip'];
                   
                   return visibleFields.map((field, fieldIdx) => {
                     const isBoolean = booleanFields.includes(field.key);
@@ -432,8 +448,15 @@ export function ProductComparison({
                         <td className="px-6 py-4 text-sm font-semibold text-blue-900">
                           {field.icon} {field.label}
                         </td>
-                        {mergedComparisonData.map((item, idx) => {
-                          const value = item[field.key];
+                        {products.map((product, idx) => {
+                          // First try to get value from AI specs (mergedComparisonData)
+                          let value = mergedComparisonData[idx]?.[field.key];
+                          
+                          // If not in AI specs, try direct extraction from konstruktionsmerkmale
+                          if (!value || value === 'Nicht angegeben') {
+                            const km = product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || [];
+                            value = extractFieldByLabel(km, field.label);
+                          }
                           
                           return (
                             <td key={idx} className="px-6 py-4">
