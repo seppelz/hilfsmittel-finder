@@ -204,7 +204,6 @@ function normalizeProduct(product) {
   const descriptionCandidates = [
     normalizeString(product.beschreibung),
     normalizeString(product.description),
-    normalizeString(product.erleuterungstext),
     normalizeString(product.produktbeschreibung),
     normalizeString(product.indikation),
     normalizeString(product.anwendungsgebiet),
@@ -224,33 +223,6 @@ function normalizeProduct(product) {
       code: cleanCode,
       availableFields: Object.keys(product)
     });
-  }
-
-  // Removed comprehensive debug logging - we found erleuterungstext is the key field!
-
-  // Extract Erläuterungstext (detailed product characteristics - this is what the API actually calls it!)
-  const erleuterungstext = product.erleuterungstext || product.Erleuterungstext;
-  
-  if (erleuterungstext && typeof erleuterungstext === 'string' && erleuterungstext.length > 10) {
-    // Parse the erleuterungstext into array items
-    // It often contains structured text with bullets, dashes, or newlines
-    const parsed = erleuterungstext
-      .split(/\n|•|-(?=\s)/)  // Split by newline, bullet, or dash followed by space
-      .map(item => item.trim())
-      .filter(item => item.length > 3 && !item.match(/^(Merkmale|Komponenten|Erläuterungstext):/i));
-    
-    if (parsed.length > 0) {
-      normalizedProduct.merkmale = parsed;
-      console.log('[gkvApi] ✅ Extracted erleuterungstext for', cleanCode, ':', parsed.length, 'items');
-    } else {
-      // If parsing failed, store as single item
-      normalizedProduct.merkmale = [erleuterungstext];
-      console.log('[gkvApi] ✅ Extracted erleuterungstext (unparsed) for', cleanCode);
-    }
-  } else if (erleuterungstext) {
-    console.log('[gkvApi] ⚠️ Erleuterungstext exists but too short for', cleanCode, ':', erleuterungstext?.length || 0, 'chars');
-  } else if (cleanCode?.startsWith('10.')) {
-    console.log('[gkvApi] ❌ No erleuterungstext found for', cleanCode);
   }
 
   // Extract Produktart

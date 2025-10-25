@@ -36,8 +36,7 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const [loadingAI, setLoadingAI] = useState(false);
   const [showAI, setShowAI] = useState(false);
   
-  // State for collapsible Merkmale section
-  const [showMerkmale, setShowMerkmale] = useState(false);
+  // State for product details
   const [fullProductDetails, setFullProductDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   
@@ -88,13 +87,13 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
     }
   };
 
-  // Auto-load details when Merkmale section is expanded
+  // Auto-load details immediately when card is selected
   useEffect(() => {
-    if (showMerkmale && !fullProductDetails && !loadingDetails) {
+    if (selected && !fullProductDetails && !loadingDetails) {
       loadFullProductDetails();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMerkmale]);
+  }, [selected]);
 
   const handleClick = () => {
     onSelect?.(product);
@@ -181,26 +180,12 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </div>
       )}
 
-      {/* Merkmale & Technische Details - Collapsible - PRIORITY: Show API data first! */}
-      <div className="mt-4 border-t border-gray-200 pt-4">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowMerkmale(!showMerkmale);
-          }}
-          className="flex w-full items-center justify-between text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition"
-        >
-          <span className="text-sm font-semibold text-gray-900">
-            📋 Merkmale & Details
-          </span>
-          <span className="text-gray-500 text-lg">
-            {showMerkmale ? '▼' : '▶'}
-          </span>
-        </button>
-        
-        {showMerkmale && (
-          <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-4">
+      {/* Technische Details - Always visible, auto-loaded */}
+      {(loadingDetails || fullProductDetails?.konstruktionsmerkmale?.length > 0 || produktart || typenAusfuehrungen?.length > 0 || nutzungsdauer) && (
+        <div className="mt-4 border-t border-gray-200 pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">📋 Technische Details</h3>
+          
+          <div className="space-y-1 rounded-lg bg-gray-50 p-4">
             {loadingDetails && (
               <p className="text-sm text-gray-600 text-center py-4">
                 ⏳ Lade Details...
@@ -218,15 +203,9 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
               </div>
             )}
             
-            {!loadingDetails && fullProductDetails && (!fullProductDetails.konstruktionsmerkmale || fullProductDetails.konstruktionsmerkmale.length === 0) && (
-              <p className="text-sm text-gray-500 text-center py-2">
-                Keine detaillierten Merkmale verfügbar
-              </p>
-            )}
-            
             {/* Show existing basic info if available */}
             {(produktart || typenAusfuehrungen?.length > 0 || nutzungsdauer) && (
-              <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+              <div className={fullProductDetails?.konstruktionsmerkmale?.length > 0 ? "mt-3 pt-3 border-t border-gray-200 space-y-2" : "space-y-2"}>
                 {produktart && (
                   <p className="text-xs text-gray-600">
                     <strong>Produktart:</strong> {produktart}
@@ -247,8 +226,8 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* AI-Generated Description - Show AFTER API data */}
       {showAI && aiDescription && (
