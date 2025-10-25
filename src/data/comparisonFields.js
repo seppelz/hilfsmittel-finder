@@ -31,18 +31,26 @@ export const COMPARISON_FIELDS = {
     ],
     
     // Rollator - wheeled walker (has brakes, wheels, seat, basket)
+    // Based on analysis of real product data (10.46.04.0002, 10.46.04.0003)
     Rollator: [
-      { key: 'max_weight', label: 'Max. Benutzergewicht', icon: '⚖️' },
+      { key: 'max_weight', label: 'Max. Belastbarkeit', icon: '⚖️' },
+      { key: 'weight', label: 'Eigengewicht', icon: '⚖️' },
+      { key: 'body_height', label: 'Empf. Körpergröße', icon: '📏' },
+      { key: 'seat_width', label: 'Sitzbreite', icon: '↔️' },
       { key: 'seat_height', label: 'Sitzhöhe', icon: '💺' },
-      { key: 'handle_height', label: 'Handgriffhöhe', icon: '📐' },
+      { key: 'armrest_height', label: 'Höhe Unterarmauflage', icon: '📐' },
+      { key: 'armrest_width', label: 'Breite zwischen Unterarmauflagen', icon: '↔️' },
+      { key: 'total_width', label: 'Gesamtbreite', icon: '↔️' },
+      { key: 'total_length', label: 'Gesamtlänge', icon: '📏' },
       { key: 'total_height', label: 'Gesamthöhe', icon: '📏' },
-      { key: 'width', label: 'Breite', icon: '↔️' },
-      { key: 'weight', label: 'Gewicht', icon: '⚖️' },
+      { key: 'folded_dimensions', label: 'Faltmaße (BxLxH)', icon: '📦' },
+      { key: 'turning_radius', label: 'Wendekreis', icon: '🔄' },
+      { key: 'tires', label: 'Bereifung', icon: '🛞' },
+      { key: 'basket_capacity', label: 'Max. Zuladung Korb', icon: '🧺' },
       { key: 'material', label: 'Material', icon: '🔩' },
       { key: 'wheels', label: 'Räder', icon: '🔘' },
       { key: 'brakes', label: 'Bremsen', icon: '🛑' },
-      { key: 'foldable', label: 'Faltbar', icon: '📦' },
-      { key: 'basket', label: 'Korb/Ablage', icon: '🧺' }
+      { key: 'foldable', label: 'Faltbar', icon: '📦' }
     ],
     
     // Gehgestell - walking frame (no wheels, very stable)

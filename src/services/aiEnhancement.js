@@ -928,12 +928,25 @@ WICHTIG:
 3. Finde und vergleiche ALLE relevanten technischen Daten:
 ${specsDescription}
 
-BEISPIELE aus den Produktdaten oben:
-- Rohrdurchmesser: Steht oft in "SPEZIFIKATIONEN" als "Rohrdurchmesser: 17 / 20 mm"
-- Höhenverstellung: Steht oft in "TECHNISCHE BESCHREIBUNG" als "5-fach höhenverstellbar mittels Druckknopf"
-- Handgriffhöhe: Steht oft in "SPEZIFIKATIONEN" als "Handgriffhöhe: 825 bis 925 mm"
-- Material: Steht oft in "SPEZIFIKATIONEN" als "Material: Aluminium pulverbeschichtet, Holz"
-- Gewicht: Steht oft in "SPEZIFIKATIONEN" als "Gewicht: 360 g"
+WICHTIGE FELD-MAPPINGS (Wie die Daten in den SPEZIFIKATIONEN heißen):
+- "Max. Belastbarkeit: 150 kg" → max_weight: "150 kg"
+- "Eigengewicht: 10,9 kg" → weight: "10,9 kg"
+- "Empf. Körpergröße: 150 cm - 200 cm" → body_height: "150 cm - 200 cm"
+- "Sitzbreite: k.A." → seat_width: "Nicht angegeben" (bei k.A. oder leer)
+- "Sitzhöhe: 62 cm" → seat_height: "62 cm"
+- "Verstellbare Höhe der Unterarmauflage: 78 cm - 100 cm" → armrest_height: "78 cm - 100 cm"
+- "Breite zwischen den Unterarmauflagen:" (leer) → armrest_width: "Nicht angegeben"
+- "Gesamtbreite: 61 cm" → total_width: "61 cm"
+- "Gesamtlänge: 65 cm" → total_length: "65 cm"
+- "Gesamthöhe: 98 cm - 115 cm" → total_height: "98 cm - 115 cm"
+- "Faltmaße (BxLxH): 36 cm x 65 cm x 97 cm" → folded_dimensions: "36 cm x 65 cm x 97 cm"
+- "Wendekreis: 84 cm" → turning_radius: "84 cm"
+- "Bereifung: 20 cm x 3,6 cm" → tires: "20 cm x 3,6 cm"
+- "Max. Zuladung Korb: 5,0 kg" → basket_capacity: "5,0 kg"
+- "Material: eloxierter Aluminiumrahmen" → material: "eloxierter Aluminiumrahmen"
+- "Rohrdurchmesser: 17 / 20 mm" → tube_diameter: "17 / 20 mm"
+- "Handgriffhöhe: 825 bis 925 mm" → handle_height: "825 bis 925 mm"
+- "5-fach höhenverstellbar mittels Druckknopf" → adjustment_levels: "5-fach mittels Druckknopf"
 
 AUFGABE:
 Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführungszeichen):
