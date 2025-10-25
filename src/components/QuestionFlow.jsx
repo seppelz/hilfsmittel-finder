@@ -5,6 +5,59 @@ function getQuestionsForCategory(category) {
   return questionFlow[category] ?? [];
 }
 
+/**
+ * Build a dynamic question sequence based on user answers and leads_to logic
+ * @param {string} category - The category to get questions for
+ * @param {object} answers - Current user answers
+ * @returns {Array} Array of question objects in the order they should appear
+ */
+function buildQuestionSequence(category, answers) {
+  const allQuestions = questionFlow[category] ?? [];
+  if (allQuestions.length === 0) return [];
+  
+  const questionMap = {};
+  allQuestions.forEach(q => {
+    questionMap[q.id] = q;
+  });
+  
+  const sequence = [];
+  const visited = new Set();
+  
+  // Start with the first question
+  let currentQuestion = allQuestions[0];
+  
+  while (currentQuestion && !visited.has(currentQuestion.id)) {
+    visited.add(currentQuestion.id);
+    sequence.push(currentQuestion);
+    
+    // Get user's answer for this question
+    const answer = answers[currentQuestion.id];
+    
+    // If no answer yet, stop here (this is the current question)
+    if (!answer) break;
+    
+    // Find the selected option
+    let nextQuestionId = null;
+    
+    if (currentQuestion.type === 'single-choice') {
+      const selectedOption = currentQuestion.options.find(opt => opt.value === answer);
+      nextQuestionId = selectedOption?.leads_to;
+    } else if (currentQuestion.type === 'multiple-choice' && Array.isArray(answer) && answer.length > 0) {
+      // For multiple choice, use leads_to from the first selected option (if any have it)
+      const firstSelectedOption = currentQuestion.options.find(opt => answer.includes(opt.value));
+      nextQuestionId = firstSelectedOption?.leads_to;
+    }
+    
+    // If no leads_to specified, we've reached the end
+    if (!nextQuestionId) break;
+    
+    // Move to the next question
+    currentQuestion = questionMap[nextQuestionId];
+  }
+  
+  return sequence;
+}
+
 function getInitialCategoryOrder(selectedCategory) {
   // If specific category selected, only show that one
   if (selectedCategory && selectedCategory !== 'comprehensive') {
@@ -32,19 +85,57 @@ export function QuestionFlow({
 
   const categories = getInitialCategoryOrder(selectedCategory);
   const activeCategory = categories[categoryIndex];
-  const questions = getQuestionsForCategory(activeCategory);
+  const questions = buildQuestionSequence(activeCategory, answers);
+  
+  // Initialize multiple-choice questions with empty arrays if they appear in the sequence
+  useEffect(() => {
+    const needsInitialization = questions.some(q => 
+      q.type === 'multiple-choice' && answers[q.id] === undefined
+    );
+    
+    if (needsInitialization) {
+      const newAnswers = { ...answers };
+      questions.forEach(q => {
+        if (q.type === 'multiple-choice' && newAnswers[q.id] === undefined) {
+          newAnswers[q.id] = [];
+        }
+      });
+      setAnswers(newAnswers);
+    }
+  }, [questions, answers]);
 
   useEffect(() => {
     setAnswers(initialAnswers);
   }, [initialAnswers]);
 
   const handleAnswerChange = (questionId, value) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
     setShowValidation(false);
+    
+    // Log the question sequence for debugging
+    console.log('[QuestionFlow] Answer changed:', questionId, '=', value);
+    console.log('[QuestionFlow] Building new sequence for category:', activeCategory);
+    const newSequence = buildQuestionSequence(activeCategory, newAnswers);
+    console.log('[QuestionFlow] New question sequence:', newSequence.map(q => q.id));
   };
 
   const handleNext = () => {
-    if (!questions.every((question) => Boolean(answers[question.id]))) {
+    // Check if all required questions are answered
+    const allAnswered = questions.every((question) => {
+      const answer = answers[question.id];
+      // Single-choice: must have an answer
+      if (question.type === 'single-choice') {
+        return Boolean(answer);
+      }
+      // Multiple-choice: having an empty array is OK (means no features selected)
+      if (question.type === 'multiple-choice') {
+        return Array.isArray(answer); // Just needs to exist as an array
+      }
+      return Boolean(answer);
+    });
+    
+    if (!allAnswered) {
       setShowValidation(true);
       setScreenReaderMessage('Bitte beantworten Sie alle Fragen, bevor Sie fortfahren.');
       return;
@@ -66,7 +157,17 @@ export function QuestionFlow({
     setCategoryIndex((index) => index - 1);
   };
 
-  const questionsCompleted = questions.every((question) => Boolean(answers[question.id]));
+  // Check if all questions in current sequence are answered
+  const questionsCompleted = questions.every((question) => {
+    const answer = answers[question.id];
+    if (question.type === 'single-choice') {
+      return Boolean(answer);
+    }
+    if (question.type === 'multiple-choice') {
+      return Array.isArray(answer);
+    }
+    return Boolean(answer);
+  });
   const progress = ((categoryIndex + (questionsCompleted ? 1 : 0)) / categories.length) * 100;
 
   useEffect(() => {
