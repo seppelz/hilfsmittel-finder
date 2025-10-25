@@ -865,8 +865,12 @@ export async function generateComparisonAnalysis(products, userContext) {
       { key: 'body_height', label: 'Körpergröße', example: '150-200 cm, 135-170 cm' },
       { key: 'seat_height', label: 'Sitzhöhe', example: '55 cm, 62 cm' },
       { key: 'total_height', label: 'Gesamthöhe', example: '84-100 cm, 98-111.5 cm' },
+      { key: 'handle_height', label: 'Handgriffhöhe', example: '82,5-92,5 cm, 84-94 cm' },
       { key: 'width', label: 'Breite', example: '61 cm, 68 cm' },
-      { key: 'weight', label: 'Gewicht', example: '7.5 kg, 10.9 kg' },
+      { key: 'weight', label: 'Gewicht', example: '7.5 kg, 10.9 kg, 360 g' },
+      { key: 'tube_diameter', label: 'Rohrdurchmesser', example: '17/20 mm, 19/22 mm' },
+      { key: 'material', label: 'Material', example: 'Aluminium, Holz, Kunststoff' },
+      { key: 'adjustment_levels', label: 'Höhenverstellung', example: '5-fach mittels Druckknopf, 9-fach, stufenlos' },
       { key: 'foldable', label: 'Faltbar', example: 'Ja, Nein' },
       { key: 'brakes', label: 'Bremsen', example: 'Ja, Nein' },
       { key: 'wheels', label: 'Räder', example: '3 Räder, 4 Räder' }
@@ -957,9 +961,17 @@ ZU VERGLEICHENDE PRODUKTE:
 ${productsInfo}
 
 WICHTIG: 
-1. Suche im Internet nach den genauen technischen Spezifikationen für jedes Produkt anhand der Hilfsmittelnummern (Codes).
-2. Finde und vergleiche ALLE relevanten technischen Daten:
+1. EXTRAHIERE ZUERST ALLE Daten aus der "TECHNISCHE BESCHREIBUNG" und "SPEZIFIKATIONEN" oben - diese enthalten bereits viele Details!
+2. Suche im Internet nach fehlenden technischen Spezifikationen für jedes Produkt anhand der Hilfsmittelnummern (Codes).
+3. Finde und vergleiche ALLE relevanten technischen Daten:
 ${specsDescription}
+
+BEISPIELE aus den Produktdaten oben:
+- Rohrdurchmesser: Steht oft in "SPEZIFIKATIONEN" als "Rohrdurchmesser: 17 / 20 mm"
+- Höhenverstellung: Steht oft in "TECHNISCHE BESCHREIBUNG" als "5-fach höhenverstellbar mittels Druckknopf"
+- Handgriffhöhe: Steht oft in "SPEZIFIKATIONEN" als "Handgriffhöhe: 825 bis 925 mm"
+- Material: Steht oft in "SPEZIFIKATIONEN" als "Material: Aluminium pulverbeschichtet, Holz"
+- Gewicht: Steht oft in "SPEZIFIKATIONEN" als "Gewicht: 360 g"
 
 AUFGABE:
 Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführungszeichen):
