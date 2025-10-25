@@ -76,7 +76,12 @@
   </div>
 
   <script>
-    const API_BASE = 'https://hilfsmittel.gkv-spitzenverband.de/api/verzeichnis';
+    // Use our proxy to avoid CORS issues
+    const PROXY_BASE = '/api/proxy';
+    
+    function encodeProxyPath(apiPath) {
+      return `${PROXY_BASE}?path=${encodeURIComponent(apiPath)}`;
+    }
 
     async function testProductById() {
       const productId = document.getElementById('productId').value.trim();
@@ -85,46 +90,51 @@
       resultsDiv.innerHTML = '<p class="info">⏳ Fetching product...</p>';
 
       try {
-        // Try different possible endpoints
-        const endpoints = [
-          `${API_BASE}/Produkt/${productId}`,
-          `${API_BASE}/Produkt?id=${productId}`,
-          `${API_BASE}/Produkt?produktId=${productId}`,
+        // Try different possible API paths (through our proxy)
+        const apiPaths = [
+          `api/verzeichnis/Produkt/${productId}`,
+          `api/verzeichnis/Produkt?id=${productId}`,
+          `api/verzeichnis/Produkt?produktId=${productId}`,
         ];
+        
+        const endpoints = apiPaths.map(path => encodeProxyPath(path));
 
         let success = false;
         let response;
-        let usedEndpoint;
+        let usedApiPath;
 
-        for (const endpoint of endpoints) {
+        for (let i = 0; i < endpoints.length; i++) {
+          const endpoint = endpoints[i];
+          const apiPath = apiPaths[i];
+          
           try {
-            console.log('Trying:', endpoint);
+            console.log('Trying API path:', apiPath, '→', endpoint);
             const res = await fetch(endpoint);
             
             if (res.ok) {
               const data = await res.json();
-              console.log('Success with:', endpoint, data);
+              console.log('Success with:', apiPath, data);
               
               response = data;
-              usedEndpoint = endpoint;
+              usedApiPath = apiPath;
               success = true;
               break;
             } else {
-              console.log(`Failed (${res.status}):`, endpoint);
+              console.log(`Failed (${res.status}):`, apiPath);
             }
           } catch (e) {
-            console.log('Error with:', endpoint, e.message);
+            console.log('Error with:', apiPath, e.message);
           }
         }
 
         if (success) {
-          displayProductDetails(response, usedEndpoint);
+          displayProductDetails(response, usedApiPath);
         } else {
           resultsDiv.innerHTML = `
             <p class="error">❌ All endpoints failed!</p>
-            <p>Tried:</p>
+            <p>Tried (via proxy):</p>
             <ul>
-              ${endpoints.map(e => `<li><code>${e}</code></li>`).join('')}
+              ${apiPaths.map(path => `<li><code>${path}</code></li>`).join('')}
             </ul>
             <p>💡 The API might not support single product queries, or the UUID is in a different format.</p>
           `;
@@ -138,7 +148,7 @@
       }
     }
 
-    function displayProductDetails(data, endpoint) {
+    function displayProductDetails(data, apiPath) {
       const resultsDiv = document.getElementById('results');
       
       // Extract product (might be wrapped in 'value' array)
@@ -166,7 +176,8 @@
 
       resultsDiv.innerHTML = `
         <p class="success">✅ Product fetched successfully!</p>
-        <p><strong>Endpoint used:</strong> <code>${endpoint}</code></p>
+        <p><strong>API path used:</strong> <code>${apiPath}</code></p>
+        <p><small style="color: #666;">Requested via proxy to avoid CORS</small></p>
         <hr>
         
         <h3>📊 Product Information</h3>
