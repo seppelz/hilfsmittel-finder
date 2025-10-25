@@ -490,6 +490,13 @@ AUFGABE (max. 80 Wörter):
 2. WARUM PASSEND (2-3 Punkte): Welche Produkteigenschaften erfüllen die Nutzer-Anforderungen?
 3. UNTERSCHIEDE (optional, 1-2 Punkte): Was bietet das Produkt anders als gewünscht?
 
+WICHTIG:
+- NUTZE NUR die "TECHNISCHE BESCHREIBUNG" und "SPEZIFIKATIONEN" oben
+- NIEMALS Features erfinden oder annehmen! 
+  * FALSCH: "faltbar (da Aluminiumrohr)" - Material bedeutet NICHT automatisch faltbar!
+  * FALSCH: "höhenverstellbar" wenn nur "ablängen" oder "durch Ablängen" steht - das ist NICHT verstellbar!
+- Wenn "höhenanpassbar durch Ablängen" steht: Erwähne explizit "nur durch Ablängen, nicht einfach verstellbar"
+
 STIL: Einfache Sprache für Senioren. Direkt und sachlich. Keine Begrüßung. Keine Sternchen. Keine Ratschläge zu nächsten Schritten.`;
 
   return prompt;
@@ -890,8 +897,28 @@ export async function generateComparisonAnalysis(products, userContext) {
   const productsInfo = products.map((product, idx) => {
     const name = product?.bezeichnung || 'Produkt';
     const code = product?.produktartNummer || product?.code;
-    const decoded = decodeProduct(product);
+    
+    // Get konstruktionsmerkmale from preloaded details if available
+    const konstruktionsmerkmale = product._preloadedDetails?.konstruktionsmerkmale || 
+                                  product.konstruktionsmerkmale || 
+                                  null;
+    
+    const decoded = decodeProduct(product, null, konstruktionsmerkmale);
     const capabilities = extractDeviceCapabilities(product, decoded, category);
+    
+    // Build Konstruktionsmerkmale section (technical details from API)
+    let konstruktionsmerkmaleText = '';
+    if (konstruktionsmerkmale && konstruktionsmerkmale.length > 0) {
+      const freitextField = konstruktionsmerkmale.find(m => m.label === 'Freitext');
+      const otherFields = konstruktionsmerkmale.filter(m => m.label !== 'Freitext');
+      
+      if (freitextField) {
+        konstruktionsmerkmaleText += `\n\nTECHNISCHE BESCHREIBUNG:\n${freitextField.value}`;
+      }
+      if (otherFields.length > 0) {
+        konstruktionsmerkmaleText += `\n\nSPEZIFIKATIONEN:\n${otherFields.map(m => `- ${m.label}: ${m.value}`).join('\n')}`;
+      }
+    }
     
     // Build Merkmale section if available
     let merkmaleText = '';
@@ -915,7 +942,7 @@ export async function generateComparisonAnalysis(products, userContext) {
     return `
 PRODUKT ${idx + 1}: ${name}
 Code: ${code}
-Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${ausfuehrungenText}${nutzungsdauerText}${merkmaleText}
+Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${konstruktionsmerkmaleText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
 
 Erkannte Eigenschaften:
 ${capabilities}`;
@@ -961,11 +988,16 @@ Antworte mit einem JSON-Objekt in DIESEM EXAKTEN FORMAT (nutze doppelte Anführu
 
 STIL: 
 - JSON MUSS VALIDE sein
-- Wenn ein Wert NICHT SICHER im Internet gefunden wird: "Nicht angegeben"
-- NIEMALS RATEN! Nur Werte eintragen, die du durch Google Search tatsächlich gefunden hast
+- NUTZE VORRANGIG die "TECHNISCHE BESCHREIBUNG" und "SPEZIFIKATIONEN" aus den Produktdaten oben
+- Wenn ein Wert NICHT in den technischen Daten steht UND NICHT im Internet gefunden wird: "Nicht angegeben"
+- NIEMALS RATEN oder ANNAHMEN TREFFEN! 
+  * FALSCH: "faltbar (da Aluminiumrohr)" - Material bedeutet NICHT automatisch faltbar!
+  * FALSCH: "höhenverstellbar" wenn nur "ablängen" oder "durch Ablängen" erwähnt wird - das ist NICHT verstellbar!
+  * RICHTIG: Nur eindeutig dokumentierte Features angeben
 - Bei Zweifeln oder unklaren Informationen IMMER "Nicht angegeben" verwenden
 - Nutze die exakten key-Namen aus der Liste oben
 - Recommendation in einfacher, direkter Sprache für Senioren (max. 2-3 Sätze pro Feld)
+- Erwähne wichtige Unterschiede wie "durch Ablängen" vs "9-fach verstellbar" in der Recommendation
 
 WICHTIG FÜR RÄDER:
 - NUR wenn du die genaue Anzahl im Internet findest: "2 Räder", "3 Räder" oder "4 Räder"

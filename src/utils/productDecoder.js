@@ -55,15 +55,17 @@ export const MOBILITY_AID_FEATURES = {
 
 // Extended features for technical specifications (konstruktionsmerkmale) detection
 export const MOBILITY_FEATURES_EXTENDED = {
-  // Height adjustment patterns
+  // Height adjustment patterns (true adjustability only, NOT "durch Ablängen")
   'fach höhenverstellbar': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   'höhenverstellbar mittels': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   '8-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  '9-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   '10-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   '11-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   '12-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   'druckknopf': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   'quetschverschraubung': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'rastverstellung': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
   
   // Foldable patterns
   'zusammenfaltbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
@@ -480,11 +482,24 @@ export function extractFeaturesFromSpecs(konstruktionsmerkmale, category) {
     'Badehilfe': BATHROOM_FEATURES_EXTENDED,
   }[category] || {};
   
+  // Exclusion patterns for false positives
+  const exclusions = {
+    'adjustable': ['ablängen', 'durch ablängen', 'ablängbar'], // NOT truly adjustable
+  };
+  
   // Search for features in technical text
   for (const [searchKey, value] of Object.entries(featureDict)) {
     if (allText.includes(searchKey) && !seenKeys.has(value.key)) {
-      features.push({ key: value.key, ...value });
-      seenKeys.add(value.key);
+      // Check for exclusion patterns
+      const excludePatterns = exclusions[value.key] || [];
+      const hasExclusion = excludePatterns.some(pattern => allText.includes(pattern));
+      
+      if (!hasExclusion) {
+        features.push({ key: value.key, ...value });
+        seenKeys.add(value.key);
+      } else {
+        console.log(`[productDecoder] Excluded "${value.name}" for key "${value.key}" due to exclusion pattern in text`);
+      }
     }
   }
   
