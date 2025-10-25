@@ -107,7 +107,7 @@ grab_bars: ['04.40.01']
 
 ## Product Database Analysis
 
-**Total Active Products**: 447
+**Total Active Products**: 729
 
 **Breakdown by Subcategory:**
 - `04.40.01`: Badewannenlifter (bathtub lifts) - 11 products
@@ -115,6 +115,7 @@ grab_bars: ['04.40.01']
 - `04.40.03`: Duschklappsitz (shower seats) - 118 products
 - `04.40.04`: Additional shower aids - 9 products
 - `04.40.05`: Wanneneinsteighilfe (bathtub entry aids) - 238 products
+- `33.40.01`: Toilettensitzerhöhung (toilet seat elevations) - 282 products ⭐ (added after testing)
 
 ## How It Works
 

@@ -144,10 +144,10 @@ export const questionFlow = {
           api_criteria: { productGroup: '04.40.01', bath_type: 'bathtub_lift' },
         },
         {
-          text: 'An der Toilette',
+          text: 'An der Toilette (Toilettensitzerhöhung)',
           value: 'toilet',
           leads_to: 'bathroom_features',
-          api_criteria: { productGroup: '04.41', bath_type: 'toilet' },
+          api_criteria: { productGroup: '33.40', bath_type: 'toilet' },
         },
       ],
     },

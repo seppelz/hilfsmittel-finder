@@ -425,8 +425,8 @@ function filterByFeatures(products, criteria) {
           if (criteria.high_index && productName.includes('hochbrechend')) score += 5;
         }
 
-        // Bathroom aids matching (category 04.xx)
-        const isBathroomAids = productCode.startsWith('04.');
+        // Bathroom aids matching (category 04.xx and 33.40 for toilet)
+        const isBathroomAids = productCode.startsWith('04.') || productCode.startsWith('33.40');
         
         if (isBathroomAids) {
           // Location/type matching (+25 points for primary category)
@@ -435,7 +435,7 @@ function filterByFeatures(products, criteria) {
             if (targetType === 'shower' && productCode.startsWith('04.40.03')) score += 25;
             if (targetType === 'bathtub_entry' && productCode.startsWith('04.40.05')) score += 25;
             if (targetType === 'bathtub_lift' && productCode.startsWith('04.40.01')) score += 25;
-            if (targetType === 'toilet' && productCode.startsWith('04.41')) score += 25;
+            if (targetType === 'toilet' && productCode.startsWith('33.40')) score += 25;
           }
           
           // Mount type matching (+15 points)
@@ -1248,7 +1248,7 @@ class GKVApiService {
       bath_lift: ['04.40.01'],
       bathtub_entry: ['04.40.05'],
       bathtub_board: ['04.40.02'],
-      toilet_seat: ['04.41'],
+      toilet_seat: ['33.40'],
       grab_bars: ['04.40.01'],
       hearing_aid: ['13'],
       severity: ['13'],
