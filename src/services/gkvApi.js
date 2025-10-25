@@ -1193,6 +1193,50 @@ class GKVApiService {
     // Use apiUrl helper to properly route through proxy
     return this.fetchWithRetry(apiUrl(`Produkt/${productId}`));
   }
+
+  /**
+   * Fetch details for multiple products in batch (with rate limiting)
+   * @param {Array} productIds - Array of product IDs
+   * @returns {Promise<Map>} Map of productId -> details
+   */
+  async batchGetProductDetails(productIds) {
+    if (!productIds || productIds.length === 0) {
+      return new Map();
+    }
+
+    console.log('[GKV] Batch fetching details for', productIds.length, 'products');
+    
+    const detailsMap = new Map();
+    
+    // Fetch in parallel with rate limiting (max 5 concurrent requests)
+    const batchSize = 5;
+    for (let i = 0; i < productIds.length; i += batchSize) {
+      const batch = productIds.slice(i, i + batchSize);
+      const promises = batch.map(id => 
+        this.getProductDetails(id)
+          .then(details => ({ id, details }))
+          .catch(error => {
+            console.error(`[GKV] Failed to fetch details for ${id}:`, error);
+            return { id, details: null };
+          })
+      );
+      
+      const results = await Promise.all(promises);
+      results.forEach(({ id, details }) => {
+        if (details) {
+          detailsMap.set(id, details);
+        }
+      });
+      
+      // Small delay between batches to avoid overwhelming the API
+      if (i + batchSize < productIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log('[GKV] Batch fetch complete:', detailsMap.size, 'products loaded');
+    return detailsMap;
+  }
 }
 
 export const gkvApi = new GKVApiService();

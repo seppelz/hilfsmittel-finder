@@ -4,6 +4,7 @@ import { trackEvent } from '../utils/analytics';
 import { ProductList } from './ProductList';
 import { getCategoryContext } from '../data/productContexts';
 import { ProductComparison } from './ProductComparison';
+import { gkvApi } from '../services/gkvApi';
 
 const getProductId = (product) =>
   product?.id ??
@@ -38,6 +39,8 @@ export function ResultsDisplay({
   onCloseComparison,
 }) {
   const [selected, setSelected] = useState(selectedProducts);
+  const [productsWithDetails, setProductsWithDetails] = useState([]);
+  const [loadingBatchDetails, setLoadingBatchDetails] = useState(false);
   
   // Get category context based on selected filter, user's category, or first product
   const categoryContext = useMemo(() => {
@@ -69,6 +72,46 @@ export function ResultsDisplay({
   useEffect(() => {
     setSelected(selectedProducts);
   }, [selectedProducts]);
+  
+  // Batch load details for all visible products
+  useEffect(() => {
+    const loadDetailsForVisibleProducts = async () => {
+      if (!products || products.length === 0) {
+        setProductsWithDetails([]);
+        return;
+      }
+      
+      setLoadingBatchDetails(true);
+      try {
+        const productIds = products.map(p => p.id).filter(Boolean);
+        
+        if (productIds.length === 0) {
+          console.log('[ResultsDisplay] No product IDs found for batch loading');
+          setProductsWithDetails(products);
+          return;
+        }
+        
+        console.log('[ResultsDisplay] Batch loading details for', productIds.length, 'products');
+        const detailsMap = await gkvApi.batchGetProductDetails(productIds);
+        
+        // Merge details into products
+        const enriched = products.map(product => ({
+          ...product,
+          _preloadedDetails: detailsMap.get(product.id) || null
+        }));
+        
+        setProductsWithDetails(enriched);
+      } catch (error) {
+        console.error('[ResultsDisplay] Failed to batch load details:', error);
+        // On error, just use products without details
+        setProductsWithDetails(products);
+      } finally {
+        setLoadingBatchDetails(false);
+      }
+    };
+    
+    loadDetailsForVisibleProducts();
+  }, [products]);
   
   const handleCategoryFilter = (categoryCode) => {
     onCategoryFilterChange?.(categoryCode);
@@ -803,15 +846,22 @@ export function ResultsDisplay({
           </div>
         </div>
       ) : (
-        <ProductList
-          products={products}
-          selectedProducts={selected}
-          onToggleProduct={handleSelect}
-          pagination={selectedCategoryFilter || selectedFeatureFilters.length > 0 ? null : pagination}
-          userContext={userAnswers}
-          comparisonProducts={comparisonProducts}
-          onAddToComparison={onAddToComparison}
-        />
+        <>
+          {loadingBatchDetails && (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-600">⏳ Lade Produktdetails...</p>
+            </div>
+          )}
+          <ProductList
+            products={productsWithDetails.length > 0 ? productsWithDetails : products}
+            selectedProducts={selected}
+            onToggleProduct={handleSelect}
+            pagination={selectedCategoryFilter || selectedFeatureFilters.length > 0 ? null : pagination}
+            userContext={userAnswers}
+            comparisonProducts={comparisonProducts}
+            onAddToComparison={onAddToComparison}
+          />
+        </>
       )}
 
       <footer className="flex flex-col items-center gap-4 md:flex-row md:justify-between">

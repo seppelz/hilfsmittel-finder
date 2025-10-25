@@ -53,6 +53,88 @@ export const MOBILITY_AID_FEATURES = {
   '3 räder': { name: '3 Räder', description: 'Wendiger', icon: '🛞', key: '3wheels' }
 };
 
+// Extended features for technical specifications (konstruktionsmerkmale) detection
+export const MOBILITY_FEATURES_EXTENDED = {
+  // Height adjustment patterns
+  'fach höhenverstellbar': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'höhenverstellbar mittels': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  '8-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  '10-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  '11-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  '12-fach': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'druckknopf': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'quetschverschraubung': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  
+  // Foldable patterns
+  'zusammenfaltbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
+  'zusammenklappbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
+  'zerlegbar': { name: 'Faltbar', description: 'Platzsparend zusammenklappbar', icon: '📦', key: 'faltbar' },
+  
+  // Brakes
+  'handbremse': { name: 'Mit Bremsen', description: 'Sicheres Bremsen', icon: '🛑', key: 'brakes' },
+  'feststellbremse': { name: 'Mit Bremsen', description: 'Sicheres Bremsen', icon: '🛑', key: 'brakes' },
+  'bremssystem': { name: 'Mit Bremsen', description: 'Sicheres Bremsen', icon: '🛑', key: 'brakes' },
+  
+  // Seat
+  'sitzfläche': { name: 'Mit Sitzfläche', description: 'Zum Ausruhen', icon: '💺', key: 'seat' },
+  'mit sitz': { name: 'Mit Sitzfläche', description: 'Zum Ausruhen', icon: '💺', key: 'seat' },
+  
+  // Basket/Storage
+  'ablagekorb': { name: 'Mit Korb', description: 'Für Einkäufe', icon: '🧺', key: 'basket' },
+  'einkaufskorb': { name: 'Mit Korb', description: 'Für Einkäufe', icon: '🧺', key: 'basket' },
+  'ablagetasche': { name: 'Mit Korb', description: 'Für Einkäufe', icon: '🧺', key: 'basket' },
+  
+  // Wheels
+  '4 räder': { name: '4 Räder', description: 'Besonders stabil', icon: '🛞', key: '4wheels' },
+  '3 räder': { name: '3 Räder', description: 'Wendiger', icon: '🛞', key: '3wheels' },
+  '2 räder': { name: '2 Räder', description: 'Leicht', icon: '🛞', key: '2wheels' }
+};
+
+export const HEARING_FEATURES_EXTENDED = {
+  // Rechargeable
+  'wiederaufladbar': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋', key: 'R' },
+  'lithium': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋', key: 'R' },
+  'akku': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋', key: 'R' },
+  'li-ion': { name: 'Wiederaufladbar', description: 'Kein Batteriewechsel nötig', icon: '🔋', key: 'R' },
+  
+  // Bluetooth/Connectivity
+  'bluetooth': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'wireless': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'konnektivität': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  'smartphone': { name: 'Bluetooth', description: 'Verbindung mit Smartphone', icon: '📱', key: 'Direct' },
+  
+  // Telecoil
+  'telefonspule': { name: 'Telefonspule', description: 'Für besseres Telefonieren', icon: '📞', key: 'T' },
+  't-spule': { name: 'Telefonspule', description: 'Für besseres Telefonieren', icon: '📞', key: 'T' },
+  
+  // AI/Advanced features
+  'künstliche intelligenz': { name: 'Künstliche Intelligenz', description: 'Lernt Ihre Vorlieben', icon: '🤖', key: 'AI' },
+  'maschinelles lernen': { name: 'Künstliche Intelligenz', description: 'Lernt Ihre Vorlieben', icon: '🤖', key: 'AI' }
+};
+
+export const VISION_FEATURES_EXTENDED = {
+  'vergrößerung': { name: 'Mit Vergrößerung', description: 'Vergrößert Text und Bilder', icon: '🔍', key: 'magnification' },
+  'beleuchtung': { name: 'Mit Beleuchtung', description: 'Bessere Sicht', icon: '💡', key: 'light' },
+  'led': { name: 'LED-Beleuchtung', description: 'Energiesparende Beleuchtung', icon: '💡', key: 'light' },
+  'licht': { name: 'Mit Beleuchtung', description: 'Bessere Sicht', icon: '💡', key: 'light' },
+  'elektronisch': { name: 'Elektronisch', description: 'Variable Einstellungen', icon: '⚡', key: 'electronic' },
+  'digital': { name: 'Elektronisch', description: 'Variable Einstellungen', icon: '⚡', key: 'electronic' },
+  'bildschirm': { name: 'Mit Bildschirm', description: 'Großer Bildschirm', icon: '📺', key: 'screen' },
+  'monitor': { name: 'Mit Bildschirm', description: 'Großer Bildschirm', icon: '📺', key: 'screen' }
+};
+
+export const BATHROOM_FEATURES_EXTENDED = {
+  'rutschfest': { name: 'Rutschfest', description: 'Erhöhte Sicherheit', icon: '🛡️', key: 'non-slip' },
+  'anti-rutsch': { name: 'Rutschfest', description: 'Erhöhte Sicherheit', icon: '🛡️', key: 'non-slip' },
+  'höhenverstellbar': { name: 'Höhenverstellbar', description: 'An Körpergröße anpassbar', icon: '↕️', key: 'adjustable' },
+  'mit rückenlehne': { name: 'Mit Rückenlehne', description: 'Bequemer sitzen', icon: '💺', key: 'backrest' },
+  'rückenlehne': { name: 'Mit Rückenlehne', description: 'Bequemer sitzen', icon: '💺', key: 'backrest' },
+  'mit armlehne': { name: 'Mit Armlehnen', description: 'Erleichtert Aufstehen', icon: '🪑', key: 'armrests' },
+  'armlehne': { name: 'Mit Armlehnen', description: 'Erleichtert Aufstehen', icon: '🪑', key: 'armrests' },
+  'gepolstert': { name: 'Gepolstert', description: 'Erhöhter Komfort', icon: '🛋️', key: 'padded' },
+  'wandmontage': { name: 'Wandmontage', description: 'Fest installiert', icon: '🔧', key: 'wall-mounted' }
+};
+
 export const BATHROOM_AID_TYPES = {
   'Duschhocker': { de: 'Sitz für die Dusche', icon: '🚿', features: ['Rutschfest', 'Höhenverstellbar'] },
   'Duschstuhl': { de: 'Stuhl für die Dusche', icon: '🚿', features: ['Mit Rückenlehne', 'Stabil'] },
@@ -140,7 +222,7 @@ function decodeHearingAid(productName) {
  * @param {string} productName - Technical product name
  * @returns {object} Decoded information
  */
-function decodeMobilityAid(productName, productCode) {
+function decodeMobilityAid(productName) {
   const upperName = productName.toUpperCase();
   const lowerName = productName.toLowerCase();
   
@@ -367,12 +449,82 @@ function extractBrandModel(productName) {
 }
 
 /**
+ * Extract features from konstruktionsmerkmale (technical details)
+ * @param {Array} konstruktionsmerkmale - Technical specifications
+ * @param {string} category - Product category
+ * @returns {Array} Detected features
+ */
+export function extractFeaturesFromSpecs(konstruktionsmerkmale, category) {
+  if (!konstruktionsmerkmale || !Array.isArray(konstruktionsmerkmale)) {
+    return [];
+  }
+  
+  // Combine all text fields
+  const allText = konstruktionsmerkmale
+    .map(m => `${m.label || ''} ${m.value || ''}`)
+    .join(' ')
+    .toLowerCase();
+  
+  const features = [];
+  const seenKeys = new Set();
+  
+  // Select appropriate feature dictionary based on category
+  const featureDict = {
+    'mobility': MOBILITY_FEATURES_EXTENDED,
+    'Gehhilfe': MOBILITY_FEATURES_EXTENDED,
+    'hearing': HEARING_FEATURES_EXTENDED,
+    'Hörgerät': HEARING_FEATURES_EXTENDED,
+    'vision': VISION_FEATURES_EXTENDED,
+    'Sehhilfe': VISION_FEATURES_EXTENDED,
+    'bathroom': BATHROOM_FEATURES_EXTENDED,
+    'Badehilfe': BATHROOM_FEATURES_EXTENDED,
+  }[category] || {};
+  
+  // Search for features in technical text
+  for (const [searchKey, value] of Object.entries(featureDict)) {
+    if (allText.includes(searchKey) && !seenKeys.has(value.key)) {
+      features.push({ key: value.key, ...value });
+      seenKeys.add(value.key);
+    }
+  }
+  
+  return features;
+}
+
+/**
+ * Merge name-based and spec-based features (deduplication by key)
+ * @param {Array} nameFeatures - Features detected from product name
+ * @param {Array} specFeatures - Features detected from technical specs
+ * @returns {Array} Merged and deduplicated features
+ */
+function mergeFeatures(nameFeatures, specFeatures) {
+  const merged = new Map();
+  
+  // Add name-based features first
+  nameFeatures.forEach(f => {
+    if (f && f.key) {
+      merged.set(f.key, f);
+    }
+  });
+  
+  // Add spec-based features (don't override existing)
+  specFeatures.forEach(f => {
+    if (f && f.key && !merged.has(f.key)) {
+      merged.set(f.key, f);
+    }
+  });
+  
+  return Array.from(merged.values());
+}
+
+/**
  * Main decoder function
  * @param {object} product - Product object with name and code
  * @param {string} categoryHint - Category hint from product group
+ * @param {Array} konstruktionsmerkmale - Optional technical specifications for enhanced detection
  * @returns {object} Decoded product information
  */
-export function decodeProduct(product, categoryHint = null) {
+export function decodeProduct(product, categoryHint = null, konstruktionsmerkmale = null) {
   const productName = product?.bezeichnung || product?.name || '';
   const productCode = product?.produktartNummer || product?.code || '';
   
@@ -383,53 +535,72 @@ export function decodeProduct(product, categoryHint = null) {
   // Determine category from product code
   const groupPrefix = productCode.substring(0, 5);
   
+  let decodedInfo = null;
+  let category = null;
+  
   // Hearing aids: 13.20.x, 07.99.x
   if (groupPrefix === '13.20' || groupPrefix.startsWith('07.99') || categoryHint === 'hearing') {
-    return decodeHearingAid(productName);
+    decodedInfo = decodeHearingAid(productName);
+    category = 'hearing';
   }
-  
   // Mobility aids / Gehhilfen: 10.xx (primary), 09.xx (legacy)
-  if (groupPrefix.startsWith('10.') || groupPrefix.startsWith('09.') || categoryHint === 'mobility') {
-    return decodeMobilityAid(productName, productCode);
+  else if (groupPrefix.startsWith('10.') || groupPrefix.startsWith('09.') || categoryHint === 'mobility') {
+    decodedInfo = decodeMobilityAid(productName);
+    category = 'mobility';
   }
-  
   // Bathroom aids: 04.40.x, 04.41.x
-  if (groupPrefix.startsWith('04.4') || categoryHint === 'bathroom') {
-    return decodeBathroomAid(productName, productCode);
+  else if (groupPrefix.startsWith('04.4') || categoryHint === 'bathroom') {
+    decodedInfo = decodeBathroomAid(productName, productCode);
+    category = 'bathroom';
   }
-  
   // Vision aids: 25.50.x, 25.56.x
-  if (groupPrefix.startsWith('25.5') || categoryHint === 'vision') {
-    return decodeVisionAid(productName);
+  else if (groupPrefix.startsWith('25.5') || categoryHint === 'vision') {
+    decodedInfo = decodeVisionAid(productName);
+    category = 'vision';
   }
-  
   // Incontinence products: 51.40.x
-  if (groupPrefix.startsWith('51.4') || categoryHint === 'incontinence') {
-    return decodeIncontinenceProduct(productName);
+  else if (groupPrefix.startsWith('51.4') || categoryHint === 'incontinence') {
+    decodedInfo = decodeIncontinenceProduct(productName);
+    category = 'incontinence';
   }
-  
   // Compression therapy: 11.31.x
-  if (groupPrefix.startsWith('11.3') || categoryHint === 'compression') {
-    return decodeCompressionTherapy(productName);
+  else if (groupPrefix.startsWith('11.3') || categoryHint === 'compression') {
+    decodedInfo = decodeCompressionTherapy(productName);
+    category = 'compression';
   }
-  
   // Care beds: 18.50.x
-  if (groupPrefix.startsWith('18.5') || categoryHint === 'bed') {
-    return decodeCareBed(productName);
+  else if (groupPrefix.startsWith('18.5') || categoryHint === 'bed') {
+    decodedInfo = decodeCareBed(productName);
+    category = 'bed';
   }
-  
   // Measurement devices: 22.50.x, 22.51.x
-  if (groupPrefix.startsWith('22.5') || categoryHint === 'measurement') {
-    return decodeMeasurementDevice(productName);
+  else if (groupPrefix.startsWith('22.5') || categoryHint === 'measurement') {
+    decodedInfo = decodeMeasurementDevice(productName);
+    category = 'measurement';
+  }
+  // Default: basic extraction
+  else {
+    decodedInfo = {
+      deviceType: null,
+      features: [],
+      brandModel: extractBrandModel(productName),
+      category: 'Hilfsmittel'
+    };
   }
   
-  // Default: basic extraction
-  return {
-    deviceType: null,
-    features: [],
-    brandModel: extractBrandModel(productName),
-    category: 'Hilfsmittel'
-  };
+  // If we have konstruktionsmerkmale, extract features from specs and merge
+  if (konstruktionsmerkmale && category) {
+    const specFeatures = extractFeaturesFromSpecs(konstruktionsmerkmale, category);
+    const nameFeatures = decodedInfo?.features || [];
+    const mergedFeatures = mergeFeatures(nameFeatures, specFeatures);
+    
+    return {
+      ...decodedInfo,
+      features: mergedFeatures
+    };
+  }
+  
+  return decodedInfo;
 }
 
 /**

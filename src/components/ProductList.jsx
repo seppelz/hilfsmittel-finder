@@ -20,6 +20,9 @@ export function ProductList({ products = [], selectedProducts = [], onToggleProd
       <div className="grid gap-6 md:grid-cols-2">
         {products.map((product) => {
           const id = getProductId(product);
+          // Extract preloaded details if available
+          const preloadedDetails = product._preloadedDetails || null;
+          
           return (
             <ProductCard
               key={id}
@@ -29,6 +32,7 @@ export function ProductList({ products = [], selectedProducts = [], onToggleProd
               userContext={userContext}
               inComparison={comparisonIds.has(id)}
               onAddToComparison={onAddToComparison}
+              preloadedDetails={preloadedDetails}
             />
           );
         })}

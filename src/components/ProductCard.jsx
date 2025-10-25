@@ -1,30 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Check, Info, Sparkles, Award, Scale } from 'lucide-react';
 import { decodeProduct, getSimplifiedName, generateExplanation } from '../utils/productDecoder';
-import { getCategoryIcon, getCategoryName } from '../data/productContexts';
+import { getCategoryIcon } from '../data/productContexts';
 import { generateProductDescription, isAIAvailable, isHighlyRecommended } from '../services/aiEnhancement';
 import { gkvApi } from '../services/gkvApi';
 
-export function ProductCard({ product, selected = false, onSelect, userContext = null, onAddToComparison = null, inComparison = false }) {
+export function ProductCard({ 
+  product, 
+  selected = false, 
+  onSelect, 
+  userContext = null, 
+  onAddToComparison = null, 
+  inComparison = false,
+  preloadedDetails = null  // NEW: Pre-loaded details from batch fetch
+}) {
   const code = product?.produktartNummer || product?.code || 'Unbekannt';
   const name = product?.bezeichnung || product?.name || 'Hilfsmittel';
   const description = product?.beschreibung || product?.description;
-  const zuzahlung = product?.zuzahlung || '10% des Preises (min. 5€, max. 10€)';
   const hersteller = product?.hersteller || product?.manufacturer;
-  
-  // Decode product name for user-friendly display
-  const decodedInfo = decodeProduct(product);
-  const simplifiedName = getSimplifiedName(name);
-  const typeExplanation = generateExplanation(decodedInfo);
-  const categoryIcon = getCategoryIcon(code);
-  const categoryName = getCategoryName(code);
-  
-  // Check if highly recommended for user
-  const isRecommended = isHighlyRecommended(product, userContext, decodedInfo);
-  
-  // Additional info that might be available
-  const indikation = product?.indikation;
-  const anwendungsgebiet = product?.anwendungsgebiet;
   
   // Extract basic metadata from API (produktart, typenAusfuehrungen, nutzungsdauer)
   const produktart = product?.produktart;
@@ -36,8 +29,25 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
   const [loadingAI, setLoadingAI] = useState(false);
   const [showAI, setShowAI] = useState(false);
   
-  // State for product details
-  const [fullProductDetails, setFullProductDetails] = useState(null);
+  // State for product details (initialize with preloaded if available)
+  const [fullProductDetails, setFullProductDetails] = useState(preloadedDetails);
+  
+  // Decode product name with konstruktionsmerkmale for enhanced feature detection
+  const decodedInfo = useMemo(() => {
+    const konstruktionsmerkmale = fullProductDetails?.konstruktionsmerkmale || preloadedDetails?.konstruktionsmerkmale;
+    return decodeProduct(product, null, konstruktionsmerkmale);
+  }, [product, fullProductDetails, preloadedDetails]);
+  
+  const simplifiedName = getSimplifiedName(name);
+  const typeExplanation = generateExplanation(decodedInfo);
+  const categoryIcon = getCategoryIcon(code);
+  
+  // Check if highly recommended for user
+  const isRecommended = isHighlyRecommended(product, userContext, decodedInfo);
+  
+  // Additional info that might be available
+  const indikation = product?.indikation;
+  const anwendungsgebiet = product?.anwendungsgebiet;
   const [loadingDetails, setLoadingDetails] = useState(false);
   
   // Auto-generate AI description when card becomes visible (for selected products)
@@ -103,13 +113,13 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
     }
   };
 
-  // Auto-load details immediately when card is selected
+  // Auto-load details immediately when card is selected (only if not preloaded)
   useEffect(() => {
-    if (selected && !fullProductDetails && !loadingDetails) {
+    if (selected && !fullProductDetails && !preloadedDetails && !loadingDetails) {
       loadFullProductDetails();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selected, fullProductDetails, preloadedDetails]);
 
   const handleClick = () => {
     onSelect?.(product);
