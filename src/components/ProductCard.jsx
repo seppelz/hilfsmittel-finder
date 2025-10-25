@@ -131,15 +131,6 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
         </div>
       )}
       
-      {decodedInfo?.deviceType && (
-        <p className="mt-1 text-sm text-gray-600">
-          {decodedInfo.deviceType.de}
-          {decodedInfo.deviceType.visibility && (
-            <span className="ml-2 text-xs text-gray-500">• {decodedInfo.deviceType.visibility}</span>
-          )}
-        </p>
-      )}
-      
       {/* Feature badges */}
       {decodedInfo?.features && decodedInfo.features.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -194,12 +185,23 @@ export function ProductCard({ product, selected = false, onSelect, userContext =
             
             {!loadingDetails && fullProductDetails?.konstruktionsmerkmale && fullProductDetails.konstruktionsmerkmale.length > 0 && (
               <div className="space-y-2">
-                {fullProductDetails.konstruktionsmerkmale.map((merkmal, idx) => (
-                  <div key={idx} className="text-sm">
-                    <span className="font-semibold text-gray-700">{merkmal.label}:</span>{' '}
-                    <span className="text-gray-600">{merkmal.value}</span>
-                  </div>
-                ))}
+                {fullProductDetails.konstruktionsmerkmale.map((merkmal, idx) => {
+                  // Special handling for "Freitext" - show without label
+                  if (merkmal.label === 'Freitext') {
+                    return (
+                      <p key={idx} className="text-sm text-gray-700">
+                        {merkmal.value}
+                      </p>
+                    );
+                  }
+                  // Regular fields: show label and value
+                  return (
+                    <div key={idx} className="text-sm">
+                      <span className="font-semibold text-gray-700">{merkmal.label}:</span>{' '}
+                      <span className="text-gray-600">{merkmal.value}</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
             

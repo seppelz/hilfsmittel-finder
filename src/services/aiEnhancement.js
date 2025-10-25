@@ -361,7 +361,21 @@ function buildPrompt(product, userContext, decodedInfo) {
   const userNeeds = extractUserNeeds(userContext);
   const deviceCapabilities = extractDeviceCapabilities(product, decodedInfo, category);
   
-  // Build Merkmale section if available
+  // Build Konstruktionsmerkmale section (technical details from API)
+  let konstruktionsmerkmaleText = '';
+  if (product.konstruktionsmerkmale && product.konstruktionsmerkmale.length > 0) {
+    const freitextField = product.konstruktionsmerkmale.find(m => m.label === 'Freitext');
+    const otherFields = product.konstruktionsmerkmale.filter(m => m.label !== 'Freitext');
+    
+    if (freitextField) {
+      konstruktionsmerkmaleText += `\nTECHNISCHE BESCHREIBUNG:\n${freitextField.value}`;
+    }
+    if (otherFields.length > 0) {
+      konstruktionsmerkmaleText += `\n\nSPEZIFIKATIONEN:\n${otherFields.map(m => `- ${m.label}: ${m.value}`).join('\n')}`;
+    }
+  }
+  
+  // Build Merkmale section if available (from list endpoint)
   let merkmaleText = '';
   if (product.merkmale && product.merkmale.length > 0) {
     merkmaleText = `\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
@@ -380,14 +394,14 @@ function buildPrompt(product, userContext, decodedInfo) {
     ? `\nNutzungsdauer: ${product.nutzungsdauer}`
     : '';
   
-  const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
+  const prompt = `Du bist Experte für ${expertRole}. Vergleiche dieses Produkt mit den Anforderungen des Nutzers.
 
 NUTZER-SITUATION:
 ${userNeeds}
 
 PRODUKT:
 ${productName}
-${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
+${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${konstruktionsmerkmaleText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
 
 Erkannte Eigenschaften:
 ${deviceCapabilities}
@@ -395,12 +409,11 @@ ${deviceCapabilities}
 Hersteller: ${manufacturer}
 
 AUFGABE (max. 80 Wörter):
-1. PASSUNG (1 Satz): "Sehr gut geeignet" / "Gut geeignet" / "Eingeschränkt geeignet"
-2. HAUPTVORTEILE (2-3 Punkte): Was spricht dafür?
-3. ZU BEACHTEN (optional, 1 Punkt): Wichtige Einschränkung?
-4. NÄCHSTER SCHRITT (1 Satz): Wie bekomme ich es? (Arzt/Rezept/Beratung)
+1. EIGNUNG (1 Satz): Bewerte die Passung zu den Nutzer-Anforderungen oben - "Sehr gut geeignet" / "Gut geeignet" / "Eingeschränkt geeignet"
+2. WARUM PASSEND (2-3 Punkte): Welche Produkteigenschaften erfüllen die Nutzer-Anforderungen?
+3. UNTERSCHIEDE (optional, 1-2 Punkte): Was bietet das Produkt anders als gewünscht?
 
-STIL: Einfache Sprache für Senioren. Direkt und professionell. Keine Begrüßung. Keine Sternchen.`;
+STIL: Einfache Sprache für Senioren. Direkt und sachlich. Keine Begrüßung. Keine Sternchen. Keine Ratschläge zu nächsten Schritten.`;
 
   return prompt;
 }
