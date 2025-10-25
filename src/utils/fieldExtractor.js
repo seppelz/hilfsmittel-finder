@@ -258,6 +258,141 @@ export function getIconForField(label, category) {
 }
 
 /**
+ * Extract key terms from a field label for semantic matching
+ * @param {string} label - Field label
+ * @returns {Array<string>} Key terms
+ */
+function extractKeyTerms(label) {
+  if (!label) return [];
+  
+  const lower = label.toLowerCase();
+  const terms = [];
+  
+  // Extract meaningful terms (ignore common words)
+  const stopWords = ['der', 'die', 'das', 'mit', 'für', 'bei', 'und', 'oder', 'von', 'zur', 'zum', 'den', 'dem'];
+  const words = lower.split(/[\s,/()]+/).filter(w => w.length > 2 && !stopWords.includes(w));
+  
+  // Add multi-word combinations for better matching
+  // Hearing aids specific
+  if (lower.includes('anzahl') && lower.includes('kanäl')) terms.push('kanäle');
+  if (lower.includes('verstärk') || lower.includes('amplif')) terms.push('verstärkung');
+  if (lower.includes('ospl')) terms.push('ospl90');
+  if (lower.includes('signal') && lower.includes('verarbeit')) terms.push('signalverarbeitung');
+  if (lower.includes('agc') || lower.includes('regelsystem')) terms.push('agc_regelsystem');
+  if (lower.includes('programm') && (lower.includes('möglich') || lower.includes('manuell') || lower.includes('hör'))) terms.push('programme');
+  if (lower.includes('störschall') || lower.includes('störgeräusch') || lower.includes('noise')) terms.push('störschallunterdrückung');
+  if (lower.includes('rückkoppl')) terms.push('rückkopplung');
+  if (lower.includes('batterie') || lower.includes('energiequelle')) terms.push('batterie');
+  if (lower.includes('telefon') && lower.includes('spule')) terms.push('telefonspule');
+  if (lower.includes('audio') && lower.includes('eingang')) terms.push('audioeingang');
+  if (lower.includes('mikrofon') && !lower.includes('system')) terms.push('mikrofone');
+  if (lower.includes('ausgangs') && (lower.includes('druck') || lower.includes('schall'))) terms.push('ausgangsdruck');
+  if (lower.includes('schallaufnahm') || (lower.includes('richt') && lower.includes('charakteristik'))) terms.push('richtcharakteristik');
+  if (lower.includes('bauform')) terms.push('bauform');
+  if (lower.includes('bauart') && lower.includes('nr')) terms.push('bauartnr');
+  if (lower.includes('baugleich') || lower.includes('identisch')) terms.push('baugleich');
+  if (lower.includes('klangblend')) terms.push('klangblenden');
+  if (lower.includes('fernbedien')) terms.push('fernbedienung');
+  if (lower.includes('wireless') || lower.includes('funk')) terms.push('wireless');
+  if (lower.includes('datalogg')) terms.push('datalogging');
+  if (lower.includes('frequenz') && lower.includes('modifi')) terms.push('frequenzmodifikation');
+  if (lower.includes('einstellbar') && lower.includes('parameter')) terms.push('parameter');
+  if (lower.includes('tinnitus')) terms.push('tinnitus');
+  
+  // Mobility aids specific
+  if (lower.includes('belastbar') || lower.includes('benutzergewicht')) terms.push('max_belastbarkeit');
+  if (lower.includes('eigengewicht') && !lower.includes('max')) terms.push('eigengewicht');
+  if (lower.includes('körpergröße')) terms.push('körpergröße');
+  if (lower.includes('sitzhöhe')) terms.push('sitzhöhe');
+  if (lower.includes('sitzbreite')) terms.push('sitzbreite');
+  if (lower.includes('gesamtbreite')) terms.push('gesamtbreite');
+  if (lower.includes('gesamtlänge')) terms.push('gesamtlänge');
+  if (lower.includes('gesamthöhe')) terms.push('gesamthöhe');
+  if (lower.includes('faltmaß')) terms.push('faltmasse');
+  if (lower.includes('wendekreis')) terms.push('wendekreis');
+  if (lower.includes('bereifung') || (lower.includes('rad') && lower.includes('größe'))) terms.push('bereifung');
+  if (lower.includes('korb') && lower.includes('zuladung')) terms.push('korb_zuladung');
+  
+  // Add individual meaningful words
+  words.forEach(word => {
+    if (word.length > 4 && !terms.includes(word)) {
+      terms.push(word);
+    }
+  });
+  
+  return terms;
+}
+
+/**
+ * Check if two field labels are semantically similar
+ * @param {string} label1 - First label
+ * @param {string} label2 - Second label
+ * @returns {boolean} True if labels refer to the same concept
+ */
+function areFieldsSimilar(label1, label2) {
+  if (label1 === label2) return true;
+  
+  const terms1 = extractKeyTerms(label1);
+  const terms2 = extractKeyTerms(label2);
+  
+  // Check for significant overlap (at least 2 terms or 1 highly specific term)
+  const commonTerms = terms1.filter(t => terms2.includes(t));
+  
+  if (commonTerms.length >= 2) return true;
+  
+  // Check for highly specific terms that indicate same field
+  const specificTerms = [
+    'kanäle', 'ospl90', 'agc_regelsystem', 'signalverarbeitung', 'batterie',
+    'bauartnr', 'baugleich', 'datalogging', 'frequenzmodifikation',
+    'störschallunterdrückung', 'rückkopplung', 'richtcharakteristik',
+    'wendekreis', 'faltmasse', 'körpergröße', 'korb_zuladung'
+  ];
+  if (commonTerms.some(t => specificTerms.includes(t))) return true;
+  
+  return false;
+}
+
+/**
+ * Choose the better label from two similar fields (prefer shorter, cleaner ones)
+ * @param {string} label1 - First label
+ * @param {string} label2 - Second label
+ * @returns {string} Preferred label
+ */
+function chooseBetterLabel(label1, label2) {
+  // Prefer labels without parentheses (they're usually cleaner)
+  const hasParens1 = label1.includes('(');
+  const hasParens2 = label2.includes('(');
+  
+  if (hasParens1 && !hasParens2) return label2;
+  if (hasParens2 && !hasParens1) return label1;
+  
+  // Prefer labels without qualifiers like "unabhängiger", "jeweils", etc.
+  const hasQualifier1 = /unabhängig|jeweils|einzeln|separat|individuell/i.test(label1);
+  const hasQualifier2 = /unabhängig|jeweils|einzeln|separat|individuell/i.test(label2);
+  
+  if (hasQualifier1 && !hasQualifier2) return label2;
+  if (hasQualifier2 && !hasQualifier1) return label1;
+  
+  // Prefer much shorter labels (significant difference)
+  if (label1.length < label2.length * 0.6) return label1;
+  if (label2.length < label1.length * 0.6) return label2;
+  
+  // Prefer labels with standard prefixes
+  const standardPrefixes = ['Anzahl der ', 'Anzahl ', 'Typ ', 'Art der '];
+  for (const prefix of standardPrefixes) {
+    if (label1.startsWith(prefix) && !label2.startsWith(prefix)) return label1;
+    if (label2.startsWith(prefix) && !label1.startsWith(prefix)) return label2;
+  }
+  
+  // Prefer shorter overall
+  if (label1.length < label2.length) return label1;
+  if (label2.length < label1.length) return label2;
+  
+  // Default to first one
+  return label1;
+}
+
+/**
  * Discover all available fields from products' konstruktionsmerkmale
  * @param {Array} products - Products to analyze
  * @param {string} category - Category for icon selection
@@ -265,6 +400,7 @@ export function getIconForField(label, category) {
  */
 export function discoverAllFields(products, category) {
   const allFields = new Map();
+  const labelToKey = new Map(); // Track which labels map to which keys
   
   products.forEach(product => {
     const km = product.konstruktionsmerkmale || product._preloadedDetails?.konstruktionsmerkmale || [];
@@ -281,31 +417,69 @@ export function discoverAllFields(products, category) {
         return;
       }
       
-      if (!allFields.has(merkmal.label)) {
-        allFields.set(merkmal.label, {
-          key: normalizeFieldKey(merkmal.label),
+      // Check if we already have a similar field
+      let existingKey = null;
+      let existingLabel = null;
+      
+      for (const [label, key] of labelToKey.entries()) {
+        if (areFieldsSimilar(merkmal.label, label)) {
+          existingKey = key;
+          existingLabel = label;
+          break;
+        }
+      }
+      
+      if (existingKey) {
+        // Found similar field - merge them
+        const betterLabel = chooseBetterLabel(merkmal.label, existingLabel);
+        
+        // Update the field with the better label if it changed
+        if (betterLabel !== existingLabel) {
+          const field = allFields.get(existingKey);
+          field.label = betterLabel;
+          field.icon = getIconForField(betterLabel, category);
+          
+          // Update tracking
+          labelToKey.delete(existingLabel);
+          labelToKey.set(betterLabel, existingKey);
+          
+          console.log(`[FieldExtractor] Merged similar fields: "${existingLabel}" + "${merkmal.label}" → "${betterLabel}"`);
+        }
+      } else {
+        // New unique field
+        const key = normalizeFieldKey(merkmal.label);
+        allFields.set(key, {
+          key: key,
           label: merkmal.label,
           icon: getIconForField(merkmal.label, category)
         });
+        labelToKey.set(merkmal.label, key);
       }
     });
   });
   
-  console.log(`[FieldExtractor] Discovered ${allFields.size} unique fields from ${products.length} products`);
+  console.log(`[FieldExtractor] Discovered ${allFields.size} unique fields from ${products.length} products (after merging similar fields)`);
   
   return Array.from(allFields.values());
 }
 
 /**
- * Extract field value by direct label lookup
+ * Extract field value by direct label lookup (with fuzzy matching)
  * @param {Array} konstruktionsmerkmale - Array of {label, value} objects
- * @param {string} fieldLabel - Exact field label to look for
+ * @param {string} fieldLabel - Field label to look for
  * @returns {string|null} Extracted value or null
  */
 export function extractFieldByLabel(konstruktionsmerkmale, fieldLabel) {
   if (!konstruktionsmerkmale || konstruktionsmerkmale.length === 0) return null;
   
-  const merkmal = konstruktionsmerkmale.find(m => m.label === fieldLabel);
+  // Try exact match first
+  let merkmal = konstruktionsmerkmale.find(m => m.label === fieldLabel);
+  
+  // If no exact match, try fuzzy matching
+  if (!merkmal) {
+    merkmal = konstruktionsmerkmale.find(m => areFieldsSimilar(m.label, fieldLabel));
+  }
+  
   if (merkmal && merkmal.value) {
     return cleanValue(merkmal.value, '');
   }
