@@ -32,9 +32,23 @@ export function ProductCard({
   // State for product details (initialize with preloaded if available)
   const [fullProductDetails, setFullProductDetails] = useState(preloadedDetails);
   
+  // Update fullProductDetails when preloadedDetails change
+  useEffect(() => {
+    if (preloadedDetails && !fullProductDetails) {
+      console.log('[ProductCard] Setting fullProductDetails from preloadedDetails for product:', product?.id);
+      setFullProductDetails(preloadedDetails);
+    }
+  }, [preloadedDetails, fullProductDetails, product]);
+  
   // Decode product name with konstruktionsmerkmale for enhanced feature detection
   const decodedInfo = useMemo(() => {
     const konstruktionsmerkmale = fullProductDetails?.konstruktionsmerkmale || preloadedDetails?.konstruktionsmerkmale;
+    console.log('[ProductCard] Decoding product with konstruktionsmerkmale:', {
+      productId: product?.id,
+      hasFullDetails: !!fullProductDetails?.konstruktionsmerkmale,
+      hasPreloaded: !!preloadedDetails?.konstruktionsmerkmale,
+      merkmaleCount: konstruktionsmerkmale?.length || 0
+    });
     return decodeProduct(product, null, konstruktionsmerkmale);
   }, [product, fullProductDetails, preloadedDetails]);
   

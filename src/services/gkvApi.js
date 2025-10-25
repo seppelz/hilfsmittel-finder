@@ -1191,7 +1191,12 @@ class GKVApiService {
 
   async getProductDetails(productId) {
     // Use apiUrl helper to properly route through proxy
-    return this.fetchWithRetry(apiUrl(`Produkt/${productId}`));
+    const details = await this.fetchWithRetry(apiUrl(`Produkt/${productId}`));
+    console.log(`[GKV] Fetched details for product ${productId}:`, {
+      hasKonstruktionsmerkmale: !!details?.konstruktionsmerkmale,
+      konstruktionsmerkmaleCount: details?.konstruktionsmerkmale?.length || 0
+    });
+    return details;
   }
 
   /**

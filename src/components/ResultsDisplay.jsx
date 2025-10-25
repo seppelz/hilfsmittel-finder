@@ -95,10 +95,24 @@ export function ResultsDisplay({
         const detailsMap = await gkvApi.batchGetProductDetails(productIds);
         
         // Merge details into products
-        const enriched = products.map(product => ({
-          ...product,
-          _preloadedDetails: detailsMap.get(product.id) || null
-        }));
+        const enriched = products.map(product => {
+          const details = detailsMap.get(product.id);
+          return {
+            ...product,
+            _preloadedDetails: details || null
+          };
+        });
+        
+        console.log('[ResultsDisplay] Enriched products:', {
+          totalProducts: enriched.length,
+          withDetails: enriched.filter(p => p._preloadedDetails?.konstruktionsmerkmale).length,
+          sampleProduct: enriched[0] ? {
+            id: enriched[0].id,
+            hasPreloadedDetails: !!enriched[0]._preloadedDetails,
+            hasKonstruktionsmerkmale: !!enriched[0]._preloadedDetails?.konstruktionsmerkmale,
+            konstruktionsmerkmaleCount: enriched[0]._preloadedDetails?.konstruktionsmerkmale?.length || 0
+          } : null
+        });
         
         setProductsWithDetails(enriched);
       } catch (error) {
@@ -856,7 +870,7 @@ export function ResultsDisplay({
             products={productsWithDetails.length > 0 ? productsWithDetails : products}
             selectedProducts={selected}
             onToggleProduct={handleSelect}
-            pagination={selectedCategoryFilter || selectedFeatureFilters.length > 0 ? null : pagination}
+            pagination={pagination}
             userContext={userAnswers}
             comparisonProducts={comparisonProducts}
             onAddToComparison={onAddToComparison}
