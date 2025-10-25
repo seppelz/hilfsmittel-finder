@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Check, Minus, Sparkles, Scale, Info } from 'lucide-react';
 import { decodeProduct } from '../utils/productDecoder';
 import { generateComparisonAnalysis } from '../services/aiEnhancement';
+import { getComparisonFieldsForProducts } from '../data/comparisonFields';
 
 export function ProductComparison({ 
   products, 
@@ -413,175 +414,67 @@ export function ProductComparison({
                   </>
                 )}
                 
-                {/* GEHHILFEN FEATURES - Merged AI + Manual Detection */}
-                {productCategory === 'mobility' && (
-                  <>
-                    {/* Technical Specs from AI (numerical data) - only show if at least one product has the value */}
-                    {mergedComparisonData.some(item => item.max_weight) && (
-                      <tr className="bg-blue-50">
+                {/* DYNAMIC SUBCATEGORY-SPECIFIC FEATURES */}
+                {(() => {
+                  // Get subcategory-specific fields for these products
+                  const relevantFields = getComparisonFieldsForProducts(products, productCategory);
+                  
+                  // Filter out fields where ALL products have "Nicht angegeben"
+                  const visibleFields = relevantFields.filter(field => {
+                    const hasValue = mergedComparisonData.some(item => {
+                      const value = item[field.key];
+                      return value && value !== 'Nicht angegeben' && value !== 'Keine Angabe';
+                    });
+                    return hasValue;
+                  });
+                  
+                  // Boolean fields (need special rendering with checkmarks)
+                  const booleanFields = ['foldable', 'brakes', 'basket'];
+                  
+                  return visibleFields.map((field, fieldIdx) => {
+                    const isBoolean = booleanFields.includes(field.key);
+                    const isAlternating = fieldIdx % 2 === 0;
+                    
+                    return (
+                      <tr key={field.key} className={isAlternating ? 'bg-blue-50' : ''}>
                         <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          ⚖️ Max. Benutzergewicht
+                          {field.icon} {field.label}
                         </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.max_weight ? (
-                              <span className="text-sm font-bold text-gray-900">{item.max_weight}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
+                        {mergedComparisonData.map((item, idx) => {
+                          const value = item[field.key];
+                          
+                          return (
+                            <td key={idx} className="px-6 py-4">
+                              {isBoolean ? (
+                                // Boolean field with checkmarks
+                                value === "Ja" || value === "Ja (erkannt)" ? (
+                                  <div className="flex items-center gap-2">
+                                    <Check className="h-5 w-5 text-green-600" />
+                                    <span className="text-sm text-green-700 font-medium">Ja</span>
+                                  </div>
+                                ) : value === "Nein" ? (
+                                  <div className="flex items-center gap-2">
+                                    <Minus className="h-5 w-5 text-gray-300" />
+                                    <span className="text-sm text-gray-500">Nein</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                                )
+                              ) : (
+                                // Regular text field
+                                value && value !== 'Nicht angegeben' && value !== 'Keine Angabe' ? (
+                                  <span className="text-sm font-bold text-gray-900">{value}</span>
+                                ) : (
+                                  <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
+                                )
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
-                    )}
-                    
-                    {mergedComparisonData.some(item => item.body_height) && (
-                      <tr>
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          📏 Körpergröße
-                        </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.body_height ? (
-                              <span className="text-sm font-bold text-gray-900">{item.body_height}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                    
-                    {mergedComparisonData.some(item => item.seat_height) && (
-                      <tr className="bg-blue-50">
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          💺 Sitzhöhe
-                        </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.seat_height ? (
-                              <span className="text-sm font-bold text-gray-900">{item.seat_height}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                    
-                    {mergedComparisonData.some(item => item.total_height) && (
-                      <tr>
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          📐 Gesamthöhe
-                        </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.total_height ? (
-                              <span className="text-sm font-bold text-gray-900">{item.total_height}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                    
-                    {mergedComparisonData.some(item => item.width) && (
-                      <tr className="bg-blue-50">
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          ↔️ Breite
-                        </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.width ? (
-                              <span className="text-sm font-bold text-gray-900">{item.width}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                    
-                    {mergedComparisonData.some(item => item.weight) && (
-                      <tr>
-                        <td className="px-6 py-4 text-sm font-semibold text-blue-900">
-                          ⚖️ Gewicht
-                        </td>
-                        {mergedComparisonData.map((item, idx) => (
-                          <td key={idx} className="px-6 py-4">
-                            {item.weight ? (
-                              <span className="text-sm font-bold text-gray-900">{item.weight}</span>
-                            ) : (
-                              <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                    
-                    {/* Boolean Features - Merged AI + Manual Detection */}
-                    <tr className="bg-blue-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        🚪 Faltbar
-                      </td>
-                      {mergedComparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          {item.foldable === "Ja" || item.foldable === "Ja (erkannt)" ? (
-                            <div className="flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />
-                              <span className="text-sm text-green-700 font-medium">Ja</span>
-                            </div>
-                          ) : item.foldable === "Nein" ? (
-                            <div className="flex items-center gap-2">
-                              <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein</span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    <tr>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        🛑 Bremsen
-                      </td>
-                      {mergedComparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          {item.brakes === "Ja" || item.brakes === "Ja (erkannt)" ? (
-                            <div className="flex items-center gap-2">
-                              <Check className="h-5 w-5 text-green-600" />
-                              <span className="text-sm text-green-700 font-medium">Ja</span>
-                            </div>
-                          ) : item.brakes === "Nein" ? (
-                            <div className="flex items-center gap-2">
-                              <Minus className="h-5 w-5 text-gray-300" />
-                              <span className="text-sm text-gray-500">Nein</span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                    
-                    <tr className="bg-blue-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-700">
-                        🔘 Räder
-                      </td>
-                      {mergedComparisonData.map((item, idx) => (
-                        <td key={idx} className="px-6 py-4">
-                          {item.wheels && item.wheels !== "Keine Angabe" && item.wheels !== "Nicht angegeben" ? (
-                            <span className="text-sm font-medium text-gray-900">{item.wheels}</span>
-                          ) : (
-                            <span className="text-sm text-gray-400 italic">Nicht angegeben</span>
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  </>
-                )}
+                    );
+                  });
+                })()}
                 
                 {/* GKV Erstattung */}
                 <tr>

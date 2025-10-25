@@ -2,6 +2,7 @@
 // Free tier: 1,500 requests/day, 1M tokens/minute
 
 import { logError, trackEvent } from '../utils/analytics';
+import { getComparisonFieldsForProducts } from '../data/comparisonFields';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -849,50 +850,11 @@ export async function generateComparisonAnalysis(products, userContext) {
     expertRole = subcategory ? `Badehilfen (speziell ${subcategory})` : 'Badehilfen';
   }
   
-  // Define category-specific technical specs to request
-  const requiredSpecs = {
-    'hearing': [
-      { key: 'power_level', label: 'Leistungsstufe', example: 'M, HP, UP, SP' },
-      { key: 'device_type', label: 'Bauform', example: 'BTE, RIC, ITE, CIC' },
-      { key: 'battery_type', label: 'Batterie/Akku', example: 'Lithium-Akku, Batterie 312' },
-      { key: 'bluetooth', label: 'Bluetooth', example: 'Ja, Nein' },
-      { key: 'telecoil', label: 'Telefonspule', example: 'Ja, Nein' },
-      { key: 'channels', label: 'Kanäle', example: '8, 12, 16, 24' },
-      { key: 'programs', label: 'Programme', example: '4, 5, 6' }
-    ],
-    'mobility': [
-      { key: 'max_weight', label: 'Max. Benutzergewicht', example: '100 kg, 130 kg, 150 kg' },
-      { key: 'body_height', label: 'Körpergröße', example: '150-200 cm, 135-170 cm' },
-      { key: 'seat_height', label: 'Sitzhöhe', example: '55 cm, 62 cm' },
-      { key: 'total_height', label: 'Gesamthöhe', example: '84-100 cm, 98-111.5 cm' },
-      { key: 'handle_height', label: 'Handgriffhöhe', example: '82,5-92,5 cm, 84-94 cm' },
-      { key: 'width', label: 'Breite', example: '61 cm, 68 cm' },
-      { key: 'weight', label: 'Gewicht', example: '7.5 kg, 10.9 kg, 360 g' },
-      { key: 'tube_diameter', label: 'Rohrdurchmesser', example: '17/20 mm, 19/22 mm' },
-      { key: 'material', label: 'Material', example: 'Aluminium, Holz, Kunststoff' },
-      { key: 'adjustment_levels', label: 'Höhenverstellung', example: '5-fach mittels Druckknopf, 9-fach, stufenlos' },
-      { key: 'foldable', label: 'Faltbar', example: 'Ja, Nein' },
-      { key: 'brakes', label: 'Bremsen', example: 'Ja, Nein' },
-      { key: 'wheels', label: 'Räder', example: '3 Räder, 4 Räder' }
-    ],
-    'vision': [
-      { key: 'magnification', label: 'Vergrößerung', example: '2x, 5x, 10x' },
-      { key: 'light', label: 'Beleuchtung', example: 'LED, keine' },
-      { key: 'size', label: 'Größe', example: '10 cm, 15 cm Durchmesser' },
-      { key: 'battery', label: 'Batteriebetrieb', example: 'Ja, Nein' }
-    ],
-    'bathroom': [
-      { key: 'max_weight', label: 'Max. Belastung', example: '100 kg, 150 kg' },
-      { key: 'dimensions', label: 'Maße (BxTxH)', example: '45x40x50 cm' },
-      { key: 'material', label: 'Material', example: 'Aluminium, Kunststoff' },
-      { key: 'non_slip', label: 'Rutschfest', example: 'Ja, Nein' },
-      { key: 'mounting', label: 'Montage', example: 'Wandmontage, Freistehend' }
-    ]
-  };
-  
-  const specsToRequest = requiredSpecs[category] || [];
+  // Get subcategory-specific technical specs to request
+  // This uses the dynamic field detection based on subcategory (e.g., Gehstock vs Rollator)
+  const specsToRequest = getComparisonFieldsForProducts(products, category);
   const specsDescription = specsToRequest.map(s => 
-    `- ${s.label} (${s.key}): ${s.example}`
+    `- ${s.label} (${s.key}): z.B. "Wert hier"`
   ).join('\n');
   
   // Build comparison prompt
