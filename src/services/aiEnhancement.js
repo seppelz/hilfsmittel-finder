@@ -212,14 +212,91 @@ function extractUserNeeds(userContext) {
   }
   
   // Mobility-related needs
-  if (userContext.mobility_ability) {
-    const mobilityMap = {
-      'limited_walking': 'Kann kurze Strecken gehen, braucht Unterstützung',
-      'very_limited': 'Kann nur mit Mühe einige Schritte gehen',
-      'no_walking': 'Kann nicht mehr selbstständig gehen'
+  if (userContext.mobility_level) {
+    const mobilityLevelMap = {
+      'needs_light_support': 'Braucht leichte Unterstützung beim Gehen (kurze Strecken)',
+      'needs_moderate_support': 'Braucht mittlere Unterstützung (große Anstrengung beim Gehen)',
+      'needs_strong_support': 'Braucht starke Unterstützung (nur wenige Schritte möglich)'
     };
-    const mobility = mobilityMap[userContext.mobility_ability];
-    if (mobility) needs.push(mobility);
+    const level = mobilityLevelMap[userContext.mobility_level];
+    if (level) needs.push(level);
+  }
+  
+  if (userContext.mobility_device_type) {
+    const deviceTypeMap = {
+      'gehstock': 'Bevorzugt: Gehstock (leichte Unterstützung)',
+      'unterarmgehstuetzen': 'Bevorzugt: Unterarmgehstützen (stärkere Unterstützung)',
+      'rollator': 'Bevorzugt: Rollator (mit Rädern und Bremsen)',
+      'gehgestell': 'Bevorzugt: Gehgestell/Gehbock (stabil, ohne Räder)',
+      'gehwagen': 'Bevorzugt: Gehwagen (mit Rädern, sehr stabil)'
+    };
+    const device = deviceTypeMap[userContext.mobility_device_type];
+    if (device) needs.push(device);
+  }
+  
+  if (Array.isArray(userContext.mobility_features)) {
+    if (userContext.mobility_features.includes('adjustable')) {
+      needs.push('Höhenverstellbar gewünscht');
+    }
+    if (userContext.mobility_features.includes('foldable')) {
+      needs.push('Faltbar/Zusammenklappbar bevorzugt');
+    }
+    if (userContext.mobility_features.includes('lightweight')) {
+      needs.push('Leicht und einfach zu handhaben');
+    }
+    if (userContext.mobility_features.includes('brakes')) {
+      needs.push('Bremsen wichtig');
+    }
+    if (userContext.mobility_features.includes('seat')) {
+      needs.push('Sitzfläche gewünscht (zum Ausruhen)');
+    }
+    if (userContext.mobility_features.includes('basket')) {
+      needs.push('Korb/Ablagefläche wichtig');
+    }
+  }
+  
+  if (Array.isArray(userContext.mobility_usage)) {
+    if (userContext.mobility_usage.includes('indoor')) {
+      needs.push('Hauptsächlich für Innenräume');
+    }
+    if (userContext.mobility_usage.includes('outdoor')) {
+      needs.push('Für draußen/längere Strecken');
+    }
+    if (userContext.mobility_usage.includes('stairs')) {
+      needs.push('Auch für Treppen geeignet sein');
+    }
+    if (userContext.mobility_usage.includes('uneven_terrain')) {
+      needs.push('Für unebenes Gelände (Kopfsteinpflaster, Waldwege)');
+    }
+  }
+  
+  // Vision-related needs
+  if (Array.isArray(userContext.vision_issue)) {
+    if (userContext.vision_issue.includes('reading')) {
+      needs.push('Kann kleine Schrift nicht mehr lesen (Zeitung, Medikamente)');
+    }
+    if (userContext.vision_issue.includes('lighting')) {
+      needs.push('Braucht mehr Licht zum Lesen');
+    }
+    if (userContext.vision_issue.includes('blurry')) {
+      needs.push('Sieht verschwommen');
+    }
+  }
+  
+  // Bathroom-related needs
+  if (Array.isArray(userContext.bathroom_issue)) {
+    if (userContext.bathroom_issue.includes('shower_standing')) {
+      needs.push('Kann nicht lange stehen beim Duschen');
+    }
+    if (userContext.bathroom_issue.includes('bathtub_access')) {
+      needs.push('Ein- und Aussteigen aus Badewanne ist schwierig');
+    }
+    if (userContext.bathroom_issue.includes('toilet_standing')) {
+      needs.push('Aufstehen von der Toilette ist schwierig');
+    }
+    if (userContext.bathroom_issue.includes('grab_bars')) {
+      needs.push('Braucht Haltegriffe');
+    }
   }
   
   return needs.length > 0 ? '- ' + needs.join('\n- ') : 'Keine spezifischen Angaben';
