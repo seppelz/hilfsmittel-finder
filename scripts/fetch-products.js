@@ -34,6 +34,15 @@ async function fetchWithRetry(url, retries = 3, delay = 1000) {
 function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
+      console.log(`📡 HTTP Status: ${res.statusCode}`);
+      console.log(`📡 Headers:`, JSON.stringify(res.headers, null, 2));
+      
+      // Check for redirect or error status
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
+        return;
+      }
+      
       let data = '';
       
       res.on('data', (chunk) => {
@@ -41,14 +50,20 @@ function fetchData(url) {
       });
       
       res.on('end', () => {
+        console.log(`📊 Response size: ${data.length} bytes`);
+        console.log(`📊 First 200 chars: ${data.substring(0, 200)}`);
+        
         try {
           const json = JSON.parse(data);
           resolve(json);
         } catch (error) {
+          console.error('❌ JSON Parse Error:', error.message);
+          console.error('❌ Response preview:', data.substring(0, 500));
           reject(new Error(`Failed to parse JSON: ${error.message}`));
         }
       });
     }).on('error', (error) => {
+      console.error('❌ Network Error:', error);
       reject(error);
     });
   });
@@ -67,8 +82,19 @@ async function fetchAllProducts() {
     
     const data = await fetchWithRetry(url);
     
+    // Debug: Log the response structure
+    console.log('📋 Response type:', typeof data);
+    console.log('📋 Is array:', Array.isArray(data));
+    if (data && typeof data === 'object') {
+      console.log('📋 Response keys:', Object.keys(data).slice(0, 10));
+    }
+    
     // Extract products array
     const products = Array.isArray(data) ? data : data.value || [];
+    
+    if (!products || products.length === 0) {
+      throw new Error(`No products found in response! Response: ${JSON.stringify(data).substring(0, 200)}`);
+    }
     
     console.log(`✅ Fetched ${products.length} products`);
     
