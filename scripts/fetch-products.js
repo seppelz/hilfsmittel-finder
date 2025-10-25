@@ -6,6 +6,7 @@
  */
 
 import https from 'https';
+import http from 'http';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -13,7 +14,18 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const GKV_API_BASE = 'https://hilfsmittel.gkv-spitzenverband.de/api/verzeichnis';
+// Use deployed Vercel proxy to bypass CORS/IP restrictions
+// Format: https://your-app.vercel.app/api/proxy?path=api/verzeichnis/Produkt
+const VERCEL_APP_URL = process.env.VERCEL_APP_URL || 'https://hilfsmittel-finder.vercel.app';
+const USE_PROXY = process.env.USE_PROXY !== 'false'; // Default to true
+
+function buildProxyUrl(apiPath) {
+  if (!USE_PROXY) {
+    return `https://hilfsmittel.gkv-spitzenverband.de/api/verzeichnis/${apiPath}`;
+  }
+  const encodedPath = encodeURIComponent(`api/verzeichnis/${apiPath}`);
+  return `${VERCEL_APP_URL}/api/proxy?path=${encodedPath}`;
+}
 
 // Fetch with retry logic
 async function fetchWithRetry(url, retries = 3, delay = 1000) {
@@ -30,10 +42,12 @@ async function fetchWithRetry(url, retries = 3, delay = 1000) {
   }
 }
 
-// Fetch data from GKV API
+// Fetch data from GKV API (supports both http and https)
 function fetchData(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const protocol = url.startsWith('https') ? https : http;
+    
+    protocol.get(url, (res) => {
       console.log(`📡 HTTP Status: ${res.statusCode}`);
       console.log(`📡 Headers:`, JSON.stringify(res.headers, null, 2));
       
@@ -76,9 +90,10 @@ async function fetchAllProducts() {
   const startTime = Date.now();
   
   try {
-    // Fetch all products (no pagination needed according to API-BREAKTHROUGH.md)
-    const url = `${GKV_API_BASE}/Produkt`;
+    // Fetch all products via proxy (to bypass IP restrictions)
+    const url = buildProxyUrl('Produkt');
     console.log(`📡 Fetching from: ${url}`);
+    console.log(`📡 Using proxy: ${USE_PROXY}`);
     
     const data = await fetchWithRetry(url);
     
