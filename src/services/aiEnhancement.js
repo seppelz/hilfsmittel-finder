@@ -166,7 +166,12 @@ function detectProductDetails(products) {
 function extractUserNeeds(userContext) {
   const needs = [];
   
-  if (!userContext) return 'Keine spezifischen Angaben';
+  if (!userContext) {
+    console.warn('[extractUserNeeds] userContext is null/undefined');
+    return 'Keine spezifischen Angaben';
+  }
+  
+  console.log('[extractUserNeeds] Processing userContext:', Object.keys(userContext));
   
   // Hearing-related needs
   if (userContext.hearing_level === 'severe' || userContext.hearing_level === 'profound') {
@@ -915,6 +920,9 @@ export async function generateComparisonAnalysis(products, userContext) {
   // STEP 4: Build comparison prompt for missing fields OR just generate recommendation
   const userNeeds = extractUserNeeds(userContext);
   
+  console.log('[AI] User context received:', userContext);
+  console.log('[AI] Extracted user needs:', userNeeds);
+  
   // Build product info for AI prompt (only if we need AI for missing fields or recommendation)
   const productsInfo = products.map((product, idx) => {
     const name = product?.bezeichnung || 'Produkt';
@@ -999,6 +1007,8 @@ WICHTIG:
 
   try {
     console.log('[AI] Generating structured comparison with specs for:', expertRole);
+    console.log('[AI] Full prompt being sent to AI:');
+    console.log(prompt.substring(0, 1000) + '...');
     
     // Use Google Search Grounding for technical specs research
     const response = await fetch(GEMINI_API_URL, {
