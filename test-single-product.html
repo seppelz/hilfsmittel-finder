@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Single Product API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .success { color: #10b981; font-weight: bold; }
+    .error { color: #ef4444; font-weight: bold; }
+    .info { color: #3b82f6; font-weight: bold; }
+    input {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      width: 400px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 GKV API - Single Product Test</h1>
+  <p>Test fetching a single product by its UUID to find where "Merkmale" data comes from</p>
+
+  <div class="section">
+    <h2>Test Product by UUID</h2>
+    <div>
+      <label>
+        <strong>Product UUID:</strong><br>
+        <input type="text" id="productId" value="069e00ed-ce41-4279-ab9f-fe9bf563e8fb" placeholder="Enter UUID">
+      </label>
+      <button onclick="testProductById()">Fetch Product</button>
+    </div>
+    <p><small>Default: 10.46.01.1014 (Gehgestell mit Merkmale)</small></p>
+  </div>
+
+  <div class="section">
+    <h2>Test Results</h2>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://hilfsmittel.gkv-spitzenverband.de/api/verzeichnis';
+
+    async function testProductById() {
+      const productId = document.getElementById('productId').value.trim();
+      const resultsDiv = document.getElementById('results');
+      
+      resultsDiv.innerHTML = '<p class="info">⏳ Fetching product...</p>';
+
+      try {
+        // Try different possible endpoints
+        const endpoints = [
+          `${API_BASE}/Produkt/${productId}`,
+          `${API_BASE}/Produkt?id=${productId}`,
+          `${API_BASE}/Produkt?produktId=${productId}`,
+        ];
+
+        let success = false;
+        let response;
+        let usedEndpoint;
+
+        for (const endpoint of endpoints) {
+          try {
+            console.log('Trying:', endpoint);
+            const res = await fetch(endpoint);
+            
+            if (res.ok) {
+              const data = await res.json();
+              console.log('Success with:', endpoint, data);
+              
+              response = data;
+              usedEndpoint = endpoint;
+              success = true;
+              break;
+            } else {
+              console.log(`Failed (${res.status}):`, endpoint);
+            }
+          } catch (e) {
+            console.log('Error with:', endpoint, e.message);
+          }
+        }
+
+        if (success) {
+          displayProductDetails(response, usedEndpoint);
+        } else {
+          resultsDiv.innerHTML = `
+            <p class="error">❌ All endpoints failed!</p>
+            <p>Tried:</p>
+            <ul>
+              ${endpoints.map(e => `<li><code>${e}</code></li>`).join('')}
+            </ul>
+            <p>💡 The API might not support single product queries, or the UUID is in a different format.</p>
+          `;
+        }
+
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <p class="error">❌ Error: ${error.message}</p>
+          <pre>${error.stack}</pre>
+        `;
+      }
+    }
+
+    function displayProductDetails(data, endpoint) {
+      const resultsDiv = document.getElementById('results');
+      
+      // Extract product (might be wrapped in 'value' array)
+      const product = Array.isArray(data) ? data[0] : 
+                      data.value ? data.value[0] : 
+                      data;
+
+      if (!product) {
+        resultsDiv.innerHTML = '<p class="error">❌ No product data found in response</p>';
+        return;
+      }
+
+      // Look for all possible field names that might contain "Merkmale"
+      const allFields = Object.keys(product);
+      const merkmaleRelatedFields = allFields.filter(field => 
+        field.toLowerCase().includes('merkmal') ||
+        field.toLowerCase().includes('feature') ||
+        field.toLowerCase().includes('eigenschaften') ||
+        field.toLowerCase().includes('komponente') ||
+        field.toLowerCase().includes('beschreibung') ||
+        field.toLowerCase().includes('erlaeuterung') ||
+        field.toLowerCase().includes('detail') ||
+        field.toLowerCase().includes('spezifikation')
+      );
+
+      resultsDiv.innerHTML = `
+        <p class="success">✅ Product fetched successfully!</p>
+        <p><strong>Endpoint used:</strong> <code>${endpoint}</code></p>
+        <hr>
+        
+        <h3>📊 Product Information</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Name:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${product.name || product.displayName || 'N/A'}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Nummer:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${product.nummer || product.zehn_steller || 'N/A'}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>ID:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${product.id || 'N/A'}</td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Hersteller:</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${product.herstellerName || 'N/A'}</td></tr>
+        </table>
+        
+        <hr>
+        
+        <h3>🔍 Fields Related to "Merkmale" (${merkmaleRelatedFields.length})</h3>
+        ${merkmaleRelatedFields.length > 0 ? `
+          <table style="width: 100%; border-collapse: collapse;">
+            ${merkmaleRelatedFields.map(field => `
+              <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 30%; font-weight: bold; background: #f9fafb;">${field}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; word-break: break-word;">${formatValue(product[field])}</td>
+              </tr>
+            `).join('')}
+          </table>
+        ` : '<p class="error">❌ No merkmale-related fields found!</p>'}
+        
+        <hr>
+        
+        <h3>📋 All Available Fields (${allFields.length})</h3>
+        <details>
+          <summary style="cursor: pointer; padding: 10px; background: #f3f4f6; border-radius: 4px; margin-bottom: 10px;">
+            Click to expand full field list
+          </summary>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            ${allFields.map(field => `
+              <tr>
+                <td style="padding: 8px; border: 1px solid #ddd; width: 30%; font-weight: bold; background: #f9fafb;">${field}</td>
+                <td style="padding: 8px; border: 1px solid #ddd; word-break: break-word;">${formatValue(product[field])}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </details>
+        
+        <hr>
+        
+        <h3>📄 Complete JSON Response</h3>
+        <details>
+          <summary style="cursor: pointer; padding: 10px; background: #f3f4f6; border-radius: 4px; margin-bottom: 10px;">
+            Click to expand raw JSON
+          </summary>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        </details>
+      `;
+    }
+
+    function formatValue(value) {
+      if (value === null || value === undefined) return '<em style="color: #999;">null</em>';
+      if (value === '') return '<em style="color: #999;">empty string</em>';
+      if (typeof value === 'boolean') return value ? '✅ true' : '❌ false';
+      if (Array.isArray(value)) {
+        if (value.length === 0) return '<em style="color: #999;">empty array []</em>';
+        return `<strong>[Array: ${value.length} items]</strong><br><pre style="margin: 5px 0; padding: 5px; background: #f9fafb;">${JSON.stringify(value, null, 2)}</pre>`;
+      }
+      if (typeof value === 'object') {
+        return `<strong>{Object}</strong><br><pre style="margin: 5px 0; padding: 5px; background: #f9fafb;">${JSON.stringify(value, null, 2)}</pre>`;
+      }
+      if (typeof value === 'string' && value.length > 100) {
+        return `<span style="color: #059669; font-weight: bold;">[String: ${value.length} chars]</span><br>${value.substring(0, 200)}${value.length > 200 ? '...' : ''}`;
+      }
+      return value;
+    }
+
+    // Auto-run test on load
+    window.onload = () => {
+      console.log('Ready! Click "Fetch Product" to test.');
+    };
+  </script>
+</body>
+</html>
+

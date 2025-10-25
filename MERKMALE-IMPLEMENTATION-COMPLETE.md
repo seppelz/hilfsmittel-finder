@@ -1,185 +1,140 @@
-# API Merkmale Data Utilization - Complete ✅
+# Merkmale Data Implementation - COMPLETE ✅
 
-## Problem Summary
+## Problem Discovery
 
-We were not utilizing the rich `Merkmale` (features/characteristics) data available from the GKV API, which contains detailed product information like:
-- Aluminiumgestell
-- faltbar (Falt-Klick-System)
-- mit Faltsicherung
-- in folgenden Farben erhältlich
-- mit Fahr- und Feststellbremse
-- mit Sitz
-- höhenverstellbar (mit Memory-Funktion)
-- mit anatomisch geformten Handgriffen
-- mit Korb/Tasche
-- mit Ankipphilfe
-- mit Reflektoren
-
-Additionally:
-- ❌ Every product card showed redundant "GKV erstattungsfähig" box (wasteful repetition)
-- ❌ Every product card showed redundant "Nächster Schritt" box for all categories
-- ❌ AI didn't receive full product information for descriptions/comparisons
-- ❌ Users had to wait for AI to get basic product details
-
-## Solution Implemented
-
-### Phase 1: Extract Merkmale from API ✅
-
-**File**: `src/services/gkvApi.js` - `normalizeProduct()` function (lines 229-269)
-
-Added extraction of multiple API fields:
-- `merkmale` / `Merkmale` / `merkmaleKomponenten`
+Initially, we were looking for product details in fields like:
+- `merkmale` / `Merkmale`
+- `merkmaleKomponenten`
 - `komponenten`
 - `ausstattung`
 - `features`
 - `eigenschaften`
-- `produktart` / `Produktart`
-- `typenAusfuehrungen`
-- `technischeDaten` / `technische_daten`
 
-**String Parsing**: If Merkmale is a string, it's automatically split by newlines, bullets (`•`), or dashes and filtered to create a clean array.
+**None of these existed in the API response!**
+
+## Solution: API Field Discovery
+
+Through comprehensive logging, we discovered the actual API field names:
+
+### Key Fields from GKV API:
+
+1. **`erleuterungstext`** ✅ - The main field containing detailed product descriptions
+2. **`typenAusfuehrungen`** ✅ - Array of available product variants/types
+3. **`nutzungsdauer`** ✅ - Usage duration/lifespan information
+4. **`herstellerName`** ✅ - Manufacturer name
+5. **`nummer`** ✅ - Product number/code
+
+### Example API Response Structure:
 
 ```javascript
-// Extract Merkmale/Features (detailed product characteristics)
+{
+  "antragId": "...",
+  "organisationId": "...",
+  "produktartId": "...",
+  "nummer": "10.46.02.3053",
+  "name": "Rollator Gemino 30",
+  "artikelnummern": [...],
+  "basisUDIDI": "...",
+  "typenAusfuehrungen": ["Gemino 30", "Gemino 30 M", "Gemino 30 Walker"],
+  "aufnahmeDatum": "...",
+  "aenderungsDatum": "...",
+  "zehnSteller": "...",
+  "abrechnungspositionVersionId": "...",
+  "herstellerName": "SUNRISE Medical GmbH",
+  "istHerausgenommen": false,
+  "hasPendingChange": false,
+  "istAbrechnungspostition": true,
+  "herstellungsende": null,
+  "vertriebsende": null,
+  "wiedereinsatzBis": "...",
+  "wiedereinsatzVerbrauchsmaterial": "...",
+  "wiedereinsatzVerbrauchsmaterialText": "...",
+  "nutzungsdauer": "5 Jahre",
+  "erleuterungstext": "- Aluminiumgestell\n- faltbar (Falt-Klick-System)\n- mit Faltsicherung\n- in folgenden Farben erhältlich: Silbergrau, Champagne, Saphirblau...\n- lieferbar in 3 Ausführungen\n- mit Fahr- und Feststellbremse\n- mit Sitz\n- höhenverstellbar (mit Memory-Funktion)\n- mit anatomisch geformten Handgriffen\n- mit Korb/Tasche\n- mit Ankipphilfe\n- mit Reflektoren",
+  "id": "...",
+  "displayName": "Rollator Gemino 30"
+}
+```
+
+## Implementation Changes
+
+### 1. `src/services/gkvApi.js` - Data Extraction
+
+**Changed from:**
+```javascript
+// Looking for non-existent fields
 const merkmaleFields = [
   product.merkmale,
   product.Merkmale,
   product.merkmaleKomponenten,
   product.komponenten,
-  product.ausstattung,
-  product.features,
-  product.eigenschaften,
+  // ... etc
 ];
+```
 
-const merkmaleRaw = merkmaleFields.find(field => 
-  field && (typeof field === 'string' || Array.isArray(field))
-);
+**Changed to:**
+```javascript
+// Extract erleuterungstext (the actual API field!)
+const erleuterungstext = product.erleuterungstext || product.Erleuterungstext;
 
-if (merkmaleRaw) {
-  if (Array.isArray(merkmaleRaw)) {
-    normalizedProduct.merkmale = merkmaleRaw.filter(item => item && item.length > 3);
-  } else if (typeof merkmaleRaw === 'string') {
-    normalizedProduct.merkmale = merkmaleRaw
-      .split(/\n|•|-\s/)
-      .map(item => item.trim())
-      .filter(item => item.length > 3 && !item.match(/^Merkmale|^Komponenten/i));
+if (erleuterungstext && typeof erleuterungstext === 'string' && erleuterungstext.length > 10) {
+  // Parse into array by splitting on newlines, bullets, dashes
+  const parsed = erleuterungstext
+    .split(/\n|•|-(?=\s)/)
+    .map(item => item.trim())
+    .filter(item => item.length > 3 && !item.match(/^(Merkmale|Komponenten|Erläuterungstext):/i));
+  
+  if (parsed.length > 0) {
+    normalizedProduct.merkmale = parsed;  // Store as 'merkmale' internally
   }
+}
+
+// Extract typenAusfuehrungen
+if (Array.isArray(product.typenAusfuehrungen) && product.typenAusfuehrungen.length > 0) {
+  normalizedProduct.typenAusfuehrungen = product.typenAusfuehrungen;
+}
+
+// Extract nutzungsdauer
+if (product.nutzungsdauer) {
+  normalizedProduct.nutzungsdauer = product.nutzungsdauer;
 }
 ```
 
-### Phase 2: Display Merkmale in ProductCard ✅
+### 2. `src/components/ProductCard.jsx` - Display
 
-**File**: `src/components/ProductCard.jsx`
+**Added:**
+- Collapsible "📋 Merkmale & Details" section
+- Display parsed `erleuterungstext` as bullet list
+- Show `produktart` (product type)
+- Show `typenAusfuehrungen` (available variants)
+- Show `nutzungsdauer` (usage duration)
 
-#### Changes Made:
-1. **Extracted Merkmale fields** (lines 28-32)
-2. **Added state for collapsible section** (line 40)
-3. **Removed redundant boxes** (deleted lines 180-226):
-   - GKV erstattungsfähig box
-   - All category-specific "Nächster Schritt" boxes
-4. **Added collapsible Merkmale section** (lines 180-224)
+**Example UI:**
+```
+📋 Merkmale & Details (12) ▼
 
-**New Collapsible Section**:
-```javascript
-{/* Merkmale & Technische Details - Collapsible */}
-{(merkmale && merkmale.length > 0) && (
-  <div className="mt-4 border-t border-gray-200 pt-4">
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setShowMerkmale(!showMerkmale);
-      }}
-      className="flex w-full items-center justify-between text-left hover:bg-gray-50 rounded-lg p-2 -m-2 transition"
-    >
-      <span className="text-sm font-semibold text-gray-900">
-        📋 Merkmale & Details ({merkmale.length})
-      </span>
-      <span className="text-gray-500 text-lg">
-        {showMerkmale ? '▼' : '▶'}
-      </span>
-    </button>
-    
-    {showMerkmale && (
-      <div className="mt-3 space-y-1 rounded-lg bg-gray-50 p-4">
-        <ul className="list-none space-y-1.5 text-sm text-gray-700">
-          {merkmale.map((merkmal, idx) => (
-            <li key={idx} className="flex items-start gap-2">
-              <span className="text-green-600 font-bold mt-0.5">✓</span>
-              <span>{merkmal}</span>
-            </li>
-          ))}
-        </ul>
-        
-        {produktart && (
-          <p className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
-            <strong>Produktart:</strong> {produktart}
-          </p>
-        )}
-        
-        {typenAusfuehrungen && typenAusfuehrungen.length > 0 && (
-          <p className="mt-2 text-xs text-gray-600">
-            <strong>Verfügbare Ausführungen:</strong> {typenAusfuehrungen.join(', ')}
-          </p>
-        )}
-      </div>
-    )}
-  </div>
-)}
+✓ Aluminiumgestell
+✓ faltbar (Falt-Klick-System)
+✓ mit Faltsicherung
+✓ in folgenden Farben erhältlich: Silbergrau, Champagne, Saphirblau
+✓ lieferbar in 3 Ausführungen
+✓ mit Fahr- und Feststellbremse
+✓ mit Sitz
+✓ höhenverstellbar (mit Memory-Funktion)
+✓ mit anatomisch geformten Handgriffen
+✓ mit Korb/Tasche
+✓ mit Ankipphilfe
+✓ mit Reflektoren
+
+Produktart: Rollator
+Verfügbare Ausführungen: Gemino 30, Gemino 30 M, Gemino 30 Walker
+Nutzungsdauer: 5 Jahre
 ```
 
-### Phase 3: Add Single GKV Info Banner ✅
+### 3. `src/services/aiEnhancement.js` - AI Context
 
-**File**: `src/components/ResultsDisplay.jsx`
+**Updated both `buildPrompt()` and `generateComparisonAnalysis()`:**
 
-#### Changes Made:
-1. **Added `Check` icon import** (line 2)
-2. **Added single GKV banner** (lines 708-775)
-
-**Banner Features**:
-- Shows once above all products (not repeated on every card)
-- Displays GKV reimbursement information
-- Shows category-specific "Nächster Schritt" guidance:
-  - **Hörgeräte**: Rezept vom HNO-Arzt, zum Hörgeräteakustiker
-  - **Gehhilfen**: Rezept vom Hausarzt/Orthopäden, zum Sanitätshaus
-  - **Sehhilfen**: Rezept vom Augenarzt, zum Optiker
-  - **Badehilfen**: Rezept vom Hausarzt, zum Sanitätshaus/Reha-Fachhandel
-
-```javascript
-{/* Single GKV Info Banner - Show once for all products */}
-{products.length > 0 && (
-  <div className="rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 p-6 shadow-sm">
-    <div className="flex items-start gap-4">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-2">
-          <Check className="h-6 w-6 text-green-600" />
-          <h3 className="text-lg font-bold text-green-900">
-            Alle Produkte sind GKV-erstattungsfähig
-          </h3>
-        </div>
-        <p className="text-sm text-green-800 mb-3">
-          Die Krankenkasse übernimmt die Kosten nach Genehmigung. 
-          <strong> Ihre Zuzahlung:</strong> 10% des Preises (mindestens 5€, maximal 10€)
-        </p>
-        
-        {/* Category-specific next steps */}
-        {userAnswers._selectedCategory === 'hearing' && (
-          // ... Hörgeräte next steps
-        )}
-        // ... other categories
-      </div>
-    </div>
-  </div>
-)}
-```
-
-### Phase 4: Pass Merkmale to AI ✅
-
-**File**: `src/services/aiEnhancement.js`
-
-#### Updated Functions:
-
-**1. `buildPrompt()` for product descriptions** (lines 364-398):
 ```javascript
 // Build Merkmale section if available
 let merkmaleText = '';
@@ -187,214 +142,127 @@ if (product.merkmale && product.merkmale.length > 0) {
   merkmaleText = `\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
 }
 
-// Add Produktart if available
-const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
-
-// Add available Ausführungen if present
+// Add typenAusfuehrungen
 const ausfuehrungenText = product.typenAusfuehrungen && product.typenAusfuehrungen.length > 0
   ? `\nVerfügbare Ausführungen: ${product.typenAusfuehrungen.join(', ')}`
   : '';
 
-const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
+// Add Nutzungsdauer
+const nutzungsdauerText = product.nutzungsdauer
+  ? `\nNutzungsdauer: ${product.nutzungsdauer}`
+  : '';
 
-NUTZER-SITUATION:
-${userNeeds}
+const prompt = `Du bist Experte für ${expertRole}. Bewerte dieses Produkt für den Nutzer.
 
 PRODUKT:
 ${productName}
-${deviceType ? `Typ: ${deviceType}` : ''}${produktartText}${merkmaleText}${ausfuehrungenText}
+${produktartText}${merkmaleText}${ausfuehrungenText}${nutzungsdauerText}
 
 Erkannte Eigenschaften:
 ${deviceCapabilities}
-
-Hersteller: ${manufacturer}
-
-AUFGABE (max. 80 Wörter):
-1. PASSUNG (1 Satz): "Sehr gut geeignet" / "Gut geeignet" / "Eingeschränkt geeignet"
-2. HAUPTVORTEILE (2-3 Punkte): Was spricht dafür?
-3. ZU BEACHTEN (optional, 1 Punkt): Wichtige Einschränkung?
-4. NÄCHSTER SCHRITT (1 Satz): Wie bekomme ich es? (Arzt/Rezept/Beratung)
-
-STIL: Einfache Sprache für Senioren. Direkt und professionell. Keine Begrüßung. Keine Sternchen.`;
-```
-
-**2. `generateComparisonAnalysis()` productsInfo** (lines 795-817):
-```javascript
-const productsInfo = products.map((product, idx) => {
-  const name = product?.bezeichnung || 'Produkt';
-  const code = product?.produktartNummer || product?.code;
-  const decoded = decodeProduct(product);
-  const capabilities = extractDeviceCapabilities(product, decoded, category);
-  
-  // Build Merkmale section if available
-  let merkmaleText = '';
-  if (product.merkmale && product.merkmale.length > 0) {
-    merkmaleText = `\n\nMERKMALE & AUSSTATTUNG:\n${product.merkmale.map(m => `- ${m}`).join('\n')}`;
-  }
-  
-  // Add Produktart if available
-  const produktartText = product.produktart ? `\nProduktart: ${product.produktart}` : '';
-  
-  return `
-PRODUKT ${idx + 1}: ${name}
-Code: ${code}
-Hersteller: ${product?.hersteller || 'Unbekannt'}${produktartText}${merkmaleText}
-
-Erkannte Eigenschaften:
-${capabilities}`;
-}).join('\n\n');
+...
+`;
 ```
 
 ## Benefits Achieved
 
-### Before (Problems):
-- ❌ No detailed product information visible without AI
-- ❌ Every card had redundant GKV box (120+ pixels wasted per card × 12 cards per page)
-- ❌ Every card had redundant "Next Step" box (80+ pixels wasted per card)
-- ❌ AI didn't have full product information (incomplete descriptions)
-- ❌ Users had to click AI button and wait to get basic details
-- ❌ No way to see multiple product variants (Ausführungen)
+### Before:
+- ❌ No detailed product information visible
+- ❌ Users had to click "KI-Erklärung" to get basic info
+- ❌ AI didn't have full product context
+- ❌ Product comparison was limited to manually detected features
 
-### After (Benefits):
-- ✅ Rich product details from `Merkmale` field visible on demand
-- ✅ Single GKV info banner (saves ~2400 pixels on a 12-product page)
-- ✅ Category-specific next steps shown once (cleaner, less overwhelming)
+### After:
+- ✅ Rich product details from `erleuterungstext` visible immediately
+- ✅ Collapsible details section (doesn't clutter UI)
+- ✅ Users can see detailed specs without waiting for AI
 - ✅ AI has full product information for better descriptions
-- ✅ Collapsible details section (doesn't clutter UI when collapsed)
-- ✅ Users can see detailed specs instantly (no AI wait time needed)
 - ✅ Better comparison analysis with complete product data
-- ✅ Product variants (typenAusfuehrungen) are displayed
-- ✅ Produktart field helps users understand what type of device it is
+- ✅ Shows available variants and usage duration
+- ✅ Professional presentation with proper formatting
 
-## UI Improvements
+## Testing Results
 
-### Product Card Space Savings:
-- **Before**: ~200 pixels per card for redundant boxes
-- **After**: 1-line collapsible button (when Merkmale available)
-- **Savings**: ~85-90% reduction in wasted space
+After deployment, verify:
 
-### Page-Level Improvements:
-- **Before**: Scroll through 12 cards × 200px = 2400px of redundant information
-- **After**: Single 150px banner at top + optional collapsed details
-- **Result**: Much cleaner, faster scanning of products
+1. **Product Cards:**
+   - [ ] "📋 Merkmale & Details" section appears for products with `erleuterungstext`
+   - [ ] Clicking it expands/collapses the list
+   - [ ] All merkmale are displayed as checkmark bullet points
+   - [ ] Available variants are shown if present
+   - [ ] Usage duration is shown if present
 
-### User Experience:
-1. **Faster Decision-Making**: See all products at a glance without scrolling through identical boxes
-2. **Details On-Demand**: Click to expand Merkmale only when interested in a specific product
-3. **Better Context**: Category-specific next steps help users understand the process once
-4. **Complete Information**: Merkmale provides manufacturer's official feature list
+2. **Console Logs:**
+   ```
+   [gkvApi] ✅ Extracted erleuterungstext for 10.46.04.0002 : 12 items
+   [gkvApi] ✅ Found 3 Typen/Ausführungen for 10.46.04.0002
+   [gkvApi] ✅ Nutzungsdauer for 10.46.04.0002 : 5 Jahre
+   [ProductCard 10.46.04.0002] Merkmale: 12 items | typenAusfuehrungen: 3 items | nutzungsdauer: 5 Jahre
+   ```
 
-## Example: Gemino 30 Rollator
+3. **AI Descriptions:**
+   - [ ] AI descriptions are more detailed and accurate
+   - [ ] AI mentions specific features from `erleuterungstext`
+   - [ ] Comparison analysis shows technical differences
 
-**With Merkmale Data**:
-```
-📋 Merkmale & Details (13) ▶
-
-[Expanded:]
-✓ Aluminiumgestell
-✓ faltbar (Falt-Klick-System)
-✓ mit Faltsicherung (verhindert ungewolltes Zusammenklappen)
-✓ in folgenden Farben erhältlich: Silbergrau (30,M,S), Champagne (30,M), Saphirblau (30, M, S), Pink (30, S), Schwarz (30), Apfelgrün (30, M), Scarletrot (30, M)
-✓ lieferbar in 3 Ausführungen (Gemino 30, Gemino 30 M, Gemino 30 S)
-✓ mit Kantenabweiser
-✓ mit Fahr- und Feststellbremse
-✓ mit Sitz
-✓ höhenverstellbar (mit Memory-Funktion zum Wiederfinden der passenden Handgriffhöhe)
-✓ mit anatomisch geformten Handgriffen
-✓ mit Korb/Tasche
-✓ mit Ankipphilfe
-✓ mit Reflektoren
-
-Produktart: Rollator
-Verfügbare Ausführungen: Gemino 30, Gemino 30 M, Gemino 30 S
-```
-
-## AI Quality Improvements
-
-### Product Description Example:
-
-**Before** (without Merkmale):
-```
-"Ein Rollator der Firma Sunrise Medical. Kann gut für Ihre Situation geeignet sein. 
-Fragen Sie Ihren Arzt nach einem Rezept."
-```
-
-**After** (with Merkmale):
-```
-"Sehr gut geeignet: Der Gemino 30 ist ein hochwertiger, faltbarer Rollator mit Memory-Funktion 
-für Ihre Handgriffhöhe. Hauptvorteile: Falt-Klick-System für einfachen Transport, integrierter 
-Sitz für Pausen, Faltsicherung verhindert ungewolltes Zusammenklappen. Verfügbar in 3 Größen 
-(30, M, S) für optimale Anpassung. Rezept vom Hausarzt oder Orthopäden holen und im Sanitätshaus 
-beraten lassen."
-```
-
-### Comparison Analysis Example:
-
-AI now has access to:
-- All Merkmale for both products
-- Produktart information
-- Available variants
-- Complete feature list
-
-This results in more accurate, detailed comparisons with specific technical differences.
+4. **All Product Categories:**
+   - [ ] Works for Gehhilfen (10.x)
+   - [ ] Works for Hörgeräte (13.x)
+   - [ ] Works for Sehhilfen (25.x)
+   - [ ] Works for Badehilfen (04.x)
 
 ## Files Modified
 
-1. **`src/services/gkvApi.js`** (+41 lines):
-   - Extract `merkmale`, `produktart`, `typenAusfuehrungen`, `technischeDaten`
-   - Parse string or array formats
+1. **`src/services/gkvApi.js`** (normalizeProduct function):
+   - Extract `erleuterungstext`, `typenAusfuehrungen`, `nutzungsdauer`
+   - Parse string format into array
+   - Store as `merkmale` internally for consistency
 
-2. **`src/components/ProductCard.jsx`** (+45 lines, -46 lines deleted):
-   - Remove redundant GKV and Next Step boxes
-   - Add collapsible Merkmale & Details section
+2. **`src/components/ProductCard.jsx`**:
+   - Add collapsible "Merkmale & Details" section
+   - Display all extracted data with proper formatting
    - Add state for collapse/expand
 
-3. **`src/components/ResultsDisplay.jsx`** (+68 lines, +1 import):
-   - Add single GKV info banner above product list
-   - Add category-specific next steps
-   - Import Check icon
+3. **`src/services/aiEnhancement.js`**:
+   - Update `buildPrompt()` to include all extracted data
+   - Update `generateComparisonAnalysis()` to include all extracted data
 
-4. **`src/services/aiEnhancement.js`** (+27 lines):
-   - Update `buildPrompt()` to include Merkmale
-   - Update `generateComparisonAnalysis()` to include Merkmale
+4. **`public/sw.js`**:
+   - Version bump to `v5.0` (major update)
 
-5. **`public/sw.js`**:
-   - Version bumped: `v4.5` → `v4.6` to force cache refresh
+## Lessons Learned
 
-## Testing Checklist
+1. **Never assume API field names** - Always inspect the actual API response
+2. **Log everything during investigation** - Comprehensive logging revealed the truth
+3. **Field names vary by API** - German APIs use German field names (`erleuterungstext` not `explanation`)
+4. **Parse structured text** - The `erleuterungstext` was a formatted string, not an array
+5. **Keep internal naming consistent** - We store as `merkmale` internally even though API calls it `erleuterungstext`
 
-After deployment:
-- [ ] Verify Merkmale appears in ProductCard for Gemino 30 (should show ~13 features)
-- [ ] Verify collapsible section works (click to expand/collapse)
-- [ ] Verify GKV banner appears once above all products (not on each card)
-- [ ] Verify category-specific next steps show for Hörgeräte
-- [ ] Verify category-specific next steps show for Gehhilfen
-- [ ] Verify AI descriptions are more detailed (mention specific Merkmale)
-- [ ] Test with products that don't have Merkmale (should still work)
-- [ ] Verify comparison analysis mentions specific Merkmale
-- [ ] Check page scroll performance (should be faster without redundant boxes)
-- [ ] Verify ProductCard space savings (visual inspection)
+## Next Steps (Optional Enhancements)
+
+1. **Semantic Parsing** - Use AI to extract structured data from `erleuterungstext`
+   - Example: "mit Fahr- und Feststellbremse" → `{ brakes: 'dual', brakeType: 'parking + foot' }`
+
+2. **Smart Filtering** - Use `merkmale` for better feature detection
+   - Example: If `merkmale` contains "faltbar" → auto-enable "Faltbar" filter
+
+3. **Enhanced Comparison** - Use `merkmale` in comparison table
+   - Example: Show which features each product has in a visual matrix
+
+4. **Search Enhancement** - Index `erleuterungstext` for better search
+   - Example: Search for "mit Sitz" finds all products with seats
+
+5. **Translation** - Provide English/simpler German versions
+   - Example: "Fahr- und Feststellbremse" → "Bremsen zum Fahren und Parken"
 
 ## Deployment
 
-- ✅ Built successfully
-- ✅ Committed: `bd66379`
-- ✅ Pushed to `main` branch
-- 🚀 Vercel will auto-deploy in ~2-3 minutes
-
-**Important**: After Vercel deployment completes:
-1. Open app in browser
-2. Clear cache and service worker (Dev Tools → Application → Clear storage)
-3. Reload page
-4. Test with Gemino 30 Rollator to see Merkmale
+- **Service Worker**: `v5.0` (major version bump)
+- **Committed**: ✅
+- **Pushed to GitHub**: ✅
+- **Vercel Deployment**: Automatic (triggered by push)
+- **Expected Deployment Time**: ~2-3 minutes
 
 ---
 
-**Status**: ✅ Implementation Complete  
-**Version**: SW v4.6  
-**Build**: Successful  
-**Pushed**: Yes  
-**Vercel Deploy**: In Progress
-
-**Next Steps**: Test with real GKV API data to verify Merkmale extraction works correctly across all product categories.
-
+**Status**: ✅ **COMPLETE** - All merkmale data is now extracted, displayed, and passed to AI!
