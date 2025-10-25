@@ -98,41 +98,69 @@
       resultsDiv.innerHTML = '<p class="info">⏳ Searching for product...</p>';
 
       try {
-        // Search in the product list by zehnSteller
-        const apiPath = `api/verzeichnis/Produkt?produktgruppennummer=${productNumber.substring(0, 5)}&take=1000`;
-        const endpoint = encodeProxyPath(apiPath);
+        // Step 1: Search in the product list by zehnSteller to get the product GUID
+        const listApiPath = `api/verzeichnis/Produkt?produktgruppennummer=${productNumber.substring(0, 5)}&take=1000`;
+        const listEndpoint = encodeProxyPath(listApiPath);
         
-        console.log('Searching with API path:', apiPath, '→', endpoint);
-        const res = await fetch(endpoint);
+        console.log('Step 1: Searching product list:', listApiPath);
+        const listRes = await fetch(listEndpoint);
         
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        if (!listRes.ok) {
+          throw new Error(`HTTP ${listRes.status}: ${listRes.statusText}`);
         }
         
-        const data = await res.json();
-        console.log('API response:', data);
+        const listData = await listRes.json();
         
         // Extract products array
-        const products = Array.isArray(data) ? data : data.value || [];
-        console.log('Total products returned:', products.length);
+        const products = Array.isArray(listData) ? listData : listData.value || [];
+        console.log('Found', products.length, 'products in list');
         
         // Find the product with matching zehnSteller or nummer
-        const product = products.find(p => 
+        const listProduct = products.find(p => 
           p.zehnSteller === productNumber || 
           p.nummer === productNumber ||
           p.nummer === productNumber.replace(/\./g, '')
         );
         
-        if (product) {
-          console.log('Found product:', product);
-          displayProductDetails({ value: [product] }, `Found in product list (${products.length} searched)`);
-        } else {
+        if (!listProduct) {
           resultsDiv.innerHTML = `
-            <p class="error">❌ Product ${productNumber} not found</p>
+            <p class="error">❌ Product ${productNumber} not found in list</p>
             <p>Searched ${products.length} products in category ${productNumber.substring(0, 5)}</p>
             <p>💡 Try checking the product number or searching a broader category.</p>
           `;
+          return;
         }
+        
+        console.log('Step 1 result - Product in list:', listProduct);
+        console.log('Product ID (GUID):', listProduct.id);
+        console.log('erleuterungstext in list:', listProduct.erleuterungstext);
+        
+        // Step 2: Fetch the SINGLE product by its GUID to get full details
+        if (!listProduct.id) {
+          resultsDiv.innerHTML = `
+            <p class="error">❌ Product found but has no ID field</p>
+            <p>Cannot fetch full details without product GUID.</p>
+          `;
+          return;
+        }
+        
+        resultsDiv.innerHTML += '<p class="info">⏳ Fetching full product details...</p>';
+        
+        const detailApiPath = `api/verzeichnis/Produkt/${listProduct.id}`;
+        const detailEndpoint = encodeProxyPath(detailApiPath);
+        
+        console.log('Step 2: Fetching full details:', detailApiPath);
+        const detailRes = await fetch(detailEndpoint);
+        
+        if (!detailRes.ok) {
+          throw new Error(`HTTP ${detailRes.status}: ${detailRes.statusText}`);
+        }
+        
+        const detailData = await detailRes.json();
+        console.log('Step 2 result - Full product details:', detailData);
+        console.log('erleuterungstext in details:', detailData.erleuterungstext);
+        
+        displayProductDetails(detailData, `Found via list search → full details from /Produkt/${listProduct.id}`);
         
       } catch (error) {
         resultsDiv.innerHTML = `
