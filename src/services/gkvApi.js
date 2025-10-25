@@ -425,6 +425,41 @@ function filterByFeatures(products, criteria) {
           if (criteria.high_index && productName.includes('hochbrechend')) score += 5;
         }
 
+        // Bathroom aids matching (category 04.xx)
+        const isBathroomAids = productCode.startsWith('04.');
+        
+        if (isBathroomAids) {
+          // Location/type matching (+25 points for primary category)
+          if (criteria.bath_type) {
+            const targetType = criteria.bath_type.toLowerCase();
+            if (targetType === 'shower' && productCode.startsWith('04.40.03')) score += 25;
+            if (targetType === 'bathtub_entry' && productCode.startsWith('04.40.05')) score += 25;
+            if (targetType === 'bathtub_lift' && productCode.startsWith('04.40.01')) score += 25;
+            if (targetType === 'toilet' && productCode.startsWith('04.41')) score += 25;
+          }
+          
+          // Mount type matching (+15 points)
+          if (criteria.mount_type) {
+            if (criteria.mount_type === 'wall' && (productName.includes('wand') || productName.includes('montiert'))) score += 15;
+            if (criteria.mount_type === 'freestanding' && (productName.includes('freistehend') || productName.includes('mobil'))) score += 15;
+          }
+          
+          // Feature matching (+10 points each)
+          if (criteria.foldable && productName.includes('klapp')) score += 10;
+          if (criteria.electric && (productName.includes('elektrisch') || productName.includes('motor'))) score += 10;
+          if (criteria.manual && (productName.includes('manuell') || productName.includes('wasser'))) score += 10;
+          if (criteria.backrest && (productName.includes('rückenlehne') || productName.includes('lehne'))) score += 10;
+          if (criteria.armrests && (productName.includes('armlehne') || productName.includes('arm'))) score += 10;
+          if (criteria.padded && (productName.includes('gepolstert') || productName.includes('polster'))) score += 10;
+          if (criteria.portable && (productName.includes('mobil') || productName.includes('tragbar'))) score += 10;
+          
+          // Weight capacity matching (+5 points)
+          if (criteria.high_weight_capacity) {
+            // Look for high weight capacity in product name (150kg+, 200kg, etc.)
+            if (productName.match(/\d{3,}\s*kg/) || productName.includes('xxl') || productName.includes('belastbar')) score += 5;
+          }
+        }
+
         // Bonus for products with more features overall
         if (decoded.features && decoded.features.length >= 3) score += 5;
 
@@ -1209,8 +1244,10 @@ class GKVApiService {
       wheelchair_needed: ['22'],
       fulltime: ['22'],
       stairs: ['10'],
-      shower_chair: ['04.40.04'],
-      bath_lift: ['04.40'],
+      shower_chair: ['04.40.03', '04.40.04'],
+      bath_lift: ['04.40.01'],
+      bathtub_entry: ['04.40.05'],
+      bathtub_board: ['04.40.02'],
       toilet_seat: ['04.41'],
       grab_bars: ['04.40.01'],
       hearing_aid: ['13'],

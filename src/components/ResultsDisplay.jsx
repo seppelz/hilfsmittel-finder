@@ -403,10 +403,56 @@ export function ResultsDisplay({
         }
         
         // Bathroom criteria
+        // Legacy bathroom criteria (old questionnaire)
         if (userAnswers.shower_chair) displayedCriteria.push('Duschhocker benötigt');
         if (userAnswers.bath_lift) displayedCriteria.push('Badewannenlift benötigt');
         if (userAnswers.toilet_seat) displayedCriteria.push('Toilettensitzerhöhung benötigt');
         if (userAnswers.grab_bars) displayedCriteria.push('Haltegriffe benötigt');
+        
+        // Bathroom criteria (new detailed questionnaire)
+        if (userAnswers.bathroom_location) {
+          const locationMap = {
+            'shower': 'Dusche',
+            'bathtub_entry': 'Badewanne (Einstieg)',
+            'bathtub_lift': 'Badewanne (Lift)',
+            'toilet': 'Toilette'
+          };
+          const label = locationMap[userAnswers.bathroom_location];
+          if (label) displayedCriteria.push(label);
+        }
+        
+        if (userAnswers.bathroom_shower_type) {
+          const typeMap = {
+            'wall_mounted': 'Wandmontiert',
+            'foldable': 'Klappbar',
+            'freestanding': 'Freistehend'
+          };
+          const label = typeMap[userAnswers.bathroom_shower_type];
+          if (label) displayedCriteria.push(label);
+        }
+        
+        if (userAnswers.bathroom_bathtub_features) {
+          const featMap = {
+            'electric': 'Elektrisch betrieben',
+            'manual': 'Ohne Strom'
+          };
+          const label = featMap[userAnswers.bathroom_bathtub_features];
+          if (label && userAnswers.bathroom_bathtub_features !== 'any') displayedCriteria.push(label);
+        }
+        
+        if (Array.isArray(userAnswers.bathroom_features)) {
+          const featureLabels = {
+            'backrest': 'Mit Rückenlehne',
+            'armrests': 'Mit Armlehnen',
+            'high_capacity': 'Hohe Tragkraft',
+            'padded': 'Gepolstert'
+          };
+          userAnswers.bathroom_features.forEach(feature => {
+            if (featureLabels[feature]) {
+              displayedCriteria.push(featureLabels[feature]);
+            }
+          });
+        }
         
         // Vision criteria (new questionnaire)
         if (userAnswers.vision_type) {

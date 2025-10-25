@@ -319,7 +319,53 @@ function extractUserNeeds(userContext) {
     }
   }
   
-  // Bathroom-related needs
+  // Bathroom-related needs (new detailed questionnaire)
+  if (userContext.bathroom_location) {
+    const locationMap = {
+      'shower': 'Braucht Sitzgelegenheit in der Dusche (kann nicht lange stehen)',
+      'bathtub_entry': 'Braucht Hilfe beim Ein- und Aussteigen aus der Badewanne',
+      'bathtub_lift': 'Braucht Unterstützung beim Hinsetzen und Aufstehen in der Badewanne',
+      'toilet': 'Braucht Unterstützung an der Toilette'
+    };
+    const location = locationMap[userContext.bathroom_location];
+    if (location) needs.push(location);
+  }
+  
+  if (userContext.bathroom_shower_type) {
+    const typeMap = {
+      'wall_mounted': 'Bevorzugt: Wandmontierter Duschsitz (fest installiert, sehr stabil)',
+      'foldable': 'Bevorzugt: Klappbarer Duschsitz (platzsparend)',
+      'freestanding': 'Bevorzugt: Freistehender Duschsitz (keine Montage nötig)'
+    };
+    const type = typeMap[userContext.bathroom_shower_type];
+    if (type) needs.push(type);
+  }
+  
+  if (userContext.bathroom_bathtub_features) {
+    const featMap = {
+      'electric': 'Bevorzugt: Elektrisch betrieben (einfache Bedienung per Knopfdruck)',
+      'manual': 'Bevorzugt: Ohne Stromanschluss (wasserbetrieben oder manuell)'
+    };
+    const feat = featMap[userContext.bathroom_bathtub_features];
+    if (feat && userContext.bathroom_bathtub_features !== 'any') needs.push(feat);
+  }
+  
+  if (Array.isArray(userContext.bathroom_features)) {
+    if (userContext.bathroom_features.includes('backrest')) {
+      needs.push('Wichtig: Mit Rückenlehne (für mehr Komfort und Sicherheit)');
+    }
+    if (userContext.bathroom_features.includes('armrests')) {
+      needs.push('Wichtig: Mit Armlehnen (zum Abstützen beim Aufstehen)');
+    }
+    if (userContext.bathroom_features.includes('high_capacity')) {
+      needs.push('Wichtig: Hohe Tragkraft benötigt (über 150 kg)');
+    }
+    if (userContext.bathroom_features.includes('padded')) {
+      needs.push('Wichtig: Gepolstert gewünscht (bequem für längeres Sitzen)');
+    }
+  }
+  
+  // Legacy bathroom needs (old questionnaire - fallback)
   if (Array.isArray(userContext.bathroom_issue)) {
     if (userContext.bathroom_issue.includes('shower_standing')) {
       needs.push('Kann nicht lange stehen beim Duschen');
@@ -335,7 +381,9 @@ function extractUserNeeds(userContext) {
     }
   }
   
-  return needs.length > 0 ? '- ' + needs.join('\n- ') : 'Keine spezifischen Angaben';
+  const result = needs.length > 0 ? '- ' + needs.join('\n- ') : 'Keine spezifischen Angaben';
+  console.log('[extractUserNeeds] Extracted needs count:', needs.length, 'Result:', result);
+  return result;
 }
 
 /**
