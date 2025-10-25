@@ -1108,7 +1108,26 @@ class GKVApiService {
       }
     });
     
-    return Array.from(categories);
+    const categoriesArray = Array.from(categories);
+    
+    // SPECIFICITY FILTER: Remove broader categories when more specific ones exist
+    // Example: if we have ['10', '10.01'], remove '10' and keep only '10.01'
+    // This prevents showing all mobility aids when user selected a specific type
+    const filtered = categoriesArray.filter(cat => {
+      // For each category, check if a more specific version exists
+      const hasMoreSpecific = categoriesArray.some(other => 
+        other !== cat && // Not the same category
+        other.startsWith(cat + '.') // Other is more specific (e.g., '10.01' starts with '10.')
+      );
+      
+      // Keep this category only if no more specific version exists
+      return !hasMoreSpecific;
+    });
+    
+    console.log('[GKV] Categories before specificity filter:', categoriesArray);
+    console.log('[GKV] Categories after specificity filter:', filtered);
+    
+    return filtered;
   }
 
   mapCriteriaToGroups(criteria = {}) {
