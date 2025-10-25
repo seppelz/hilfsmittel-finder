@@ -63,11 +63,12 @@
     <div>
       <label>
         <strong>Product Number (zehnSteller):</strong><br>
-        <input type="text" id="productNumber" value="10.46.01.1014" placeholder="e.g., 10.46.01.1014">
+        <input type="text" id="productNumber" value="01.99.01.0071" placeholder="e.g., 01.99.01.0071">
       </label>
       <button onclick="testProductByNumber()">Search by Number</button>
     </div>
-    <p><small>Default: 10.46.01.1014 (Gehgestell mit Merkmale)</small></p>
+    <p><small>Default: 01.99.01.0071 (A product that actually exists in the API response)</small></p>
+    <p><small style="color: #ef4444;">⚠️ Note: 10.46.01.1014 won't be found because /Produkt ignores produktgruppennummer parameter!</small></p>
     <hr style="margin: 20px 0;">
     <div>
       <label>
@@ -98,11 +99,16 @@
       resultsDiv.innerHTML = '<p class="info">⏳ Searching for product...</p>';
 
       try {
-        // Step 1: Search in the product list by zehnSteller to get the product GUID
-        const listApiPath = `api/verzeichnis/Produkt?produktgruppennummer=${productNumber.substring(0, 5)}&take=1000`;
+        // NOTE: The /Produkt endpoint ignores produktgruppennummer parameter!
+        // We need to fetch ALL products and filter client-side
+        // Or use hierarchical endpoints (/Produktgruppe/{guid})
+        
+        // For this test, let's fetch a larger batch and hope our product is in it
+        const listApiPath = `api/verzeichnis/Produkt?take=10000`;
         const listEndpoint = encodeProxyPath(listApiPath);
         
-        console.log('Step 1: Searching product list:', listApiPath);
+        console.log('Step 1: Fetching product list (WARNING: produktgruppennummer parameter is ignored by API!)');
+        console.log('API path:', listApiPath);
         const listRes = await fetch(listEndpoint);
         
         if (!listRes.ok) {
@@ -142,8 +148,15 @@
         if (!listProduct) {
           resultsDiv.innerHTML = `
             <p class="error">❌ Product ${productNumber} not found in list</p>
-            <p>Searched ${products.length} products in category ${productNumber.substring(0, 5)}</p>
-            <p>💡 Try checking the product number or searching a broader category.</p>
+            <p>Searched ${products.length} products</p>
+            <p><strong>⚠️ Note:</strong> The /Produkt endpoint ignores the produktgruppennummer parameter!</p>
+            <p>Fetched products actually start with: ${zehnStellerSamples.join(', ')}</p>
+            <p>💡 To fix this, we need to implement hierarchical API endpoints from API-BREAKTHROUGH.md</p>
+            <hr>
+            <p><strong>Alternative:</strong> Try searching for one of these products instead:</p>
+            <ul>
+              ${zehnStellerSamples.filter(z => z !== 'N/A').slice(0, 3).map(z => `<li><code>${z}</code></li>`).join('')}
+            </ul>
           `;
           return;
         }
