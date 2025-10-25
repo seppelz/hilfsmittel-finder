@@ -120,25 +120,26 @@ async function fetchAllProducts() {
     return cached;
   }
   
-  // Fetch from API
-  console.log('[GKV] Fetching all products from API...');
+  // Fetch from cached products.json (updated weekly by GitHub Actions)
+  console.log('[GKV] Fetching products from server cache...');
   const startTime = Date.now();
   
   try {
-    const response = await fetch(apiUrl('Produkt'));
+    const response = await fetch('/products.json');
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     
     const data = await response.json();
-    const products = Array.isArray(data) ? data : (data.value || []);
+    const products = data.products || [];
     
     const endTime = Date.now();
-    console.log(`[GKV] Fetched ${products.length} products in ${endTime - startTime}ms`);
+    console.log(`[GKV] Fetched ${products.length} products from cache in ${endTime - startTime}ms`);
+    console.log(`[GKV] Cache last updated: ${data.metadata?.lastUpdated || 'unknown'}`);
     
-    // Cache the results in IndexedDB
+    // Cache the results in IndexedDB for offline use
     await setCachedProducts(products);
-    console.log('[GKV] Products cached in IndexedDB');
+    console.log('[GKV] Products cached in IndexedDB for offline use');
     
     return products;
   } catch (error) {
