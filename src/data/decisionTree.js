@@ -34,31 +34,31 @@ export const questionFlow = {
           text: 'Gehstock - Für leichte Unterstützung beim Gehen',
           value: 'gehstock',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'gehstock', productGroup: '10.01' },
+          api_criteria: { device_type: 'gehstock', productGroup: '10.50' }, // 550 products
         },
         {
           text: 'Unterarmgehstützen - Für stärkere Unterstützung',
           value: 'unterarmgehstuetzen',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'unterarmgehstuetzen', productGroup: '10.02' },
+          api_criteria: { device_type: 'unterarmgehstuetzen', productGroup: '10.46.02' }, // 109 products
         },
         {
           text: 'Rollator - Mit Rädern und Bremsen zum Schieben',
           value: 'rollator',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'rollator', productGroup: '10.03' },
+          api_criteria: { device_type: 'rollator', productGroup: '10.46' }, // 121 products (includes subcategories)
         },
         {
           text: 'Gehgestell/Gehbock - Stabil, ohne Räder',
           value: 'gehgestell',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'gehgestell', productGroup: '10.04,10.05' },
+          api_criteria: { device_type: 'gehgestell', productGroup: '10.46.01' }, // 67 products
         },
         {
           text: 'Gehwagen - Mit Rädern, sehr stabil',
           value: 'gehwagen',
           leads_to: 'mobility_features',
-          api_criteria: { device_type: 'gehwagen', productGroup: '10.06' },
+          api_criteria: { device_type: 'gehwagen', productGroup: '10.46' }, // Broader category
         },
         {
           text: 'Ich bin mir nicht sicher',
